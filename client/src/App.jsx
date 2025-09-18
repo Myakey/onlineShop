@@ -4,6 +4,7 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import HomePage from './pages/Home'
 import { BrowserRouter, Routes, Route, Link, Outlet } from 'react-router-dom';
+import About from './pages/About'
 
 import axios from "axios";
 
@@ -25,6 +26,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<About />} />
         {/* <Route path="/products" element={}>
           <Route path="car" element={} />
           <Route path="bike" element={} />
