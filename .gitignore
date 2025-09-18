@@ -1,0 +1,14 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist
+build
+
+# Env files
+.env
+.env.local
+client/.env
+server/.env
