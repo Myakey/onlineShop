@@ -27,3 +27,11 @@ CREATE TABLE products (
     stock INT NOT NULL DEFAULT 0,
     image_url VARCHAR(255)
 );
+
+INSERT INTO products (product_id, name, description, price, stock, image_url) VALUES
+(7, 'Gitar bass', 'Keren banget ya', 10.00, 14, '/uploads/products/product-1758586977292-133156263.png'),
+(8, 'Kacamata Keren', 'DIjual Kacamata tingkat tinggi', 2000.00, 9, '/uploads/products/product-1758587061892-530940895.png'),
+(9, 'Payung raksasa', 'Keren banget payungnya brow', 200.00, 2000, '/uploads/products/product-1758587997801-805904439.png'),
+(10, 'Jaket Coklat', 'Jaket ini sudah dites dengan panas suhu 1000 derajat selsius, matahari pun kalah', 1250.00, 10000, '/uploads/products/product-1758588186630-167848037.jpeg'),
+(12, 'PowerBank 1000000000000 mAh', 'Powerbank ini tahan 50.000 tahun', 1.00, 1, '/uploads/products/product-1758588802012-206376285.jpeg'),
+(13, 'Baju Putih', 'Telah melewati 1000 abad, bisa than 20 000 tahun', 12.00, 1, '/uploads/products/product-1758588967808-910519393.jpeg');
