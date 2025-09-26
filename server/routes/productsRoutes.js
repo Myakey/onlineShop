@@ -1,10 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const productsController = require("../controllers/productsControllers");
-const upload = require("../middleware/uploadImage");
+const { upload, uploadWithErrorHandling } = require("../middleware/uploadImage");
 
+// Get all products
 router.get('/', productsController.getAllProducts);
+
+// Get product by ID
+router.get('/:id', productsController.getProductById);
+
+// Create new product (with optional image upload)
 router.post('/', upload.single('image'), productsController.createProduct); 
+
+// Update product (with optional image upload)
+router.put('/:id', upload.single('image'), productsController.updateProduct);
+
+// Delete product (and its image)
 router.delete('/:id', productsController.deleteProduct);
+
+// Delete only product image (keep product)
+router.delete('/:id/image', productsController.deleteProductImage);
 
 module.exports = router;

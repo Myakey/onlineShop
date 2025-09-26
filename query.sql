@@ -1,6 +1,6 @@
 -- Create database (change "shopdb" to whatever you want)
-CREATE DATABASE IF NOT EXISTS shopdb;
-USE shopdb;
+CREATE DATABASE IF NOT EXISTS online_shop;
+USE online_shop;
 
 -- Drop tables if they exist (to avoid conflicts on re-run)
 DROP TABLE IF EXISTS products;

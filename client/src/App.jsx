@@ -6,6 +6,8 @@ import HomePage from './pages/Home'
 import { BrowserRouter, Routes, Route, Link, Outlet } from 'react-router-dom';
 import About from './pages/About'
 import AddProduct from './pages/AddProduct'
+//Jangan lupa diganti bang supaya sama dengan yang kiel
+import Login from './pages/Login'
 
 import axios from "axios";
 
@@ -19,6 +21,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<About />} />
         <Route path="/add-product" element={<AddProduct />}></Route>
+        <Route path="/login" element={<Login />}></Route>
         {/* <Route path="/products" element={}>
           <Route path="car" element={} />
           <Route path="bike" element={} />
