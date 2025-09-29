@@ -1,35 +1,52 @@
-import { useState, useEffect } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import HomePage from './pages/Home'
-import { BrowserRouter, Routes, Route, Link, Outlet } from 'react-router-dom';
-import About from './pages/About'
-import AddProduct from './pages/AddProduct'
-//Jangan lupa diganti bang supaya sama dengan yang kiel
-import Login from './pages/Login'
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import axios from "axios";
+// Pages
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Profile from "./pages/Profile";
+
+// Admin pages
+import AdminDashboard from "./pages/admin";
+import AddProduct from "./pages/AddProduct";
+import AdminReviews from "./pages/AdminReviews";
+
+// Product pages
+import ProductList from "./pages/products/ProductList";
+import ProductDetails from "./pages/products/ProductDetails";
+
+// Review & Order pages
+import Reviews from "./pages/AdminReviews";   // pastikan ada file Reviews.jsx
+import Order from "./pages/Order";             // pastikan ada file Order.jsx
 
 function App() {
-  const [count, setCount] = useState(0);
-  const [array, setArray] = useState([]);
-  
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
-        <Route path="/add-product" element={<AddProduct />}></Route>
-        <Route path="/login" element={<Login />}></Route>
-        {/* <Route path="/products" element={}>
-          <Route path="car" element={} />
-          <Route path="bike" element={} />
-        </Route>
-        <Route path="/contact" element={} /> */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/profile" element={<Profile />} />
+
+        {/* Product Routes */}
+        <Route path="/products" element={<ProductList />} />
+        <Route path="/products/:id" element={<ProductDetails />} />
+
+        {/* Review & Order Routes */}
+        <Route path="/reviews" element={<Reviews />} />
+        <Route path="/order" element={<Order />} />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/add-product" element={<AddProduct />} />
+        <Route path="/admin/reviews" element={<AdminReviews />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;
