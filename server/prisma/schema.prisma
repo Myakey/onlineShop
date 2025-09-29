@@ -21,13 +21,89 @@ model users {
   username          String      @unique(map: "username") @db.VarChar(100)
   email             String      @unique(map: "email") @db.VarChar(150)
   password_hash     String      @db.VarChar(255)
-  address           String?     @db.VarChar(255)
+  first_name        String      @db.VarChar(100)
+  last_name         String?     @db.VarChar(100)
   phone_number      String?     @db.VarChar(20)
   type              users_type? @default(buyer)
   profile_image_url String?     @db.VarChar(255)
+  email_verified    Boolean     @default(false)
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+  
+  // Relations
+  addresses         user_addresses[]
+  otp_codes         otp_codes[]
+}
+
+model user_addresses {
+  address_id    Int     @id @default(autoincrement())
+  user_id       Int
+  label         String  @db.VarChar(100) // e.g., "Home", "Office", "Parents' House"
+  recipient_name String @db.VarChar(200)
+  phone_number  String  @db.VarChar(20)
+  street_address String @db.VarChar(500)
+  province      String  @db.VarChar(100)
+  city          String  @db.VarChar(100)
+  district      String? @db.VarChar(100)
+  postal_code   String  @db.VarChar(10)
+  notes         String? @db.Text
+  is_default    Boolean @default(false)
+  created_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt @default(now())
+  
+  // Relations
+  user          users   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([user_id])
+}
+
+model otp_codes {
+  otp_id      Int      @id @default(autoincrement())
+  user_id     Int?
+  email       String   @db.VarChar(150)
+  code        String   @db.VarChar(6)
+  purpose     otp_purpose
+  expires_at  DateTime
+  is_used     Boolean  @default(false)
+  created_at  DateTime @default(now())
+  
+  // Relations
+  user        users?   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([email, purpose])
+  @@index([code])
+}
+
+model indonesian_provinces {
+  province_id   Int    @id @default(autoincrement())
+  province_name String @unique @db.VarChar(100)
+  province_code String @unique @db.VarChar(10)
+  
+  // Relations
+  cities        indonesian_cities[]
+}
+
+model indonesian_cities {
+  city_id       Int    @id @default(autoincrement())
+  province_id   Int
+  city_name     String @db.VarChar(100)
+  city_type     String @db.VarChar(20) // "Kota" or "Kabupaten"
+  postal_codes  String? @db.Text // JSON array of postal codes
+  
+  // Relations
+  province      indonesian_provinces @relation(fields: [province_id], references: [province_id])
+  
+  @@index([province_id])
+  @@unique([province_id, city_name])
 }
 
 enum users_type {
   admin
   buyer
+}
+
+enum otp_purpose {
+  email_verification
+  password_reset
+  login_verification
 }
