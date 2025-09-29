@@ -1,3 +1,4 @@
+// models/users.js
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -11,37 +12,17 @@ async function findByUsername(username) {
         username: true,
         email: true,
         password_hash: true,
-        address: true,
+        first_name: true,
+        last_name: true,
         phone_number: true,
         type: true,
-        profile_image_url: true
-      }
-    });
-    return user; // null if not found (Prisma returns null instead of undefined)
-  } catch (error) {
-    throw new Error(`Error finding user by username: ${error.message}`);
-  }
-}
-
-// Find user by ID (useful for profile updates)
-async function findById(userId) {
-  try {
-    const user = await prisma.users.findUnique({
-      where: { user_id: userId },
-      select: {
-        user_id: true,
-        username: true,
-        email: true,
-        address: true,
-        phone_number: true,
-        type: true,
-        profile_image_url: true
-        // Note: password_hash excluded for security
+        profile_image_url: true,
+        email_verified: true
       }
     });
     return user;
   } catch (error) {
-    throw new Error(`Error finding user by ID: ${error.message}`);
+    throw new Error(`Error finding user by username: ${error.message}`);
   }
 }
 
@@ -55,10 +36,12 @@ async function findByEmail(email) {
         username: true,
         email: true,
         password_hash: true,
-        address: true,
+        first_name: true,
+        last_name: true,
         phone_number: true,
         type: true,
-        profile_image_url: true
+        profile_image_url: true,
+        email_verified: true
       }
     });
     return user;
@@ -67,9 +50,51 @@ async function findByEmail(email) {
   }
 }
 
-// Create new user with all fields
+// Find user by ID
+async function findById(userId) {
+  try {
+    const user = await prisma.users.findUnique({
+      where: { user_id: userId },
+      select: {
+        user_id: true,
+        username: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        phone_number: true,
+        type: true,
+        profile_image_url: true,
+        email_verified: true,
+        addresses: {
+          select: {
+            address_id: true,
+            label: true,
+            recipient_name: true,
+            phone_number: true,
+            street_address: true,
+            province: true,
+            city: true,
+            district: true,
+            postal_code: true,
+            notes: true,
+            is_default: true
+          },
+          orderBy: [
+            { is_default: 'desc' },
+            { created_at: 'asc' }
+          ]
+        }
+      }
+    });
+    return user;
+  } catch (error) {
+    throw new Error(`Error finding user by ID: ${error.message}`);
+  }
+}
+
+// Create new user
 async function createUser(userData) {
-  const { username, email, hashedPassword, address, phoneNumber, type = 'buyer' } = userData;
+  const { username, email, hashedPassword, firstName, lastName, phoneNumber, type = 'buyer' } = userData;
   
   try {
     const newUser = await prisma.users.create({
@@ -77,17 +102,21 @@ async function createUser(userData) {
         username,
         email,
         password_hash: hashedPassword,
-        address,
+        first_name: firstName,
+        last_name: lastName,
         phone_number: phoneNumber,
-        type
+        type,
+        email_verified: false
       },
       select: {
         user_id: true,
         username: true,
         email: true,
-        address: true,
+        first_name: true,
+        last_name: true,
         phone_number: true,
-        type: true
+        type: true,
+        email_verified: true
       }
     });
     
@@ -95,13 +124,14 @@ async function createUser(userData) {
       id: newUser.user_id,
       username: newUser.username,
       email: newUser.email,
-      address: newUser.address,
+      firstName: newUser.first_name,
+      lastName: newUser.last_name,
       phoneNumber: newUser.phone_number,
-      type: newUser.type
+      type: newUser.type,
+      emailVerified: newUser.email_verified
     };
   } catch (error) {
     if (error.code === 'P2002') {
-      // Prisma unique constraint violation
       throw new Error('Username or email already exists');
     }
     throw new Error(`Error creating user: ${error.message}`);
@@ -111,13 +141,13 @@ async function createUser(userData) {
 // Update user
 async function updateUser(userId, updateData) {
   try {
-    // Build the data object for Prisma
     const prismaUpdateData = {};
     
-    if (updateData.email) prismaUpdateData.email = updateData.email;
-    if (updateData.address) prismaUpdateData.address = updateData.address;
+    if (updateData.firstName) prismaUpdateData.first_name = updateData.firstName;
+    if (updateData.lastName !== undefined) prismaUpdateData.last_name = updateData.lastName;
     if (updateData.phoneNumber) prismaUpdateData.phone_number = updateData.phoneNumber;
     if (updateData.profileImageUrl) prismaUpdateData.profile_image_url = updateData.profileImageUrl;
+    if (updateData.emailVerified !== undefined) prismaUpdateData.email_verified = updateData.emailVerified;
     
     if (Object.keys(prismaUpdateData).length === 0) {
       throw new Error('No fields to update');
@@ -130,122 +160,252 @@ async function updateUser(userId, updateData) {
         user_id: true,
         username: true,
         email: true,
-        address: true,
+        first_name: true,
+        last_name: true,
         phone_number: true,
         type: true,
-        profile_image_url: true
+        profile_image_url: true,
+        email_verified: true
       }
     });
     
     return updatedUser !== null;
   } catch (error) {
     if (error.code === 'P2025') {
-      // Record not found
       return false;
-    }
-    if (error.code === 'P2002') {
-      // Unique constraint violation
-      throw new Error('Email already exists');
     }
     throw new Error(`Error updating user: ${error.message}`);
   }
 }
 
-// Clean up function to disconnect Prisma (call this when your app shuts down)
-async function disconnect() {
-  await prisma.$disconnect();
+// OTP related functions
+async function createOTP(email, code, purpose, userId = null) {
+  try {
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    
+    // Delete any existing unused OTP for this email and purpose
+    await prisma.otp_codes.deleteMany({
+      where: {
+        email,
+        purpose,
+        is_used: false
+      }
+    });
+    
+    const otpRecord = await prisma.otp_codes.create({
+      data: {
+        user_id: userId,
+        email,
+        code,
+        purpose,
+        expires_at: expiresAt
+      }
+    });
+    
+    return otpRecord;
+  } catch (error) {
+    throw new Error(`Error creating OTP: ${error.message}`);
+  }
+}
+
+async function verifyOTP(email, code, purpose) {
+  try {
+    const otpRecord = await prisma.otp_codes.findFirst({
+      where: {
+        email,
+        code,
+        purpose,
+        is_used: false,
+        expires_at: {
+          gt: new Date()
+        }
+      }
+    });
+    
+    if (!otpRecord) {
+      return { valid: false, message: 'Invalid or expired OTP' };
+    }
+    
+    // Mark OTP as used
+    await prisma.otp_codes.update({
+      where: { otp_id: otpRecord.otp_id },
+      data: { is_used: true }
+    });
+    
+    return { valid: true, otpRecord };
+  } catch (error) {
+    throw new Error(`Error verifying OTP: ${error.message}`);
+  }
+}
+
+// Address related functions
+async function addUserAddress(userId, addressData) {
+  try {
+    const {
+      label,
+      recipientName,
+      phoneNumber,
+      streetAddress,
+      province,
+      city,
+      district,
+      postalCode,
+      notes,
+      isDefault = false
+    } = addressData;
+    
+    // If this is set as default, remove default from other addresses
+    if (isDefault) {
+      await prisma.user_addresses.updateMany({
+        where: { user_id: userId },
+        data: { is_default: false }
+      });
+    }
+    
+    const address = await prisma.user_addresses.create({
+      data: {
+        user_id: userId,
+        label,
+        recipient_name: recipientName,
+        phone_number: phoneNumber,
+        street_address: streetAddress,
+        province,
+        city,
+        district,
+        postal_code: postalCode,
+        notes,
+        is_default: isDefault
+      }
+    });
+    
+    return address;
+  } catch (error) {
+    throw new Error(`Error adding address: ${error.message}`);
+  }
+}
+
+async function updateUserAddress(addressId, userId, addressData) {
+  try {
+    const {
+      label,
+      recipientName,
+      phoneNumber,
+      streetAddress,
+      province,
+      city,
+      district,
+      postalCode,
+      notes,
+      isDefault
+    } = addressData;
+    
+    // If this is set as default, remove default from other addresses
+    if (isDefault) {
+      await prisma.user_addresses.updateMany({
+        where: { 
+          user_id: userId,
+          address_id: { not: addressId }
+        },
+        data: { is_default: false }
+      });
+    }
+    
+    const updatedAddress = await prisma.user_addresses.update({
+      where: { 
+        address_id: addressId,
+        user_id: userId // Ensure user owns this address
+      },
+      data: {
+        label,
+        recipient_name: recipientName,
+        phone_number: phoneNumber,
+        street_address: streetAddress,
+        province,
+        city,
+        district,
+        postal_code: postalCode,
+        notes,
+        is_default: isDefault
+      }
+    });
+    
+    return updatedAddress;
+  } catch (error) {
+    if (error.code === 'P2025') {
+      throw new Error('Address not found or access denied');
+    }
+    throw new Error(`Error updating address: ${error.message}`);
+  }
+}
+
+async function deleteUserAddress(addressId, userId) {
+  try {
+    await prisma.user_addresses.delete({
+      where: { 
+        address_id: addressId,
+        user_id: userId // Ensure user owns this address
+      }
+    });
+    return true;
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return false;
+    }
+    throw new Error(`Error deleting address: ${error.message}`);
+  }
+}
+
+async function getUserAddresses(userId) {
+  try {
+    const addresses = await prisma.user_addresses.findMany({
+      where: { user_id: userId },
+      orderBy: [
+        { is_default: 'desc' },
+        { created_at: 'asc' }
+      ]
+    });
+    return addresses;
+  } catch (error) {
+    throw new Error(`Error fetching addresses: ${error.message}`);
+  }
+}
+
+// Indonesian location data functions
+async function getProvinces() {
+  try {
+    const provinces = await prisma.indonesian_provinces.findMany({
+      orderBy: { province_name: 'asc' }
+    });
+    return provinces;
+  } catch (error) {
+    throw new Error(`Error fetching provinces: ${error.message}`);
+  }
+}
+
+async function getCitiesByProvince(provinceId) {
+  try {
+    const cities = await prisma.indonesian_cities.findMany({
+      where: { province_id: provinceId },
+      orderBy: { city_name: 'asc' }
+    });
+    return cities;
+  } catch (error) {
+    throw new Error(`Error fetching cities: ${error.message}`);
+  }
 }
 
 module.exports = { 
-  findByUsername, 
-  createUser, 
-  findByEmail, 
-  findById, 
+  findByUsername,
+  findByEmail,
+  findById,
+  createUser,
   updateUser,
-  disconnect 
-};const db = require('../config/database');
-
-// find user by username
-async function findByUsername(username) {
-  const [rows] = await db.query(
-    'SELECT user_id, username, email, password_hash, address, phone_number, type, profile_image_url FROM users WHERE username = ?', 
-    [username]
-  );
-  return rows[0]; // undefined if not found
-}
-
-// Find user by ID (useful for profile updates)
-async function findById(userId) {
-  const [rows] = await db.query(
-    'SELECT user_id, username, email, address, phone_number, type, profile_image_url FROM users WHERE user_id = ?', 
-    [userId]
-  );
-  return rows[0];
-}
-
-async function findByEmail(email) {
-  const [rows] = await db.query(
-    'SELECT user_id, username, email, password_hash, address, phone_number, type, profile_image_url FROM users WHERE email = ?', 
-    [email]
-  );
-  return rows[0];
-}
-
-// create new user
-// Create new user with all fields
-async function createUser(userData) {
-  const { username, email, hashedPassword, address, phoneNumber, type = 'buyer' } = userData;
-  
-  const [result] = await db.query(
-    'INSERT INTO users (username, email, password_hash, address, phone_number, type) VALUES (?, ?, ?, ?, ?, ?)',
-    [username, email, hashedPassword, address, phoneNumber, type]
-  );
-  
-  return { 
-    id: result.insertId, 
-    username, 
-    email, 
-    address, 
-    phoneNumber, 
-    type 
-  };
-}
-
-async function updateUser(userId, updateData) {
-  const fields = [];
-  const values = [];
-  
-  if (updateData.email) {
-    fields.push('email = ?');
-    values.push(updateData.email);
-  }
-  if (updateData.address) {
-    fields.push('address = ?');
-    values.push(updateData.address);
-  }
-  if (updateData.phoneNumber) {
-    fields.push('phone_number = ?');
-    values.push(updateData.phoneNumber);
-  }
-  if (updateData.profileImageUrl) {
-    fields.push('profile_image_url = ?');
-    values.push(updateData.profileImageUrl);
-  }
-  
-  if (fields.length === 0) {
-    throw new Error('No fields to update');
-  }
-  
-  values.push(userId);
-  
-  const [result] = await db.query(
-    `UPDATE users SET ${fields.join(', ')} WHERE user_id = ?`,
-    values
-  );
-  
-  return result.affectedRows > 0;
-}
-
-
-
-module.exports = { findByUsername, createUser, findByEmail, findById, updateUser };
+  createOTP,
+  verifyOTP,
+  addUserAddress,
+  updateUserAddress,
+  deleteUserAddress,
+  getUserAddresses,
+  getProvinces,
+  getCitiesByProvince
+};

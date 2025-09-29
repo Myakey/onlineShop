@@ -7,13 +7,6 @@ const api = axios.create({
     },
 })
 
-// const api = axios.create({
-//     baseURL: process.env.REACT_APP_API_URL || "http://localhost:8080",
-//     headers:{
-//         'Content-Type': 'application/json'
-//     },
-// })
-
 //Interceptor to use authorization token
 api.interceptors.request.use(
     (config) => {
@@ -41,18 +34,19 @@ api.interceptors.response.use(
                 const refreshToken = localStorage.getItem('refreshToken');
                 if(refreshToken){
                     const response = await axios.post(
-                        `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/auth/refresh-token`, { refreshToken }
+                        `http://localhost:8080/auth/refresh-token`, 
+                        { refreshToken }
                     );
 
                     const { accessToken } = response.data;
                     localStorage.setItem('accessToken', accessToken);
 
-                    //Retry ori request with the new token
+                    //Retry original request with the new token
                     originalRequest.headers.Authorization = `Bearer ${accessToken}`;
                     return api(originalRequest);
                 }
             } catch(refreshError){
-                //Refresh failed, red to login
+                //Refresh failed, redirect to login
                 authService.logout();
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
@@ -125,8 +119,9 @@ const authService = {
         return !!(token && user);
     },
 
+    // FIXED: Changed getitem to getItem (capital I)
     getCurrentUser() {
-        const userStr = localStorage.getitem('user');
+        const userStr = localStorage.getItem('user');
         return userStr ? JSON.parse(userStr) : null;
     },
 
@@ -143,8 +138,10 @@ const authService = {
                 throw new Error('No refresh token available!');
             }
 
+            // FIXED: Changed refresh-Token to refresh-token
             const response = await axios.post(
-                `${process.env.REACT_APP_API_URL || "http://localhost:8080"}/auth/refresh-Token`, {refreshToken}
+                `http://localhost:8080/auth/refresh-token`, 
+                {refreshToken}
             );
 
             const {accessToken} = response.data;
@@ -153,6 +150,95 @@ const authService = {
         } catch (error){
             this.logout();
             throw error;
+        }
+    },
+
+    // Verify email with OTP
+    async verifyEmail(data) {
+        try {
+            const response = await axios.post(`http://localhost:8080/auth/verify-email`, data);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Resend OTP
+    async resendOTP(data) {
+        try {
+            const response = await axios.post(`http://localhost:8080/auth/resend-otp`, data);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Address management
+    async getAddresses() {
+        try {
+            const response = await api.get('/auth/addresses');
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async addAddress(addressData) {
+        try {
+            const response = await api.post('/auth/addresses', addressData);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async updateAddress(addressId, addressData) {
+        try {
+            const response = await api.put(`/auth/addresses/${addressId}`, addressData);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async deleteAddress(addressId) {
+        try {
+            const response = await api.delete(`/auth/addresses/${addressId}`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Location data
+    async getProvinces() {
+        try {
+            const response = await axios.get('http://localhost:8080/auth/provinces');
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async getCities(provinceId) {
+        try {
+            const response = await axios.get(`http://localhost:8080/auth/provinces/${provinceId}/cities`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    // Token validation method
+    async validateToken() {
+        try {
+            const response = await api.get('/auth/profile');
+            return { valid: true, user: response.data.user };
+        } catch (error) {
+            if (error.response?.status === 403 || error.response?.status === 401) {
+                return { valid: false, user: null };
+            }
+            throw error; // Re-throw other errors
         }
     }
 }
