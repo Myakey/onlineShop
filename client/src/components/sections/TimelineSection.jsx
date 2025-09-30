@@ -1,140 +1,37 @@
-import React from 'react';
+import React from "react";
+import { TrendingUp } from "lucide-react";
 
-const TimelineSection = () => {
-  const timelineData = [
-    {
-      title: 'The Beginning',
-      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      image: '/api/placeholder/300/200',
-      position: 'left'
-    },
-    {
-      year: '2003',
-      title: 'Growth Period',
-      description: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-      image: '/api/placeholder/300/200',
-      position: 'right'
-    },
-    {
-      year: '2015',
-      title: 'Expansion Era',
-      description: 'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
-      image: '/api/placeholder/300/200',
-      position: 'left'
-    },
-    {
-      year: 'Now',
-      title: 'Present Day',
-      description: 'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-      image: '/api/placeholder/300/200',
-      position: 'right'
-    }
-  ];
-
-  return (
-    <section className="bg-gray-900 py-16 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Section Title */}
-        <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-12">
-          (UMKM's) Timeline
-        </h2>
-
-        {/* Timeline Container */}
-        <div className="relative">
-          {/* Center Line */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600 hidden md:block"></div>
-
-          {/* Timeline Items */}
-          <div className="space-y-12">
-            {timelineData.map((item, index) => (
-              <div 
-                key={index}
-                className={`relative flex items-center ${
-                  item.position === 'left' 
-                    ? 'md:flex-row-reverse md:justify-start' 
-                    : 'md:flex-row md:justify-end'
-                } flex-col`}
-              >
-                {/* Content Side */}
-                <div className={`w-full md:w-5/12 ${
-                  item.position === 'left' ? 'md:pl-12' : 'md:pr-12'
-                }`}>
-                  {item.position === 'left' ? (
-                    // Left Side - Image
-                    <div className="rounded-lg overflow-hidden shadow-xl">
-                      <img 
-                        src={item.image} 
-                        alt={item.title}
-                        className="w-full h-48 object-cover"
-                      />
-                    </div>
-                  ) : (
-                    // Right Side - Text Content
-                    <div className="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                      <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
-                      <p className="text-gray-300 text-sm leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Center Point */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 hidden md:block">
-                  <div className="relative">
-                    {/* Year Badge */}
-                    <div className="bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg whitespace-nowrap">
-                      {item.year}
-                    </div>
-                    {/* Circle Connector */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-blue-400 rounded-full border-4 border-gray-900"></div>
-                  </div>
-                </div>
-
-                {/* Opposite Side */}
-                <div className={`w-full md:w-5/12 mt-4 md:mt-0 ${
-                  item.position === 'left' ? 'md:pr-12' : 'md:pl-12'
-                }`}>
-                  {item.position === 'left' ? (
-                    // Left Side - Text Content
-                    <div className="bg-gray-800 rounded-lg p-6 shadow-xl border border-gray-700">
-                      <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
-                      <p className="text-gray-300 text-sm leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
-                  ) : (
-                    // Right Side - Image
-                    <div className="rounded-lg overflow-hidden shadow-xl">
-                      <img 
-                        src={item.image} 
-                        alt={item.title}
-                        className="w-full h-48 object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Mobile Year Badge */}
-                <div className="md:hidden mt-4 mb-2">
-                  <div className="bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm inline-block shadow-lg">
-                    {item.year}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+const TimelineSection = () => (
+  <section className="py-24 px-6 bg-gradient-to-b from-gray-900 to-gray-950">
+    <div className="max-w-7xl mx-auto">
+      <div className="text-center mb-16">
+        <div className="inline-flex items-center space-x-2 bg-purple-500/10 px-6 py-2 rounded-full mb-4">
+          <TrendingUp className="w-5 h-5 text-purple-400" />
+          <span className="text-purple-400 font-semibold">Perjalanan Kami</span>
         </div>
-
-        {/* Decorative Elements */}
-        <div className="mt-12 flex justify-center space-x-2">
-          <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
-          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-        </div>
+        <h2 className="text-5xl font-black text-white mb-4">Cerita di Balik FoodStore</h2>
+        <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          Dari dapur rumahan hingga menjadi destinasi kuliner favorit
+        </p>
       </div>
-    </section>
-  );
-};
+      
+      <div className="grid md:grid-cols-3 gap-8">
+        {[
+          { year: "2020", title: "Awal Perjalanan", desc: "Memulai dari dapur rumah dengan resep keluarga" },
+          { year: "2022", title: "Ekspansi Besar", desc: "Membuka 5 cabang di berbagai kota" },
+          { year: "2025", title: "Inovasi Digital", desc: "Platform online untuk kemudahan pemesanan" }
+        ].map((item, idx) => (
+          <div key={idx} className="relative group">
+            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2">
+              <div className="text-6xl font-black text-purple-500/20 mb-4">{item.year}</div>
+              <h3 className="text-2xl font-bold text-white mb-3">{item.title}</h3>
+              <p className="text-gray-400 leading-relaxed">{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
 
 export default TimelineSection;
