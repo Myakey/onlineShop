@@ -2,7 +2,11 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const user = require("../models/users");
+const fs = require("fs");
+const path = require("path");
+const sharp = require("sharp");
 const { generateOTP, sendOTPEmail, sendWelcomeEmail } = require("../services/emailService");
+const { deleteOldImage } = require("../middleware/profilePicUpload");
 
 // Refresh tokens in memory (in production use Redis or database)
 let refreshTokens = [];
@@ -477,6 +481,96 @@ async function validateToken(req, res) {
     });
 }
 
+async function uploadProfileImage(req, res){
+    try{
+        if(!req.file){
+            return res.status(400).json({error: "No File Upload"});
+        }
+
+        const imagePath = req.file.path;
+
+        const resizedFileName = `${path.parse(req.file.filename).name}_300x300.jpg`;
+        const resizedPath = path.join('./uploads/profiles', resizedFileName);
+
+        await sharp(imagePath).resize(300, 300, { 
+                fit: 'cover',
+                position: 'center'
+            })
+            .jpeg({ quality: 90 })
+            .toFile(resizedPath);
+        
+        // Delete original large image
+        fs.unlinkSync(imagePath);
+        
+        const imageUrl = `/uploads/profiles/${resizedFileName}`;
+
+        // Get current user data to find old image
+        const currentUser = await user.findById(req.user.id);
+        
+        // Delete old profile image if it exists
+        if (currentUser.profile_image_url) {
+            const oldImagePath = path.join('./uploads', currentUser.profile_image_url.replace('/uploads/', ''));
+            deleteOldImage(oldImagePath);
+        }
+
+        // Update user profile with new image URL
+        await user.updateUser(req.user.id, { 
+            profileImageUrl: imageUrl 
+        });
+
+        // Get updated user data
+        const updatedUser = await user.findById(req.user.id);
+
+        res.json({
+            message: 'Profile image uploaded successfully',
+            imageUrl: imageUrl,
+            user: {
+                id: updatedUser.user_id,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                firstName: updatedUser.first_name,
+                lastName: updatedUser.last_name,
+                type: updatedUser.type,
+                phoneNumber: updatedUser.phone_number,
+                profileImageUrl: updatedUser.profile_image_url,
+                emailVerified: updatedUser.email_verified
+            }
+        });
+    } catch (err){
+        console.error('Upload error:', err);
+        // Clean up uploaded file on error
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: 'Failed to upload image' });
+    }
+}
+
+async function deleteProfileImage(req, res) {
+    try {
+        const currentUser = await user.findById(req.user.id);
+        
+        if (!currentUser.profile_image_url) {
+            return res.status(400).json({ error: 'No profile image to delete' });
+        }
+
+        // Delete image file
+        const imagePath = path.join('./uploads', currentUser.profile_image_url.replace('/uploads/', ''));
+        deleteOldImage(imagePath);
+
+        // Update user profile
+        await user.updateUser(req.user.id, { 
+            profileImageUrl: null 
+        });
+
+        res.json({ message: 'Profile image deleted successfully' });
+
+    } catch (err) {
+        console.error('Delete image error:', err);
+        res.status(500).json({ error: 'Failed to delete image' });
+    }
+}
+
 module.exports = {
     register,
     verifyEmail,
@@ -492,5 +586,7 @@ module.exports = {
     deleteAddress,
     getAddresses,
     getProvinces,
-    getCities
+    getCities,
+    uploadProfileImage,
+    deleteProfileImage
 };

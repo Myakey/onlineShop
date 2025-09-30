@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require("../controllers/authControllers");
 const { authenticateToken } = require("../middleware/authMiddleware");
+const { uploadProfileImage } = require("../middleware/profilePicUpload")
 
 // Public routes
 router.post('/register', authController.register);
@@ -16,6 +17,9 @@ router.post('/logout', authController.logout);
 router.get('/profile', authenticateToken, authController.getProfile);
 router.put('/profile', authenticateToken, authController.updateProfile);
 router.get('/validate-token', authenticateToken, authController.validateToken);
+router.post('/upload-profile-image', authenticateToken, uploadProfileImage, authController.uploadProfileImage);
+
+router.delete('/profile-image', authenticateToken, authController.deleteProfileImage);
 
 // Address management routes
 router.get('/addresses', authenticateToken, authController.getAddresses);
