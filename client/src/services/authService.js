@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_URL } from "../c"
 
 const api = axios.create({
     baseURL: "http://localhost:8080",
@@ -223,6 +224,19 @@ const authService = {
     async getCities(provinceId) {
         try {
             const response = await axios.get(`http://localhost:8080/auth/provinces/${provinceId}/cities`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
+    async uploadProfileImage(formData) {
+        try {
+            const response = await api.post('/auth/upload-profile-image', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             return response.data;
         } catch (error) {
             throw error;
