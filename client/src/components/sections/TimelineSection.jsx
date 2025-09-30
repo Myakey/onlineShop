@@ -3,7 +3,6 @@ import React from 'react';
 const TimelineSection = () => {
   const timelineData = [
     {
-      year: '1999',
       title: 'The Beginning',
       description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
       image: '/api/placeholder/300/200',

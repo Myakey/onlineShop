@@ -1,12 +1,23 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import "./App.css";
+import HomePage from "./pages/Home";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  Outlet,
+  Navigate,
+} from "react-router-dom";
+import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
+import About from "./pages/About";
+//Jangan lupa diganti bang supaya sama dengan yang kiel
+import Login from "./pages/Login";
+import Profile from "./pages/Profile";
+import AdminPage from "./pages/AdminPage";
 
 // Pages
 import Home from "./pages/Home";
-import About from "./pages/About";
-import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Profile from "./pages/Profile";
 
 // Admin pages
 import AdminDashboard from "./pages/admin";
@@ -22,28 +33,39 @@ import Reviews from "./pages/AdminReviews";   // pastikan ada file Reviews.jsx
 import Order from "./pages/Order";             // pastikan ada file Order.jsx
 
 function App() {
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<HomePage />} />
         <Route path="/about" element={<About />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/add-product" element={<AddProduct />}></Route>
+        <Route path="/login" element={<Login />}></Route>
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminDashboard"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
+          }
+        
+        />
 
-        {/* Product Routes */}
-        <Route path="/products" element={<ProductList />} />
-        <Route path="/products/:id" element={<ProductDetails />} />
 
-        {/* Review & Order Routes */}
-        <Route path="/reviews" element={<Reviews />} />
-        <Route path="/order" element={<Order />} />
-
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/add-product" element={<AddProduct />} />
-        <Route path="/admin/reviews" element={<AdminReviews />} />
+        {/* <Route path="/products" element={}>
+          <Route path="car" element={} />
+          <Route path="bike" element={} />
+        </Route>
+        <Route path="/contact" element={} /> */}
       </Routes>
     </BrowserRouter>
   );
