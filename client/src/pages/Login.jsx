@@ -1,4 +1,6 @@
+
 import { useState } from "react";
+import { User, Lock, Mail, Phone, UserCircle } from "lucide-react";
 import authService from "../services/authService";
 
 function Login() {
@@ -37,7 +39,6 @@ function Login() {
                     password: formData.password
                 });
 
-                // Store tokens and user data
                 localStorage.setItem("accessToken", data.accessToken);
                 localStorage.setItem("refreshToken", data.refreshToken);
                 localStorage.setItem("user", JSON.stringify(data.user));
@@ -93,7 +94,6 @@ function Login() {
                 otp: otpCode
             });
 
-            // Store tokens and user data (user is automatically logged in after verification)
             localStorage.setItem("accessToken", data.accessToken);
             localStorage.setItem("refreshToken", data.refreshToken);
             localStorage.setItem("user", JSON.stringify(data.user));
@@ -145,22 +145,22 @@ function Login() {
 
     if (currentStep === 'verify-email') {
         return (
-            <div className="flex h-screen items-center justify-center bg-gray-100">
-                <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-                    <h1 className="mb-6 text-center text-2xl font-bold text-gray-800">
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-400 via-pink-400 to-purple-600">
+                <div className="relative z-10 bg-gray-900/80 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-700/50">
+                    <h1 className="text-4xl font-bold text-center text-transparent bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text mb-4">
                         Verify Your Email
                     </h1>
                     
-                    <p className="mb-4 text-center text-sm text-gray-600">
+                    <p className="mb-6 text-center text-sm text-gray-300">
                         We've sent a 6-digit code to<br/>
-                        <strong>{registrationEmail}</strong>
+                        <strong className="text-purple-300">{registrationEmail}</strong>
                     </p>
 
-                    <form onSubmit={handleVerifyEmail} className="space-y-4">
+                    <form onSubmit={handleVerifyEmail} className="space-y-6">
                         <input
                             type="text"
                             placeholder="Enter 6-digit code"
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-center text-lg tracking-widest focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="w-full px-4 py-4 bg-white/90 rounded-xl text-gray-800 text-center text-lg tracking-widest placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
                             value={otpCode}
                             onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                             maxLength="6"
@@ -170,10 +170,10 @@ function Login() {
 
                         <button
                             type="submit"
-                            className={`w-full rounded-lg py-2 text-white transition-colors ${
-                                isLoading 
+                            className={`w-full py-4 font-semibold rounded-xl text-white shadow-lg transform hover:scale-105 transition-all duration-300 ${
+                                isLoading || otpCode.length !== 6
                                     ? 'bg-gray-400 cursor-not-allowed' 
-                                    : 'bg-blue-600 hover:bg-blue-700'
+                                    : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
                             }`}
                             disabled={isLoading || otpCode.length !== 6}
                         >
@@ -181,10 +181,10 @@ function Login() {
                         </button>
                     </form>
 
-                    <div className="mt-4 text-center space-y-2">
+                    <div className="mt-6 text-center space-y-3">
                         <button
                             onClick={handleResendOTP}
-                            className="text-sm text-blue-600 hover:underline"
+                            className="text-sm text-purple-300 hover:text-purple-200 transition-colors"
                             disabled={isLoading}
                         >
                             Didn't receive code? Resend
@@ -193,7 +193,7 @@ function Login() {
                         <div>
                             <button
                                 onClick={resetToAuth}
-                                className="text-sm text-gray-600 hover:underline"
+                                className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
                                 disabled={isLoading}
                             >
                                 Back to login
@@ -202,10 +202,10 @@ function Login() {
                     </div>
 
                     {message && (
-                        <div className={`mt-4 p-3 rounded-lg text-center text-sm ${
+                        <div className={`mt-6 p-3 rounded-xl text-center text-sm ${
                             message.includes('successful') || message.includes('sent')
-                                ? 'bg-green-100 text-green-700 border border-green-300' 
-                                : 'bg-red-100 text-red-700 border border-red-300'
+                                ? 'bg-green-500/20 text-green-300 border border-green-500/50' 
+                                : 'bg-red-500/20 text-red-300 border border-red-500/50'
                         }`}>
                             {message}
                         </div>
@@ -216,109 +216,134 @@ function Login() {
     }
 
     return (
-        <div className="flex h-screen items-center justify-center bg-gray-100">
-            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-                <h1 className="mb-6 text-center text-2xl font-bold text-gray-800">
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-400 via-pink-400 to-purple-600">
+            <div className="relative z-10 bg-gray-900/80 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-700/50">
+                <h1 className="text-4xl font-bold text-center text-transparent bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text mb-8">
                     {isLogin ? "Login" : "Create Account"}
                 </h1>
 
-                <form onSubmit={handleAuthSubmit} className="space-y-4">
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={formData.username}
-                        onChange={(e) => handleInputChange('username', e.target.value)}
-                        required
-                        disabled={isLoading}
-                    />
+                <form onSubmit={handleAuthSubmit} className="space-y-6">
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <User className="h-5 w-5 text-purple-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Username"
+                            className="w-full pl-12 pr-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
+                            value={formData.username}
+                            onChange={(e) => handleInputChange('username', e.target.value)}
+                            required
+                            disabled={isLoading}
+                        />
+                    </div>
 
                     {!isLogin && (
                         <>
-                            <input
-                                type="email"
-                                placeholder="Email"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                value={formData.email}
-                                onChange={(e) => handleInputChange('email', e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
-                            
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-purple-400" />
+                                </div>
                                 <input
-                                    type="text"
-                                    placeholder="First Name"
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    value={formData.firstName}
-                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                    type="email"
+                                    placeholder="Email"
+                                    className="w-full pl-12 pr-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
+                                    value={formData.email}
+                                    onChange={(e) => handleInputChange('email', e.target.value)}
                                     required
                                     disabled={isLoading}
                                 />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <UserCircle className="h-5 w-5 text-purple-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="First Name"
+                                        className="w-full pl-12 pr-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
+                                        value={formData.firstName}
+                                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                        required
+                                        disabled={isLoading}
+                                    />
+                                </div>
                                 <input
                                     type="text"
-                                    placeholder="Last Name (optional)"
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    placeholder="Last Name"
+                                    className="w-full px-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
                                     value={formData.lastName}
                                     onChange={(e) => handleInputChange('lastName', e.target.value)}
                                     disabled={isLoading}
                                 />
                             </div>
                             
-                            <input
-                                type="tel"
-                                placeholder="Phone Number (optional)"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                value={formData.phoneNumber}
-                                onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                                disabled={isLoading}
-                            />
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Phone className="h-5 w-5 text-purple-400" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    placeholder="Phone Number (optional)"
+                                    className="w-full pl-12 pr-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
+                                    value={formData.phoneNumber}
+                                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                                    disabled={isLoading}
+                                />
+                            </div>
                         </>
                     )}
 
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={formData.password}
-                        onChange={(e) => handleInputChange('password', e.target.value)}
-                        required
-                        disabled={isLoading}
-                        minLength="6"
-                    />
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Lock className="h-5 w-5 text-purple-400" />
+                        </div>
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            className="w-full pl-12 pr-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
+                            value={formData.password}
+                            onChange={(e) => handleInputChange('password', e.target.value)}
+                            required
+                            disabled={isLoading}
+                            minLength="6"
+                        />
+                    </div>
 
                     <button
                         type="submit"
-                        className={`w-full rounded-lg py-2 text-white transition-colors ${
+                        className={`w-full py-4 font-semibold rounded-xl text-white shadow-lg transform hover:scale-105 transition-all duration-300 ${
                             isLoading 
                                 ? 'bg-gray-400 cursor-not-allowed' 
-                                : 'bg-blue-600 hover:bg-blue-700'
+                                : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
                         }`}
                         disabled={isLoading}
                     >
                         {isLoading 
                             ? (isLogin ? "Logging in..." : "Creating Account...") 
-                            : (isLogin ? "Login" : "Create Account")
+                            : (isLogin ? "Log In" : "Create Account")
                         }
                     </button>
                 </form>
 
                 {message && (
-                    <div className={`mt-4 p-3 rounded-lg text-center text-sm ${
+                    <div className={`mt-6 p-3 rounded-xl text-center text-sm ${
                         message.includes('successful') 
-                            ? 'bg-green-100 text-green-700 border border-green-300' 
-                            : 'bg-red-100 text-red-700 border border-red-300'
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/50' 
+                            : 'bg-red-500/20 text-red-300 border border-red-500/50'
                     }`}>
                         {message}
                     </div>
                 )}
 
-                <p className="mt-6 text-center text-sm text-gray-600">
+                <p className="mt-6 text-center text-sm text-gray-300">
                     {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                     <button
                         type="button"
                         onClick={toggleMode}
-                        className="text-blue-600 hover:underline font-medium"
+                        className="text-purple-300 hover:text-purple-200 font-medium transition-colors"
                         disabled={isLoading}
                     >
                         {isLogin ? "Create one" : "Sign in"}

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import box from "../assets/box.png";
 import ProductCard from "../components/ProductCard";
 import { useNavigate } from "react-router-dom";
-import Button from "../components/Buttons";
+import Button from "../components/Button";
 
 function HomePage() {
   const [products, setProducts] = useState([]);

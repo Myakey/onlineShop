@@ -1,6 +1,3 @@
-import { useState, useEffect } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
 import "./App.css";
 import HomePage from "./pages/Home";
 import {
@@ -13,17 +10,29 @@ import {
 } from "react-router-dom";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
-import AddProduct from "./pages/AddProduct";
 //Jangan lupa diganti bang supaya sama dengan yang kiel
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import AdminPage from "./pages/AdminPage";
 
-import axios from "axios";
+// Pages
+import Home from "./pages/Home";
+import Register from "./pages/Register";
+
+// Admin pages
+import AdminDashboard from "./pages/admin";
+import AddProduct from "./pages/AddProduct";
+import AdminReviews from "./pages/AdminReviews";
+
+// Product pages
+import ProductList from "./pages/products/ProductList";
+import ProductDetails from "./pages/products/ProductDetails";
+
+// Review & Order pages
+import Reviews from "./pages/AdminReviews";   // pastikan ada file Reviews.jsx
+import Order from "./pages/Order";             // pastikan ada file Order.jsx
 
 function App() {
-  const [count, setCount] = useState(0);
-  const [array, setArray] = useState([]);
 
   return (
     <BrowserRouter>
