@@ -13,28 +13,32 @@ const mockProducts = [
   { product_id: 3, name: "Veggie Burger", price: "Rp 40.000" },
 ];
 
-function HomePage() {
+function Home() {
   const [products, setProducts] = useState([]);
 
   useEffect(() => setProducts(mockProducts), []);
 
-  const handleDelete = (id) => setProducts(products.filter(p => p.product_id !== id));
+  const handleDelete = (id) =>
+    setProducts(products.filter((p) => p.product_id !== id));
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-cyan-50">
       <Navbar />
       <HeroSection />
       <TimelineSection />
       <ProductInfoSection />
-      <section className="py-24 px-6 bg-gray-900">
+
+      {/* Section Produk */}
+      <section className="py-24 px-6 bg-gradient-to-br from-pink-50 via-white to-cyan-50">
         <div className="max-w-7xl mx-auto">
           <ProductGrid products={products} onDelete={handleDelete} />
         </div>
       </section>
+
       <NewsletterSection />
       <Footer />
     </div>
   );
 }
 
-export default HomePage;
+export default Home;
