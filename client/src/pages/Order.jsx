@@ -1,108 +1,100 @@
 import React, { useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
-import AddressList from "../components/profile/AddressList";
-import OrderItem from "../components/order/OrderItem";
+import OrderAddress from "../components/order/OrderAddress";
+import OrderProducts from "../components/order/OrderProducts";
+import OrderShipping from "../components/order/OrderShipping";
+import OrderPayment from "../components/order/OrderPayment";
+import OrderVoucher from "../components/order/OrderVoucher";
 import OrderSummary from "../components/order/OrderSummary";
-import PaymentMethod from "../components/order/PaymentMethod";
-import ShippingOptions from "../components/order/ShippingOptions";
-import VoucherInput from "../components/order/VoucherInput";
 
 const Order = () => {
-  const initialProducts = [
-    { id: 1, name: "Produk 1", description: "Deskripsi produk 1", price: 25, image: "https://via.placeholder.com/150" },
-    { id: 2, name: "Produk 2", description: "Deskripsi produk 2", price: 40, image: "https://via.placeholder.com/150" },
-  ];
+  const [addresses, setAddresses] = useState([
+    { id: 1, title: "Rumah", name: "Yehezkiel", phone: "08123456789", text: "Jl. Melati No. 123, Jakarta", isDefault: true },
+    { id: 2, title: "Kantor", name: "Yehezkiel", phone: "08987654321", text: "Jl. Mawar No. 456, Tangerang", isDefault: false },
+  ]);
+  const [selectedAddress, setSelectedAddress] = useState(addresses[0]);
 
-  const initialAddresses = [
-    { title: "Rumah", text: "Jl. Contoh No.1" },
-    { title: "Kantor", text: "Jl. Contoh No.2" },
-  ];
+  const [products, setProducts] = useState([
+    { id: 1, name: "Boneka Teddy", description: "Boneka imut ukuran besar", price: 150000, quantity: 1, image: "https://via.placeholder.com/100" },
+    { id: 2, name: "Boneka Panda", description: "Boneka panda lucu", price: 120000, quantity: 2, image: "https://via.placeholder.com/100" },
+  ]);
 
-  const paymentMethods = ["Credit Card", "Bank Transfer", "COD"];
-  const shippingOptions = ["Reguler", "Express", "Same Day"];
-
-  const [products, setProducts] = useState(initialProducts);
-  const [addresses, setAddresses] = useState(initialAddresses);
-  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0]);
+  const [shippingOptions] = useState([
+    { id: 1, name: "JNE Reguler", duration: "2-4 hari", price: 20000 },
+    { id: 2, name: "J&T Express", duration: "1-3 hari", price: 25000 },
+    { id: 3, name: "SiCepat", duration: "1-2 hari", price: 30000 },
+  ]);
   const [selectedShipping, setSelectedShipping] = useState(shippingOptions[0]);
-  const [voucherDiscount, setVoucherDiscount] = useState(0);
 
-  const removeProduct = (id) => setProducts(products.filter(p => p.id !== id));
-  const applyVoucher = (code) => code === "DISKON10" ? setVoucherDiscount(10) : setVoucherDiscount(0);
-  const deleteAddress = (index) => setAddresses(addresses.filter((_, i) => i !== index));
-  const editAddress = (index) => alert("Fitur edit alamat belum tersedia");
-  const placeOrder = () => {
-    alert(`Order berhasil!\nMetode Pembayaran: ${selectedPayment}\nMetode Pengiriman: ${selectedShipping}\nTotal Produk: ${products.length}`);
+  const [paymentMethods] = useState([
+    { id: 1, name: "Transfer Bank" },
+    { id: 2, name: "COD (Bayar di Tempat)" },
+    { id: 3, name: "E-Wallet (OVO, GoPay, DANA)" },
+  ]);
+  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0]);
+
+  const [voucher, setVoucher] = useState("");
+
+  // function update
+  const updateQuantity = (id, qty) => {
+    setProducts(products.map(p => p.id === id ? { ...p, quantity: Math.max(1, qty) } : p));
   };
 
-  const totalPrice = products.reduce((sum, p) => sum + p.price, 0) - voucherDiscount;
+  const removeProduct = (id) => {
+    setProducts(products.filter(p => p.id !== id));
+  };
+
+  const deleteAddress = (id) => {
+    setAddresses(addresses.filter(addr => addr.id !== id));
+  };
+
+  const editAddress = (id) => {
+    alert("Edit alamat id: " + id);
+  };
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1 container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-sky-50">
+      <Navbar currentPage="order" />
 
-        {/* Alamat Pengiriman */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">Alamat Pengiriman</h2>
-          <AddressList
+      <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6 lg:col-span-2">
+          <OrderAddress
             addresses={addresses}
-            onDeleteAddress={deleteAddress}
-            onEditAddress={editAddress}
+            selectedAddress={selectedAddress}
+            setSelectedAddress={setSelectedAddress}
+            deleteAddress={deleteAddress}
+            editAddress={editAddress}
           />
-        </section>
-
-        {/* Daftar Produk */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">Daftar Pesanan</h2>
-          <div className="space-y-4">
-            {products.length > 0 ? (
-              products.map(product => (
-                <OrderItem key={product.id} product={product} onRemove={removeProduct} />
-              ))
-            ) : (
-              <p className="text-gray-400">Keranjang kosong</p>
-            )}
-          </div>
-        </section>
-
-        {/* Opsi Pengiriman */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">Opsi Pengiriman</h2>
-          <ShippingOptions
-            options={shippingOptions}
-            selected={selectedShipping}
-            onSelect={setSelectedShipping}
+          <OrderProducts
+            products={products}
+            updateQuantity={updateQuantity}
+            removeProduct={removeProduct}
           />
-        </section>
-
-        {/* Metode Pembayaran */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">Metode Pembayaran</h2>
-          <PaymentMethod
-            methods={paymentMethods}
-            selected={selectedPayment}
-            onSelect={setSelectedPayment}
+          <OrderShipping
+            shippingOptions={shippingOptions}
+            selectedShipping={selectedShipping}
+            setSelectedShipping={setSelectedShipping}
           />
-        </section>
+          <OrderPayment
+            paymentMethods={paymentMethods}
+            selectedPayment={selectedPayment}
+            setSelectedPayment={setSelectedPayment}
+          />
+          <OrderVoucher
+            voucher={voucher}
+            setVoucher={setVoucher}
+          />
+        </div>
 
-        {/* Voucher */}
-        <section>
-          <h2 className="text-xl font-bold mb-2">Voucher</h2>
-          <VoucherInput onApply={applyVoucher} />
-          {voucherDiscount > 0 && (
-            <p className="text-green-400 mt-1">Diskon diterapkan: ${voucherDiscount}</p>
-          )}
-        </section>
-
-        {/* Ringkasan Pesanan */}
-        <section>
-          <OrderSummary total={totalPrice} onPlaceOrder={placeOrder} />
-        </section>
-
-      </main>
-      <Footer />
+        <div className="lg:col-span-1">
+          <OrderSummary
+            products={products}
+            selectedShipping={selectedShipping}
+            voucher={voucher}
+          />
+        </div>
+      </div>
     </div>
   );
 };
