@@ -35,7 +35,7 @@ const Navbar = ({ currentPage = "home", isAdmin = false }) => {
   const getIcon = (key) => {
     const icons = {
       home: <Home className="w-8 h-8" />,
-      products: <Package className="w-8 h-8" />,
+      product: <Package className="w-8 h-8" />,
       reviews: <Star className="w-8 h-8" />,
       order: <ShoppingCart className="w-8 h-8" />,
       dashboard: <LayoutDashboard className="w-8 h-8" />,
@@ -184,7 +184,7 @@ const Navbar = ({ currentPage = "home", isAdmin = false }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-12 pr-12 py-3 bg-white border border-cyan-200 text-pink-700 rounded-full placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:border-pink-400 transition-all duration-300"
-              placeholder="Cari produk, kategori..."
+              placeholder="Cari boneka favoritmu..."
             />
             {searchQuery && (
               <button

@@ -1,17 +1,22 @@
 // src/components/admin/ReviewFilters.jsx
 import React from 'react';
 
-const ReviewFilters = () => {
-  const filters = ['All Reviews', '5 Stars', '4 Stars', '3 Stars', '2 Stars', '1 Star', 'Recent'];
+const filters = ['All Reviews', '5 Stars', '4 Stars', '3 Stars', '2 Stars', '1 Star', 'Recent'];
 
+const ReviewFilters = ({ filter, setFilter }) => {
   return (
-    <div className="mt-6 flex flex-wrap gap-2">
-      {filters.map((filter, index) => (
+    <div className="flex flex-wrap gap-2 mb-4">
+      {filters.map((f, idx) => (
         <button
-          key={index}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          key={idx}
+          onClick={() => setFilter(f)}
+          className={`px-4 py-2 rounded-lg transition-all font-medium ${
+            filter === f
+              ? 'bg-gradient-to-r from-pink-400 to-sky-400 text-white shadow-md'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+          }`}
         >
-          {filter}
+          {f}
         </button>
       ))}
     </div>

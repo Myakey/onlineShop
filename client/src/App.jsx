@@ -11,13 +11,22 @@ import CartPage from "./pages/Cart";
 // Pages
 import Register from "./pages/Register";
 
+// import halaman cart
+import Cart from "./pages/Cart";
+
 // Admin pages
-import AdminDashboard from "./pages/admin";
+import AdminPage from "./pages/AdminPage";
 import AddProduct from "./pages/AddProduct";
 import AdminReviews from "./pages/AdminReviews";
+import AdminProduct from "./pages/AdminProduct";
+import AdminProductDetail from "./pages/AdminProductDetail";
+import AdminProductEdit from "./pages/AdminProductEdit";
+import AdminOrder from "./pages/AdminOrder";
+import AdminOrderDetail from "./pages/AdminOrderDetail";
 
 // Product pages
 import Product from "./pages/Product";
+import ProductDetails from "./pages/ProductDetails";
 
 // Review & Order pages
 import Reviews from "./pages/AdminReviews"; // pastikan ada file Reviews.jsx
@@ -28,7 +37,6 @@ import { CartProvider } from "./context/cartContext";
 function App() {
   return (
     <BrowserRouter>
-      {/* Tambahin wrapper background */}
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50">
         <UserProvider>
           <CartProvider>
