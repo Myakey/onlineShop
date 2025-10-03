@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const productsRoutes = require('./routes/productsRoutes');
 const authRoutes = require("./routes/authRoutes");
+const cartRoutes = require("./routes/cartRoutes");  
 const cors = require("cors");
 const path = require("path");
 const { requireAdmin } = require("./middleware/authMiddleware");
@@ -24,6 +25,7 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, 'uploads')));
 app.use("/api/products", productsRoutes);
 app.use("/auth", authRoutes);
+app.use("/api/cart", cartRoutes);
 
 app.use("/api/admin/products", requireAdmin, productsRoutes);
 

@@ -1,8 +1,10 @@
+// models/order.js
+
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const addFullImageUrls = (products) => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:8080'
+  const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
     
   if (Array.isArray(products)) {
     return products.map(product => ({
@@ -17,54 +19,459 @@ const addFullImageUrls = (products) => {
   }
 };
 
+// Get all orders (admin)
 const getAllOrders = async () => {
-    try{
-        const orders = await prisma.orders.findMany({
-            orderBy: {
-                order_id: 'desc'
-            }
-        });
-        return orders;
-    } catch(error){
-        throw new Error(`Error fetching orders : ${error}`);
-    }
-}
-
-const getOrderByUser = async (userId) => {
-    try{
-        const orders = await prisma.orders.findMany({
-            where: {
-                user_id: parseInt(userId)
-            }
-        })
-
-        if(!orders)
-            return null;
-        
-        return orders;
-    } catch(error){
-        throw new Error(`Error fetching orders: ${error.message}`);
-    }
+  try {
+    const orders = await prisma.orders.findMany({
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+            email: true,
+            first_name: true,
+            last_name: true,
+            phone_number: true
+          }
+        },
+        address: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+    
+    return orders.map(order => ({
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    }));
+  } catch (error) {
+    throw new Error(`Error fetching orders: ${error.message}`);
+  }
 };
 
-const createOrder = async (orderData) => {
-    try{
-        const {user_id, address_id, order_number, total_amount, status, payment_status, notes = null } = orderData
+// Get orders by user ID
+const getOrdersByUser = async (userId) => {
+  try {
+    const orders = await prisma.orders.findMany({
+      where: {
+        user_id: parseInt(userId)
+      },
+      include: {
+        address: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
 
-        const newOrder = await prisma.orders.create({
-            data:{
-                user_id,
-                address_id,
-                order_number,
-                total_amount,
-                status,
-                payment_status,
-                notes
-            }
-        });
-        return newOrder;
-
-    }catch (error){
-        throw new Error(`Error creating order: ${error.message}`);
+    if (!orders || orders.length === 0) {
+      return [];
     }
-}
+    
+    return orders.map(order => ({
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    }));
+  } catch (error) {
+    throw new Error(`Error fetching user orders: ${error.message}`);
+  }
+};
+
+// Get single order by ID
+const getOrderById = async (orderId) => {
+  try {
+    const order = await prisma.orders.findUnique({
+      where: {
+        order_id: parseInt(orderId)
+      },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+            email: true,
+            first_name: true,
+            last_name: true,
+            phone_number: true
+          }
+        },
+        address: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return null;
+    }
+
+    return {
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error fetching order: ${error.message}`);
+  }
+};
+
+// Get order by order number
+const getOrderByOrderNumber = async (orderNumber) => {
+  try {
+    const order = await prisma.orders.findUnique({
+      where: {
+        order_number: orderNumber
+      },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+            email: true,
+            first_name: true,
+            last_name: true
+          }
+        },
+        address: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return null;
+    }
+
+    return {
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error fetching order by number: ${error.message}`);
+  }
+};
+
+// Create new order with items
+const createOrder = async (orderData) => {
+  try {
+    const { 
+      user_id, 
+      address_id, 
+      order_number, 
+      total_amount, 
+      status = 'pending', 
+      payment_method = null,
+      payment_status = 'unpaid', 
+      notes = null,
+      items = [], // Array of { product_id, quantity, price }
+      decrementStock = false // Only decrement if payment confirmed or processing
+    } = orderData;
+
+    // Create order with items in a transaction
+    const newOrder = await prisma.$transaction(async (tx) => {
+      // Validate stock availability first
+      if (items.length > 0) {
+        for (const item of items) {
+          const product = await tx.products.findUnique({
+            where: { product_id: parseInt(item.product_id) }
+          });
+
+          if (!product) {
+            throw new Error(`Product with ID ${item.product_id} not found`);
+          }
+
+          if (product.stock < parseInt(item.quantity)) {
+            throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+          }
+        }
+      }
+
+      // Create the order
+      const order = await tx.orders.create({
+        data: {
+          user_id: parseInt(user_id),
+          address_id: parseInt(address_id),
+          order_number,
+          total_amount,
+          status,
+          payment_method,
+          payment_status,
+          notes
+        }
+      });
+
+      // Create order items if provided
+      if (items.length > 0) {
+        const orderItems = items.map(item => ({
+          order_id: order.order_id,
+          product_id: parseInt(item.product_id),
+          quantity: parseInt(item.quantity),
+          price: item.price,
+          subtotal: item.price * item.quantity
+        }));
+
+        await tx.order_items.createMany({
+          data: orderItems
+        });
+
+        // Only decrement stock if explicitly requested (e.g., when payment is confirmed)
+        if (decrementStock) {
+          for (const item of items) {
+            await tx.products.update({
+              where: { product_id: parseInt(item.product_id) },
+              data: {
+                stock: {
+                  decrement: parseInt(item.quantity)
+                }
+              }
+            });
+          }
+        }
+      }
+
+      // Fetch the complete order with relations
+      return await tx.orders.findUnique({
+        where: { order_id: order.order_id },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              username: true,
+              email: true,
+              first_name: true,
+              last_name: true
+            }
+          },
+          address: true,
+          items: {
+            include: {
+              product: true
+            }
+          }
+        }
+      });
+    });
+
+    return {
+      ...newOrder,
+      items: newOrder.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error creating order: ${error.message}`);
+  }
+};
+
+// Update order status
+const updateOrderStatus = async (orderId, status) => {
+  try {
+    const updatedOrder = await prisma.orders.update({
+      where: {
+        order_id: parseInt(orderId)
+      },
+      data: {
+        status
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    return {
+      ...updatedOrder,
+      items: updatedOrder.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error updating order status: ${error.message}`);
+  }
+};
+
+// Update payment status
+const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null) => {
+  try {
+    const updateData = {
+      payment_status: paymentStatus
+    };
+
+    if (paymentMethod) {
+      updateData.payment_method = paymentMethod;
+    }
+
+    // If payment is confirmed, decrement stock
+    if (paymentStatus === 'paid') {
+      const updatedOrder = await prisma.$transaction(async (tx) => {
+        // Get order with items
+        const order = await tx.orders.findUnique({
+          where: { order_id: parseInt(orderId) },
+          include: { items: true }
+        });
+
+        if (!order) {
+          throw new Error('Order not found');
+        }
+
+        // Check if stock was already decremented (prevent double decrement)
+        if (order.payment_status === 'paid') {
+          throw new Error('Payment already confirmed, stock already adjusted');
+        }
+
+        // Validate and decrement stock for each item
+        for (const item of order.items) {
+          const product = await tx.products.findUnique({
+            where: { product_id: item.product_id }
+          });
+
+          if (!product) {
+            throw new Error(`Product ${item.product_id} not found`);
+          }
+
+          if (product.stock < item.quantity) {
+            throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
+          }
+
+          // Decrement stock
+          await tx.products.update({
+            where: { product_id: item.product_id },
+            data: {
+              stock: {
+                decrement: item.quantity
+              }
+            }
+          });
+        }
+
+        // Update payment status
+        return await tx.orders.update({
+          where: { order_id: parseInt(orderId) },
+          data: updateData
+        });
+      });
+
+      return updatedOrder;
+    } else {
+      // For other status changes (unpaid, failed, refunded), just update without stock changes
+      const updatedOrder = await prisma.orders.update({
+        where: {
+          order_id: parseInt(orderId)
+        },
+        data: updateData
+      });
+
+      return updatedOrder;
+    }
+  } catch (error) {
+    throw new Error(`Error updating payment status: ${error.message}`);
+  }
+};
+
+// Cancel order
+const cancelOrder = async (orderId) => {
+  try {
+    const cancelledOrder = await prisma.$transaction(async (tx) => {
+      // Get order items to restore stock
+      const order = await tx.orders.findUnique({
+        where: { order_id: parseInt(orderId) },
+        include: { items: true }
+      });
+
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      // Only restore stock if payment was already confirmed (stock was decremented)
+      if (order.payment_status === 'paid') {
+        for (const item of order.items) {
+          await tx.products.update({
+            where: { product_id: item.product_id },
+            data: {
+              stock: {
+                increment: item.quantity
+              }
+            }
+          });
+        }
+      }
+
+      // Update order status
+      return await tx.orders.update({
+        where: { order_id: parseInt(orderId) },
+        data: {
+          status: 'cancelled'
+        },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          }
+        }
+      });
+    });
+
+    return {
+      ...cancelledOrder,
+      items: cancelledOrder.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error cancelling order: ${error.message}`);
+  }
+};
+
+// Generate unique order number
+const generateOrderNumber = () => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `ORD-${timestamp}-${random}`;
+};
+
+module.exports = {
+  getAllOrders,
+  getOrdersByUser,
+  getOrderById,
+  getOrderByOrderNumber,
+  createOrder,
+  updateOrderStatus,
+  updatePaymentStatus,
+  cancelOrder,
+  generateOrderNumber
+};

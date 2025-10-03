@@ -1,0 +1,181 @@
+const cartModels = require("../models/cart");
+
+// Get user's cart
+const getCart = async (req, res) => {
+  try {
+    const userId = req.user.user_id; // From authenticated user
+    const cart = await cartModels.getCartByUserId(userId);
+    
+    res.json({
+      success: true,
+      data: cart || { items: [], totalItems: 0, totalAmount: "0.00" }
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Add item to cart
+const addItemToCart = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const { product_id, quantity = 1 } = req.body;
+    
+    if (!product_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Product ID is required" 
+      });
+    }
+    
+    if (quantity < 1) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Quantity must be at least 1" 
+      });
+    }
+    
+    const cartItem = await cartModels.addItemToCart(userId, product_id, quantity);
+    
+    res.status(201).json({
+      success: true,
+      message: "Item added to cart successfully",
+      data: cartItem
+    });
+  } catch (err) {
+    // Handle specific error messages
+    if (err.message.includes('not found') || err.message.includes('stock')) {
+      return res.status(400).json({ 
+        success: false,
+        message: err.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Update cart item quantity
+const updateCartItem = async (req, res) => {
+  try {
+    const { cartItemId } = req.params;
+    const { quantity } = req.body;
+    
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Valid quantity is required" 
+      });
+    }
+    
+    const updatedItem = await cartModels.updateCartItemQuantity(cartItemId, quantity);
+    
+    res.json({
+      success: true,
+      message: "Cart item updated successfully",
+      data: updatedItem
+    });
+  } catch (err) {
+    if (err.message.includes('not found') || err.message.includes('stock')) {
+      return res.status(400).json({ 
+        success: false,
+        message: err.message 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Remove item from cart
+const removeItemFromCart = async (req, res) => {
+  try {
+    const { cartItemId } = req.params;
+    
+    const result = await cartModels.removeItemFromCart(cartItemId);
+    
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Clear cart
+const clearCart = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    
+    const result = await cartModels.clearCart(userId);
+    
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Get cart item count (for navbar badge)
+const getCartItemCount = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const count = await cartModels.getCartItemCount(userId);
+    
+    res.json({
+      success: true,
+      data: { count }
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+// Validate cart (before checkout)
+const validateCart = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+    const validation = await cartModels.validateCart(userId);
+    
+    res.json({
+      success: true,
+      data: validation
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
+
+module.exports = {
+  getCart,
+  addItemToCart,
+  updateCartItem,
+  removeItemFromCart,
+  clearCart,
+  getCartItemCount,
+  validateCart
+};
