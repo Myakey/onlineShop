@@ -10,7 +10,7 @@ import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
-import AdminPage from "./pages/AdminPage";
+import AdminPage from "./pages/admin";
 
 // Pages
 import Register from "./pages/Register";

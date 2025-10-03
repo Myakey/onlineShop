@@ -1,15 +1,37 @@
-import { useState } from 'react';
-import { Home, Package, Star, ShoppingCart, User, Search, X, LayoutDashboard, Plus, Settings, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Home, Package, Star, ShoppingCart, User, Search, X, LayoutDashboard, Plus, Settings, FileText, ChevronLeftSquare } from 'lucide-react';
+import authService from '../../services/authService';
 
 const Navbar = ({ currentPage = 'home', isAdmin = false }) => {
+  const [user, setUser] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPageState, setCurrentPageState] = useState(currentPage);
+  const navigate = useNavigate();
 
   const toggleMenu = () => setIsMenuOpen(prev => !prev);
   const toggleProfile = () => setShowProfile(prev => !prev);
   const clearSearch = () => setSearchQuery('');
+
+  const loadProfileData = async () => {
+    try{
+      const response = await authService.getProfile();
+      console.log(response)
+      const userData = response.user;
+      
+      setUser(userData);
+
+    } catch(error){
+      console.error('Failed to load profile:', error);
+    }
+    
+  }
+
+  useEffect(() => {
+        loadProfileData();
+    }, []);
 
   const getIcon = (key) => {
     const icons = {
@@ -23,6 +45,10 @@ const Navbar = ({ currentPage = 'home', isAdmin = false }) => {
     };
     return icons[key] || <Home className="w-8 h-8" />;
   };
+
+  const goToProfile = () => {
+    navigate("/profile");
+  }
 
   const navItems = isAdmin
     ? [
@@ -105,9 +131,9 @@ const Navbar = ({ currentPage = 'home', isAdmin = false }) => {
           <div className="relative">
             <div 
               className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-cyan-200 transition-all duration-300 transform hover:scale-110 shadow-md z-50"
-              onClick={toggleProfile}
+              onClick={toggleProfile} 
             >
-              <User className="w-5 h-5 text-pink-600" />
+              <img src={`http://locahost:8080/`} alt="" />
             </div>
 
             {showProfile && (

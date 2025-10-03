@@ -7,19 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model products {
-  product_id  Int     @id @default(autoincrement())
-  name        String  @db.VarChar(150)
-  description String? @db.Text
-  price       Decimal @db.Decimal(10, 2)
-  stock       Int     @default(0)
-  image_url   String? @db.VarChar(255)
-}
-
 model users {
   user_id           Int         @id @default(autoincrement())
-  username          String      @unique(map: "username") @db.VarChar(100)
-  email             String      @unique(map: "email") @db.VarChar(150)
+  username          String      @unique @db.VarChar(100)
+  email             String      @unique @db.VarChar(150)
   password_hash     String      @db.VarChar(255)
   first_name        String      @db.VarChar(100)
   last_name         String?     @db.VarChar(100)
@@ -33,45 +24,113 @@ model users {
   // Relations
   addresses         user_addresses[]
   otp_codes         otp_codes[]
+  shopping_cart     shopping_carts?
+  orders            orders[]
+}
+
+model products {
+  product_id  Int     @id @default(autoincrement())
+  name        String  @db.VarChar(150)
+  description String? @db.Text
+  price       Decimal @db.Decimal(10, 2)
+  stock       Int     @default(0)
+  image_url   String? @db.VarChar(255)
+  
+  // Relations
+  cart_items  cart_items[]
+  order_items order_items[]
 }
 
 model user_addresses {
-  address_id    Int     @id @default(autoincrement())
-  user_id       Int
-  label         String  @db.VarChar(100) // e.g., "Home", "Office", "Parents' House"
-  recipient_name String @db.VarChar(200)
-  phone_number  String  @db.VarChar(20)
-  street_address String @db.VarChar(500)
-  province      String  @db.VarChar(100)
-  city          String  @db.VarChar(100)
-  district      String? @db.VarChar(100)
-  postal_code   String  @db.VarChar(10)
-  notes         String? @db.Text
-  is_default    Boolean @default(false)
-  created_at    DateTime @default(now())
-  updated_at   DateTime @updatedAt @default(now())
+  address_id     Int      @id @default(autoincrement())
+  user_id        Int
+  label          String   @db.VarChar(100)
+  recipient_name String   @db.VarChar(200)
+  phone_number   String   @db.VarChar(20)
+  street_address String   @db.VarChar(500)
+  province       String   @db.VarChar(100)
+  city           String   @db.VarChar(100)
+  district       String?  @db.VarChar(100)
+  postal_code    String   @db.VarChar(10)
+  notes          String?  @db.Text
+  is_default     Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
   
   // Relations
-  user          users   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user           users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  orders         orders[]
+}
+
+model shopping_carts {
+  cart_id    Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
   
-  @@index([user_id])
+  // Relations
+  user       users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  items      cart_items[]
+}
+
+model cart_items {
+  cart_item_id Int      @id @default(autoincrement())
+  cart_id      Int
+  product_id   Int
+  quantity     Int      @default(1)
+  added_at     DateTime @default(now())
+  
+  // Relations
+  cart         shopping_carts @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade)
+  product      products       @relation(fields: [product_id], references: [product_id])
+  
+  @@unique([cart_id, product_id])
+}
+
+model orders {
+  order_id       Int            @id @default(autoincrement())
+  user_id        Int
+  address_id     Int
+  order_number   String         @unique @db.VarChar(50)
+  total_amount   Decimal        @db.Decimal(10, 2)
+  status         order_status   @default(pending)
+  payment_method String?        @db.VarChar(50)
+  payment_status payment_status @default(unpaid)
+  notes          String?        @db.Text
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  
+  // Relations
+  user           users          @relation(fields: [user_id], references: [user_id])
+  address        user_addresses @relation(fields: [address_id], references: [address_id])
+  items          order_items[]
+}
+
+model order_items {
+  order_item_id Int     @id @default(autoincrement())
+  order_id      Int
+  product_id    Int
+  quantity      Int
+  price         Decimal @db.Decimal(10, 2)
+  subtotal      Decimal @db.Decimal(10, 2)
+  
+  // Relations
+  order         orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  product       products @relation(fields: [product_id], references: [product_id])
 }
 
 model otp_codes {
-  otp_id      Int      @id @default(autoincrement())
-  user_id     Int?
-  email       String   @db.VarChar(150)
-  code        String   @db.VarChar(6)
-  purpose     otp_purpose
-  expires_at  DateTime
-  is_used     Boolean  @default(false)
-  created_at  DateTime @default(now())
+  otp_id     Int         @id @default(autoincrement())
+  user_id    Int?
+  email      String      @db.VarChar(150)
+  code       String      @db.VarChar(6)
+  purpose    otp_purpose
+  expires_at DateTime
+  is_used    Boolean     @default(false)
+  created_at DateTime    @default(now())
   
   // Relations
-  user        users?   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  
-  @@index([email, purpose])
-  @@index([code])
+  user       users?      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
 model indonesian_provinces {
@@ -84,16 +143,15 @@ model indonesian_provinces {
 }
 
 model indonesian_cities {
-  city_id       Int    @id @default(autoincrement())
-  province_id   Int
-  city_name     String @db.VarChar(100)
-  city_type     String @db.VarChar(20) // "Kota" or "Kabupaten"
-  postal_codes  String? @db.Text // JSON array of postal codes
+  city_id      Int    @id @default(autoincrement())
+  province_id  Int
+  city_name    String @db.VarChar(100)
+  city_type    String @db.VarChar(20)
+  postal_codes String? @db.Text
   
   // Relations
-  province      indonesian_provinces @relation(fields: [province_id], references: [province_id])
+  province     indonesian_provinces @relation(fields: [province_id], references: [province_id])
   
-  @@index([province_id])
   @@unique([province_id, city_name])
 }
 
@@ -106,4 +164,20 @@ enum otp_purpose {
   email_verification
   password_reset
   login_verification
+}
+
+enum order_status {
+  pending
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum payment_status {
+  unpaid
+  paid
+  refunded
+  failed
 }
