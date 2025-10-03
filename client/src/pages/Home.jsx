@@ -7,6 +7,10 @@ import ProductInfoSection from "../components/sections/ProductInfoSection";
 import ProductGrid from "../components/sections/ProductGrid";
 import NewsletterSection from "../components/sections/NewsletterSection";
 
+import { useCart } from "../context/cartContext";
+
+import {getProducts} from "../services/exampleService"
+
 const mockProducts = [
   { product_id: 1, name: "Classic Burger", price: "Rp 45.000" },
   { product_id: 2, name: "Chicken Deluxe", price: "Rp 55.000" },
@@ -15,6 +19,11 @@ const mockProducts = [
 
 function Home() {
   const [products, setProducts] = useState([]);
+  const { addItem } = useCart();
+
+  function handleTryBuyProduct(){
+    addItem(4, 1)
+  }
 
   useEffect(() => setProducts(mockProducts), []);
 
@@ -27,6 +36,8 @@ function Home() {
       <HeroSection />
       <TimelineSection />
       <ProductInfoSection />
+
+      <button onClick={handleTryBuyProduct} className="m-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"> COBAIN ANJING </button>
 
       {/* Section Produk */}
       <section className="py-24 px-6 bg-gradient-to-br from-pink-50 via-white to-cyan-50">

@@ -3,8 +3,10 @@ const cartModels = require("../models/cart");
 // Get user's cart
 const getCart = async (req, res) => {
   try {
-    const userId = req.user.user_id; // From authenticated user
-    const cart = await cartModels.getCartByUserId(userId);
+    console.log(req.user)
+    const userId = req.user.id; // From authenticated user
+    console.log("Fetching cart for user ID:", userId);
+    const cart = await cartModels.getOrCreateCart(userId);
     
     res.json({
       success: true,
@@ -21,7 +23,7 @@ const getCart = async (req, res) => {
 // Add item to cart
 const addItemToCart = async (req, res) => {
   try {
-    const userId = req.user.user_id;
+    const userId = req.user.id;
     const { product_id, quantity = 1 } = req.body;
     
     if (!product_id) {
@@ -118,7 +120,7 @@ const removeItemFromCart = async (req, res) => {
 // Clear cart
 const clearCart = async (req, res) => {
   try {
-    const userId = req.user.user_id;
+    const userId = req.user.id;
     
     const result = await cartModels.clearCart(userId);
     
@@ -137,7 +139,7 @@ const clearCart = async (req, res) => {
 // Get cart item count (for navbar badge)
 const getCartItemCount = async (req, res) => {
   try {
-    const userId = req.user.user_id;
+    const userId = req.user.id;
     const count = await cartModels.getCartItemCount(userId);
     
     res.json({
@@ -155,7 +157,7 @@ const getCartItemCount = async (req, res) => {
 // Validate cart (before checkout)
 const validateCart = async (req, res) => {
   try {
-    const userId = req.user.user_id;
+    const userId = req.user.id;
     const validation = await cartModels.validateCart(userId);
     
     res.json({

@@ -17,9 +17,11 @@ import {
 } from "lucide-react";
 import authService from "../../services/authService";
 import { useUser } from "../../context/userContext";
+import { useCart } from "../../context/cartContext";
 
 const Navbar = ({ currentPage = "home", isAdmin = false }) => {
   const { user, loading, isAuthenticated } = useUser();
+  const { cartCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,6 +106,17 @@ const Navbar = ({ currentPage = "home", isAdmin = false }) => {
           description: "Pesan makanan favorit Anda sekarang",
         },
       ];
+  
+  const handleLogOut = async () => { 
+    try{
+      await authService.logout();
+      console.log("TRY")
+      navigate("/");
+    }catch(error){
+      console.error("Logout failed: ", error);
+    }
+  }
+
 
   const handleNavClick = (path, key) => {
     setCurrentPageState(key);
@@ -191,7 +204,7 @@ const Navbar = ({ currentPage = "home", isAdmin = false }) => {
             <button className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110">
               <ShoppingCart className="w-6 h-6 text-pink-600" />
               <span className="absolute -top-1 -right-1 bg-cyan-400 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow animate-pulse">
-                3
+                {cartCount}
               </span>
             </button>
           )}
@@ -268,7 +281,7 @@ const Navbar = ({ currentPage = "home", isAdmin = false }) => {
                       </button>
                       <hr className="my-2 border-gray-200" />
                       <button
-                        onClick={() => authService.logout()}
+                        onClick={handleLogOut}
                         className="w-full px-4 py-3 bg-gradient-to-r from-pink-400 to-cyan-400 text-white rounded-xl hover:from-pink-500 hover:to-cyan-500 transition-all duration-300 font-medium shadow-md transform hover:scale-105"
                       >
                         Keluar

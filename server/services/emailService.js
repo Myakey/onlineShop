@@ -133,8 +133,41 @@ const sendWelcomeEmail = async (email, firstName) => {
   }
 };
 
+// Send payment confirmation email
+const sendPaymentConfirmationEmail = async (orderData, userEmail) => {
+  const mailOptions = {
+    from: `"Your Store" <${process.env.EMAIL_USER}>`,
+    to: userEmail,
+    subject: `Payment Confirmed - Order #${orderData.order_number}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #4CAF50;">Payment Confirmed!</h2>
+        <p>Dear Customer,</p>
+        <p>Your payment has been successfully processed for order <strong>#${orderData.order_number}</strong>.</p>
+        
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Order Details:</h3>
+          <p><strong>Order Number:</strong> ${orderData.order_number}</p>
+          <p><strong>Total Amount:</strong> $${orderData.total_amount}</p>
+          <p><strong>Payment Method:</strong> ${orderData.payment_method}</p>
+          <p><strong>Payment Status:</strong> ${orderData.payment_status}</p>
+        </div>
+        
+        <p>We'll notify you once your order is shipped.</p>
+        <p>Thank you for your purchase!</p>
+        
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+        <p style="color: #666; font-size: 12px;">If you have any questions, please contact our support team.</p>
+      </div>
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   generateOTP,
   sendOTPEmail,
-  sendWelcomeEmail
+  sendWelcomeEmail,
+  sendPaymentConfirmationEmail
 };

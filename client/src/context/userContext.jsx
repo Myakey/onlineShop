@@ -1,12 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import authService from "../services/authService"; // adjust path
+import { useLocation } from "react-router-dom";
 
 const UserContext = createContext();
+
+
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
 
   // Load profile and check authentication
   const loadProfileData = async () => {
@@ -39,7 +43,7 @@ export const UserProvider = ({ children }) => {
   // Run on mount
   useEffect(() => {
     loadProfileData();
-  }, []);
+  }, [location]);
 
   // Logout handler
   const logout = async () => {

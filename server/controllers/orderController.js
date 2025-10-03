@@ -1,6 +1,8 @@
 // controllers/orderController.js
 
 const orderModels = require("../models/order");
+const nodemailer = require("nodemailer");
+const { sendPaymentConfirmationEmail } = require("../services/emailService");
 
 // Admin only - Get all orders
 const getAllOrders = async (req, res) => {
@@ -183,7 +185,7 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// Update payment status (admin only)
+// Update payment status (admin only) - with email notification
 const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -200,6 +202,16 @@ const updatePaymentStatus = async (req, res) => {
     }
     
     const updatedOrder = await orderModels.updatePaymentStatus(id, payment_status, payment_method);
+    
+    // Send email notification if payment is confirmed
+    if (payment_status === 'paid' && updatedOrder.user_email) {
+      try {
+        await sendPaymentConfirmationEmail(updatedOrder, updatedOrder.user_email);
+      } catch (emailErr) {
+        console.error("Failed to send email:", emailErr);
+        // Continue even if email fails - don't fail the entire request
+      }
+    }
     
     res.json({
       success: true,

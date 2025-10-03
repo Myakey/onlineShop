@@ -7,7 +7,7 @@ const API_URL = 'http://localhost:8080/api';
 
 // Get auth token from localStorage/context
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   return {
     headers: {
       'Authorization': `Bearer ${token}`,
