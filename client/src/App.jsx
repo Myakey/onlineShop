@@ -15,6 +15,11 @@ import Cart from "./pages/Cart";
 import AdminPage from "./pages/AdminPage";
 import AddProduct from "./pages/AddProduct";
 import AdminReviews from "./pages/AdminReviews";
+import AdminProduct from "./pages/AdminProduct";
+import AdminProductDetail from "./pages/AdminProductDetail";
+import AdminProductEdit from "./pages/AdminProductEdit";
+import AdminOrder from "./pages/AdminOrder";
+import AdminOrderDetail from "./pages/AdminOrderDetail";
 
 // Product pages
 import Product from "./pages/Product";
@@ -48,6 +53,11 @@ function App() {
           {/* Sebelumnya admin, sekarang bebas */}
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/add-product" element={<AddProduct />} />
+          <Route path="/admin/products" element={<AdminProduct />} />
+          <Route path="/admin/products/:productId" element={<AdminProductDetail />} />
+          <Route path="/admin/products/edit/:productId" element={<AdminProductEdit />} />
+          <Route path="/admin/orders" element={<AdminOrder />} />
+          <Route path="/admin/orders/:orderId" element={<AdminOrderDetail />} />
           <Route path="/admin/reviews" element={<AdminReviews />} />
 
           {/* Catch all: jika route tidak ditemukan */}
