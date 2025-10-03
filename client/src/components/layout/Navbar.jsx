@@ -1,6 +1,5 @@
-// src/components/layout/Navbar.jsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ untuk navigasi
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Home,
   Package,
@@ -9,16 +8,25 @@ import {
   User,
   Search,
   X,
-  FileText,
+  LayoutDashboard,
+  Plus,
   Settings,
+  FileText,
+  ChevronLeftSquare,
+  LogIn,
 } from "lucide-react";
+import authService from "../../services/authService";
+import { useUser } from "../../context/userContext";
+import { useCart } from "../../context/cartContext";
 
-const Navbar = ({ currentPage = "home" }) => {
-  const navigate = useNavigate(); // ✅ hook react-router
+const Navbar = ({ currentPage = "home", isAdmin = false }) => {
+  const { user, loading, isAuthenticated } = useUser();
+  const { cartCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPageState, setCurrentPageState] = useState(currentPage);
+  const navigate = useNavigate();
 
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
   const toggleProfile = () => setShowProfile((prev) => !prev);
@@ -30,47 +38,101 @@ const Navbar = ({ currentPage = "home" }) => {
       product: <Package className="w-8 h-8" />,
       reviews: <Star className="w-8 h-8" />,
       order: <ShoppingCart className="w-8 h-8" />,
+      dashboard: <LayoutDashboard className="w-8 h-8" />,
+      orders: <FileText className="w-8 h-8" />,
+      "add-product": <Plus className="w-8 h-8" />,
     };
     return icons[key] || <Home className="w-8 h-8" />;
   };
 
-  const navItems = [
-    {
-      name: "Home",
-      key: "home",
-      path: "/dashboard",
-      description: "Halaman utama toko boneka dengan koleksi terbaru",
-    },
-    {
-      name: "Product",
-      key: "product",
-      path: "/product",
-      description: "Jelajahi koleksi boneka lucu & imut",
-    },
-    {
-      name: "Reviews",
-      key: "reviews",
-      path: "/reviews",
-      description: "Baca ulasan pelanggan tentang boneka kami",
-    },
-    {
-      name: "Order",
-      key: "order",
-      path: "/order",
-      description: "Pesan boneka favoritmu sekarang",
-    },
-  ];
+  const goToProfile = () => {
+    navigate("/profile");
+  };
+
+  const goToLogin = () => {
+    navigate("/login");
+  };
+
+  const navItems = isAdmin
+    ? [
+        {
+          name: "Dashboard",
+          key: "dashboard",
+          path: "/admin",
+          description: "Kelola dashboard admin dan statistik",
+        },
+        {
+          name: "Products",
+          key: "products",
+          path: "/products",
+          description: "Lihat dan kelola semua produk",
+        },
+        {
+          name: "Orders",
+          key: "orders",
+          path: "/orders",
+          description: "Kelola pesanan pelanggan",
+        },
+        {
+          name: "Add Product",
+          key: "add-product",
+          path: "/add-product",
+          description: "Tambahkan produk baru",
+        },
+      ]
+    : [
+        {
+          name: "Home",
+          key: "home",
+          path: "/",
+          description: "Halaman utama toko kami dengan penawaran terbaik",
+        },
+        {
+          name: "Products",
+          key: "products",
+          path: "/products",
+          description: "Jelajahi koleksi produk lengkap",
+        },
+        {
+          name: "Reviews",
+          key: "reviews",
+          path: "/reviews",
+          description: "Baca review dan testimoni pelanggan",
+        },
+        {
+          name: "Order",
+          key: "order",
+          path: "/order",
+          description: "Pesan makanan favorit Anda sekarang",
+        },
+      ];
+  
+  const handleLogOut = async () => { 
+    try{
+      await authService.logout();
+      console.log("TRY")
+      navigate("/");
+    }catch(error){
+      console.error("Logout failed: ", error);
+    }
+  }
+
 
   const handleNavClick = (path, key) => {
     setCurrentPageState(key);
     setIsMenuOpen(false);
-    navigate(path); // ✅ langsung navigasi ke halaman
+    navigate(path);
+    console.log("Navigate to:", path);
   };
 
   return (
     <div className="relative">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-200 via-cyan-100 to-white shadow-md relative z-50">
+      <nav
+        className="flex items-center justify-between px-6 py-4 
+        bg-gradient-to-r from-pink-200 via-cyan-100 to-white 
+        shadow-md relative z-50"
+      >
         {/* Hamburger + Logo */}
         <div className="flex items-center space-x-4">
           <button
@@ -97,10 +159,16 @@ const Navbar = ({ currentPage = "home" }) => {
           </button>
           <div className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center shadow-md">
-              <span className="text-2xl">🧸</span>
+              <svg
+                className="w-6 h-6 text-pink-500"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
             </div>
             <span className="text-pink-700 font-bold text-xl hidden md:block">
-              TokoBoneka
+              FoodStore
             </span>
           </div>
         </div>
@@ -129,82 +197,123 @@ const Navbar = ({ currentPage = "home" }) => {
           </div>
         </div>
 
-        {/* Cart & Profile */}
+        {/* Cart & Profile / Login */}
         <div className="flex items-center space-x-4">
-          {/* ✅ Bawa ke halaman /cart */}
-          <button
-            onClick={() => navigate("/cart")}
-            className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110"
-          >
-            <ShoppingCart className="w-6 h-6 text-pink-600" />
-            <span className="absolute -top-1 -right-1 bg-cyan-400 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow animate-pulse">
-              3
-            </span>
-          </button>
+          {/* Cart - Only show when authenticated */}
+          {!loading && isAuthenticated && (
+            <button className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110">
+              <ShoppingCart className="w-6 h-6 text-pink-600" />
+              <span className="absolute -top-1 -right-1 bg-cyan-400 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow animate-pulse">
+                {cartCount}
+              </span>
+            </button>
+          )}
 
-          {/* Profile */}
-          <div className="relative">
-            <div
-              className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-cyan-200 transition-all duration-300 transform hover:scale-110 shadow-md z-50"
-              onClick={toggleProfile}
-            >
-              <User className="w-5 h-5 text-pink-600" />
+          {/* Profile or Login Button */}
+          {loading ? (
+            <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center animate-pulse">
+              <User className="w-6 h-6 text-pink-400" />
             </div>
+          ) : isAuthenticated ? (
+            <div className="relative">
+              <div
+                className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center cursor-pointer hover:bg-cyan-200 transition-all duration-300 transform hover:scale-110 shadow-md z-50 overflow-hidden"
+                onClick={toggleProfile}
+              >
+                {user?.profileImageUrl ? (
+                  <img
+                    src={`http://localhost:8080${user.profileImageUrl}`}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-6 h-6 text-pink-600" />
+                )}
+              </div>
 
-            {showProfile && (
-              <>
-                <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-lg overflow-hidden z-50 border border-cyan-200">
-                  <div className="bg-gradient-to-r from-pink-300 to-cyan-200 p-6 text-pink-800">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md">
-                        <User className="w-8 h-8 text-pink-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg">John Doe</h3>
-                        <p className="text-sm text-pink-700/80">
-                          johndoe@example.com
-                        </p>
+              {showProfile && (
+                <>
+                  <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-lg overflow-hidden z-50 border border-cyan-200">
+                    <div className="bg-gradient-to-r from-pink-300 to-cyan-200 p-6 text-pink-800">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md overflow-hidden">
+                          {user?.profileImageUrl ? (
+                            <img
+                              src={`http://localhost:8080${user.profileImageUrl}`}
+                              alt="Profile"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-8 h-8 text-pink-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg">
+                            {user?.name || "User"}
+                          </h3>
+                          <p className="text-sm text-pink-700/80">
+                            {user?.email || "user@example.com"}
+                          </p>
+                        </div>
                       </div>
                     </div>
+                    <div className="p-4 space-y-2">
+                      <button
+                        onClick={goToProfile}
+                        className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3"
+                      >
+                        <User className="w-5 h-5 text-cyan-500" />
+                        <span className="text-gray-700 font-medium">
+                          Edit Profil
+                        </span>
+                      </button>
+                      <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-cyan-500" />
+                        <span className="text-gray-700 font-medium">
+                          Pesanan Saya
+                        </span>
+                      </button>
+                      <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
+                        <Settings className="w-5 h-5 text-cyan-500" />
+                        <span className="text-gray-700 font-medium">
+                          Pengaturan
+                        </span>
+                      </button>
+                      <hr className="my-2 border-gray-200" />
+                      <button
+                        onClick={handleLogOut}
+                        className="w-full px-4 py-3 bg-gradient-to-r from-pink-400 to-cyan-400 text-white rounded-xl hover:from-pink-500 hover:to-cyan-500 transition-all duration-300 font-medium shadow-md transform hover:scale-105"
+                      >
+                        Keluar
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-4 space-y-2">
-                    <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
-                      <User className="w-5 h-5 text-cyan-500" />
-                      <span className="text-gray-700 font-medium">
-                        Edit Profil
-                      </span>
-                    </button>
-                    <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
-                      <FileText className="w-5 h-5 text-cyan-500" />
-                      <span className="text-gray-700 font-medium">
-                        Pesanan Boneka Saya
-                      </span>
-                    </button>
-                    <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
-                      <Settings className="w-5 h-5 text-cyan-500" />
-                      <span className="text-gray-700 font-medium">
-                        Pengaturan
-                      </span>
-                    </button>
-                    <hr className="my-2 border-gray-200" />
-                    <button className="w-full px-4 py-3 bg-gradient-to-r from-pink-400 to-cyan-400 text-white rounded-xl hover:from-pink-500 hover:to-cyan-500 transition-all duration-300 font-medium shadow-md transform hover:scale-105">
-                      Keluar
-                    </button>
-                  </div>
-                </div>
-                <div
-                  className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-                  onClick={() => setShowProfile(false)}
-                ></div>
-              </>
-            )}
-          </div>
+                  <div
+                    className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+                    onClick={() => setShowProfile(false)}
+                  ></div>
+                </>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={goToLogin}
+              className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-pink-400 to-cyan-400 text-white rounded-full hover:from-pink-500 hover:to-cyan-500 transition-all duration-300 font-medium shadow-md transform hover:scale-105"
+            >
+              <LogIn className="w-5 h-5" />
+              <span>Masuk</span>
+            </button>
+          )}
         </div>
       </nav>
 
       {/* Hamburger Dropdown */}
       <div
-        className={`absolute top-full left-0 right-0 bg-[#FFF5FA] shadow-xl border-t-4 border-pink-200 transition-all duration-500 ease-in-out transform z-40 ${
+        className={`absolute top-full left-0 right-0 
+        bg-[#FFF5FA] 
+        shadow-xl border-t-4 border-pink-200 
+        transition-all duration-500 ease-in-out transform z-40 
+        ${
           isMenuOpen
             ? "opacity-100 translate-y-0 visible"
             : "opacity-0 -translate-y-8 invisible"
@@ -213,10 +322,10 @@ const Navbar = ({ currentPage = "home" }) => {
         <div className="max-w-7xl mx-auto py-10 px-6">
           <div className="mb-8 text-center">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-pink-500 to-cyan-400 bg-clip-text text-transparent mb-3">
-              🧸 Jelajahi Koleksi Boneka Kami
+              {isAdmin ? "🎯 Admin Control Panel" : "🍽️ Jelajahi Menu Kami"}
             </h2>
             <p className="text-gray-600 text-lg">
-              Pilih kategori yang ingin kamu lihat
+              Pilih kategori yang ingin Anda kunjungi
             </p>
           </div>
 
@@ -285,6 +394,63 @@ const Navbar = ({ currentPage = "home" }) => {
                 </div>
               </button>
             ))}
+          </div>
+
+          {/* Info Banners */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="p-6 bg-white rounded-2xl shadow-md border-l-4 border-pink-300">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl">🎉</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800 mb-1">
+                    Promo Spesial!
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Dapatkan diskon hingga 50% untuk produk pilihan hari ini
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-white rounded-2xl shadow-md border-l-4 border-cyan-400">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl">🚀</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800 mb-1">
+                    Gratis Ongkir!
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    Untuk pembelian minimal Rp 100.000 ke seluruh Indonesia
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom CTA Section */}
+          <div className="p-8 bg-gradient-to-r from-pink-300 via-cyan-200 to-white rounded-3xl shadow-lg">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-pink-900 text-center md:text-left">
+                <h3 className="font-bold text-2xl mb-2">Butuh Bantuan?</h3>
+                <p className="text-pink-700/80">
+                  Customer service kami siap membantu Anda 24/7
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button className="px-8 py-4 bg-white text-cyan-600 rounded-xl font-bold hover:shadow-md transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2">
+                  <span>📞</span>
+                  <span>Hubungi Kami</span>
+                </button>
+                <button className="px-8 py-4 bg-white/50 backdrop-blur-sm text-pink-700 border-2 border-white rounded-xl font-bold hover:bg-white/70 transition-all duration-300 flex items-center justify-center space-x-2">
+                  <span>💬</span>
+                  <span>Live Chat</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

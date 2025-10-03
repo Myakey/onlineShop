@@ -8,7 +8,7 @@ async function main() {
   try {
     console.log('Starting database seeding...');
 
-    // ===== ADMIN USER =====
+    // AJNGAN SEBAR KEMANA MANA PLS
     const ADMIN_USERNAME = 'adminbebek';
     const ADMIN_EMAIL = 'admin@bebek.com';
     const ADMIN_PASSWORD = 'admin123';

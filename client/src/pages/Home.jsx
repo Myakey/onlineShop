@@ -16,6 +16,11 @@ const mockProducts = [
 
 function Home() {
   const [products, setProducts] = useState([]);
+  const { addItem } = useCart();
+
+  function handleTryBuyProduct(){
+    addItem(4, 1)
+  }
 
   useEffect(() => setProducts(mockProducts), []);
 
@@ -39,6 +44,8 @@ function Home() {
 
       {/* Info tentang produk boneka */}
       <ProductInfoSection title="Mengapa Boneka Kami Spesial?" />
+
+      <button onClick={handleTryBuyProduct} className="m-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"> COBAIN ANJING </button>
 
       {/* Section Produk */}
       <section className="py-24 px-6 bg-gradient-to-br from-pink-50 via-white to-cyan-50">

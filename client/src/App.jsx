@@ -1,11 +1,14 @@
 import "./App.css";
 import HomePage from "./pages/Home";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-// Pages
+import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
+import AdminPage from "./pages/admin";
+import CartPage from "./pages/Cart";
+
+// Pages
 import Register from "./pages/Register";
 
 // import halaman cart
@@ -26,43 +29,51 @@ import Product from "./pages/Product";
 import ProductDetails from "./pages/ProductDetails";
 
 // Review & Order pages
-import Order from "./pages/Order"; // pastikan Order.jsx ada
+import Reviews from "./pages/AdminReviews"; // pastikan ada file Reviews.jsx
+import Order from "./pages/Order"; // pastikan ada file Order.jsx
+import { UserProvider } from "./context/userContext";
+import { CartProvider } from "./context/cartContext";
 
 function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50">
-        <Routes>
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <UserProvider>
+          <CartProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<HomePage />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/add-product" element={<AddProduct />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/adminDashboard"
+                element={
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                }
+              />
 
-          {/* Public pages */}
-          <Route path="/dashboard" element={<HomePage />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/product" element={<Product />} />
-          <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/reviews" element={<AdminReviews />} />
-          <Route path="/cart" element={<Cart />} />
-
-          {/* Sebelumnya protected, sekarang bebas */}
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/order" element={<Order />} />
-
-          {/* Sebelumnya admin, sekarang bebas */}
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/add-product" element={<AddProduct />} />
-          <Route path="/admin/products" element={<AdminProduct />} />
-          <Route path="/admin/products/:productId" element={<AdminProductDetail />} />
-          <Route path="/admin/products/edit/:productId" element={<AdminProductEdit />} />
-          <Route path="/admin/orders" element={<AdminOrder />} />
-          <Route path="/admin/orders/:orderId" element={<AdminOrderDetail />} />
-          <Route path="/admin/reviews" element={<AdminReviews />} />
-
-          {/* Catch all: jika route tidak ditemukan */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+              <Route
+                path="/cart"
+                element={
+                  <ProtectedRoute>
+                    <CartPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </CartProvider>
+        </UserProvider>
       </div>
     </BrowserRouter>
   );
