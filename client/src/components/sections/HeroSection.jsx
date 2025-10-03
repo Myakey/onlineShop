@@ -4,24 +4,24 @@ import { ChevronRight } from "lucide-react";
 const slides = [
   {
     id: 1,
-    title: "Kelezatan yang Tak Terlupakan",
-    desc: "Nikmati hidangan berkualitas premium dengan cita rasa autentik yang menggugah selera Anda",
-    emoji: "🍔",
-    bg: "from-purple-900 via-pink-900 to-purple-900",
+    title: "Boneka Imut & Menggemaskan",
+    desc: "Temukan koleksi boneka lucu yang siap menemani hari-hari Anda.",
+    emoji: "🧸",
+    bg: "from-pink-200 via-pink-400 to-pink-600",
   },
   {
     id: 2,
-    title: "Rasakan Gurihnya Kenikmatan",
-    desc: "Setiap gigitan penuh dengan cita rasa yang bikin ketagihan",
-    emoji: "🍟",
-    bg: "from-pink-900 via-red-800 to-pink-900",
+    title: "Hadiah Spesial untuk Orang Tersayang",
+    desc: "Boneka lembut dan berkualitas, cocok jadi hadiah istimewa.",
+    emoji: "🎁",
+    bg: "from-purple-200 via-purple-400 to-purple-600",
   },
   {
     id: 3,
-    title: "Minuman Segar Menyegarkan",
-    desc: "Lengkapi pengalaman makan Anda dengan minuman istimewa",
-    emoji: "🥤",
-    bg: "from-indigo-900 via-blue-800 to-indigo-900",
+    title: "Koleksi Unik & Terbaru",
+    desc: "Lengkapi koleksi boneka Anda dengan desain yang selalu update.",
+    emoji: "✨",
+    bg: "from-rose-200 via-pink-300 to-rose-500",
   },
 ];
 
@@ -49,14 +49,14 @@ const HeroSection = () => {
             className={`w-full h-screen flex-shrink-0 flex flex-col items-center justify-center px-6 bg-gradient-to-br ${slide.bg}`}
           >
             <div className="text-8xl mb-6">{slide.emoji}</div>
-            <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-white via-pink-200 to-purple-200 bg-clip-text text-transparent text-center">
+            <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-white via-pink-100 to-purple-200 bg-clip-text text-transparent text-center">
               {slide.title}
             </h1>
-            <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-2xl mx-auto text-center">
+            <p className="text-xl md:text-2xl text-gray-700 mb-10 max-w-2xl mx-auto text-center">
               {slide.desc}
             </p>
-            <button className="group px-8 py-5 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-pink-500/50 transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2">
-              <span>Pesan Sekarang</span>
+            <button className="group px-8 py-5 bg-gradient-to-r from-pink-400 to-purple-500 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-pink-400/50 transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2">
+              <span>Belanja Sekarang</span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
@@ -70,7 +70,7 @@ const HeroSection = () => {
             key={index}
             onClick={() => setCurrent(index)}
             className={`w-3 h-3 rounded-full transition-all ${
-              current === index ? "bg-pink-400 scale-125" : "bg-white/40"
+              current === index ? "bg-pink-500 scale-125" : "bg-white/50"
             }`}
           />
         ))}
