@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarUser from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -12,73 +12,74 @@ import {
   Tag,
   ArrowRight,
   Package,
-  Sparkles
+  Sparkles,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 
 import { useCart } from "../context/cartContext";
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { fetchCart, updateItem, removeItem, clearCart, cart, loading } = useCart();
+  const { cart, loading, updateItem, removeItem, clearCart, fetchCart } = useCart();
   
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Boneka Teddy Bear Pink",
-      description: "Boneka beruang lembut dan menggemaskan",
-      price: 125000,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1563291074-2bf8677ac0e5?w=200&h=200&fit=crop",
-      category: "Boneka Beruang",
-      inStock: true
-    },
-    {
-      id: 2,
-      name: "Boneka Kelinci Putih",
-      description: "Boneka kelinci super lucu",
-      price: 95000,
-      quantity: 2,
-      image: "https://images.unsplash.com/photo-1585174479386-d8e8c89a3440?w=200&h=200&fit=crop",
-      category: "Boneka Kelinci",
-      inStock: true
-    },
-    {
-      id: 3,
-      name: "Boneka Kucing Orange",
-      description: "Boneka kucing imut banget",
-      price: 110000,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1545249390-6bdfa286032f?w=200&h=200&fit=crop",
-      category: "Boneka Kucing",
-      inStock: true
-    }
-  ]);
-
-  const [selectedItems, setSelectedItems] = useState([1, 2, 3]);
+  const [selectedItems, setSelectedItems] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null); // Track which item is being updated
 
-  // Update quantity
-  const updateQuantity = (id, newQuantity) => {
+  // Get cart items from context
+  const cartItems = cart?.items || [];
+
+  // Initialize selected items when cart loads
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      // Select all items by default
+      setSelectedItems(cartItems.map(item => item.cart_item_id));
+    }
+  }, [cart]);
+
+  // Update quantity with loading state
+  const handleUpdateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity < 1) return;
-    setCartItems(cartItems.map(item => 
-      item.id === id ? { ...item, quantity: newQuantity } : item
-    ));
+    
+    setActionLoading(cartItemId);
+    try {
+      await updateItem(cartItemId, newQuantity);
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+      alert("❌ Gagal mengupdate jumlah produk!");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  // Remove item
-  // const removeItem = (id) => {
-  //   setCartItems(cartItems.filter(item => item.id !== id));
-  //   setSelectedItems(selectedItems.filter(itemId => itemId !== id));
-  // };
+  // Remove item with confirmation
+  const handleRemoveItem = async (cartItemId) => {
+    if (!window.confirm("Yakin ingin menghapus produk ini dari keranjang?")) {
+      return;
+    }
+
+    setActionLoading(cartItemId);
+    try {
+      await removeItem(cartItemId);
+      // Remove from selected items
+      setSelectedItems(selectedItems.filter(id => id !== cartItemId));
+    } catch (error) {
+      console.error("Error removing item:", error);
+      alert("❌ Gagal menghapus produk!");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   // Toggle item selection
-  const toggleSelectItem = (id) => {
-    if (selectedItems.includes(id)) {
-      setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+  const toggleSelectItem = (cartItemId) => {
+    if (selectedItems.includes(cartItemId)) {
+      setSelectedItems(selectedItems.filter(id => id !== cartItemId));
     } else {
-      setSelectedItems([...selectedItems, id]);
+      setSelectedItems([...selectedItems, cartItemId]);
     }
   };
 
@@ -87,16 +88,17 @@ const Cart = () => {
     if (selectedItems.length === cartItems.length) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(cartItems.map(item => item.id));
+      setSelectedItems(cartItems.map(item => item.cart_item_id));
     }
   };
 
-  // Add to wishlist
-  const addToWishlist = (id) => {
-    if (!wishlist.includes(id)) {
-      setWishlist([...wishlist, id]);
+  // Add to wishlist (you can implement wishlist API later)
+  const addToWishlist = async (cartItemId) => {
+    if (!wishlist.includes(cartItemId)) {
+      setWishlist([...wishlist, cartItemId]);
+      // TODO: Call wishlist API here
       setTimeout(() => {
-        removeItem(id);
+        handleRemoveItem(cartItemId);
       }, 500);
     }
   };
@@ -118,9 +120,14 @@ const Cart = () => {
     }
   };
 
-  // Calculate totals
-  const selectedCartItems = cartItems.filter(item => selectedItems.includes(item.id));
-  const subtotal = selectedCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Calculate totals from selected items
+  const selectedCartItems = cartItems.filter(item => 
+    selectedItems.includes(item.cart_item_id)
+  );
+  
+  const subtotal = selectedCartItems.reduce((sum, item) => 
+    sum + (parseFloat(item.product.price) * item.quantity), 0
+  );
   
   let discount = 0;
   if (appliedVoucher) {
@@ -133,14 +140,61 @@ const Cart = () => {
   
   const total = subtotal - discount;
 
-  // Checkout
+  console.log("Selected Items:", selectedItems);
+
+  // Checkout - navigate to order page with selected items
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
       alert("⚠️ Pilih minimal 1 produk untuk checkout!");
       return;
     }
+
+    // Pass selected items and voucher to order page
+    const checkoutData = {
+      selectedItems: selectedCartItems,
+      subtotal,
+      discount,
+      total,
+      appliedVoucher
+    };
+
+    // Store in sessionStorage or pass via state
+    sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
     navigate("/order");
   };
+
+  // Clear cart with confirmation
+  const handleClearCart = async () => {
+    if (!window.confirm("Yakin ingin mengosongkan keranjang?")) {
+      return;
+    }
+
+    try {
+      await clearCart();
+      setSelectedItems([]);
+      setAppliedVoucher(null);
+      setVoucherCode("");
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+      alert("❌ Gagal mengosongkan keranjang!");
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-br from-pink-50 via-cyan-50 to-white min-h-screen">
+        <NavbarUser currentPage="cart" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 text-pink-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600 font-semibold">Memuat keranjang...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-pink-50 via-cyan-50 to-white min-h-screen">
@@ -183,12 +237,12 @@ const Cart = () => {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
               
-              {/* Select All */}
+              {/* Select All & Clear Cart */}
               <div className="bg-white rounded-2xl shadow-md p-4 border-2 border-pink-100 flex items-center justify-between">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={selectedItems.length === cartItems.length}
+                    checked={selectedItems.length === cartItems.length && cartItems.length > 0}
                     onChange={toggleSelectAll}
                     className="w-5 h-5 rounded border-2 border-pink-300 text-cyan-500 focus:ring-2 focus:ring-cyan-300 cursor-pointer"
                   />
@@ -196,120 +250,156 @@ const Cart = () => {
                     Pilih Semua ({cartItems.length} Produk)
                   </span>
                 </label>
-                {selectedItems.length > 0 && (
-                  <span className="text-sm text-cyan-600 font-semibold">
-                    {selectedItems.length} item dipilih
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {selectedItems.length > 0 && (
+                    <span className="text-sm text-cyan-600 font-semibold">
+                      {selectedItems.length} item dipilih
+                    </span>
+                  )}
+                  <button
+                    onClick={handleClearCart}
+                    className="text-red-500 hover:text-red-600 text-sm font-semibold flex items-center gap-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Hapus Semua
+                  </button>
+                </div>
               </div>
 
               {/* Cart Items List */}
-              {cartItems.map(item => (
-                <div 
-                  key={item.id}
-                  className={`bg-white rounded-3xl shadow-md p-5 border-2 transition-all duration-300 ${
-                    selectedItems.includes(item.id)
-                      ? 'border-cyan-400 bg-gradient-to-br from-pink-50/30 to-cyan-50/30'
-                      : 'border-pink-100'
-                  }`}
-                >
-                  <div className="flex gap-4">
-                    {/* Checkbox */}
-                    <div className="flex items-start pt-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => toggleSelectItem(item.id)}
-                        className="w-5 h-5 rounded border-2 border-pink-300 text-cyan-500 focus:ring-2 focus:ring-cyan-300 cursor-pointer"
-                      />
-                    </div>
+              {cartItems.map(item => {
+                const product = item.product;
+                const isLoading = actionLoading === item.cart_item_id;
 
-                    {/* Image (klik ke detail produk) */}
-                    <img 
-                      src={item.image} 
-                      alt={item.name}
-                      onClick={() => navigate(`/product/${item.id}`)}
-                      className="w-28 h-28 object-cover rounded-2xl border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform"
-                    />
+               console.log("Rendering item:", item);
+               console.log("Product details:", product);
 
-                    {/* Details */}
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-2">
-                        <div>
-                          <h3 
-                            className="font-bold text-gray-800 text-lg mb-1 cursor-pointer hover:text-pink-600"
-                            onClick={() => navigate(`/product/${item.id}`)}
-                          >
-                            {item.name}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {item.description}
-                          </p>
-                          <span className="inline-block px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
-                            {item.category}
-                          </span>
-                        </div>
+                return (
+                  <div 
+                    key={item.cart_item_id}
+                    className={`bg-white rounded-3xl shadow-md p-5 border-2 transition-all duration-300 ${
+                      selectedItems.includes(item.cart_item_id)
+                        ? 'border-cyan-400 bg-gradient-to-br from-pink-50/30 to-cyan-50/30'
+                        : 'border-pink-100'
+                    } ${isLoading ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex gap-4">
+                      {/* Checkbox */}
+                      <div className="flex items-start pt-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.cart_item_id)}
+                          onChange={() => toggleSelectItem(item.cart_item_id)}
+                          disabled={isLoading}
+                          className="w-5 h-5 rounded border-2 border-pink-300 text-cyan-500 focus:ring-2 focus:ring-cyan-300 cursor-pointer disabled:opacity-50"
+                        />
                       </div>
 
-                      <div className="flex items-center justify-between mt-4">
-                        {/* Price */}
-                        <div>
-                          <p className="text-2xl font-bold text-pink-600">
-                            Rp {item.price.toLocaleString('id-ID')}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Total: Rp {(item.price * item.quantity).toLocaleString('id-ID')}
-                          </p>
+                      {/* Image */}
+                      <img 
+                        src={product.image_url || 'https://via.placeholder.com/150'}
+                        alt={product.name}
+                        onClick={() => navigate(`/product/${product.product_id}`)}
+                        className="w-28 h-28 object-cover rounded-2xl border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform"
+                      />
+
+                      {/* Details */}
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-2">
+                          <div>
+                            <h3 
+                              className="font-bold text-gray-800 text-lg mb-1 cursor-pointer hover:text-pink-600"
+                              onClick={() => navigate(`/product/${product.product_id}`)}
+                            >
+                              {product.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                              {product.description}
+                            </p>
+                            <span className="inline-block px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
+                              {product.category?.name || 'Boneka'}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex items-center gap-3">
-                          {/* Quantity */}
-                          <div className="flex items-center gap-2 bg-gradient-to-r from-pink-50 to-cyan-50 rounded-xl border-2 border-pink-200 px-3 py-2">
-                            <button 
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              className="w-8 h-8 flex items-center justify-center text-pink-500 hover:bg-pink-100 rounded-lg transition-colors font-bold"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <span className="font-bold text-gray-800 w-8 text-center">
-                              {item.quantity}
+                        {/* Stock Warning */}
+                        {product.stock < item.quantity && (
+                          <div className="flex items-center gap-2 mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <AlertCircle className="w-4 h-4 text-yellow-600" />
+                            <span className="text-xs text-yellow-700 font-semibold">
+                              Stok tersisa {product.stock}! Kurangi jumlah pesanan.
                             </span>
-                            <button 
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              className="w-8 h-8 flex items-center justify-center text-cyan-500 hover:bg-cyan-100 rounded-lg transition-colors font-bold"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between mt-4">
+                          {/* Price */}
+                          <div>
+                            <p className="text-2xl font-bold text-pink-600">
+                              Rp {parseFloat(product.price).toLocaleString('id-ID')}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Total: Rp {(parseFloat(product.price) * item.quantity).toLocaleString('id-ID')}
+                            </p>
                           </div>
 
-                          {/* Wishlist */}
-                          <button
-                            onClick={() => addToWishlist(item.id)}
-                            className={`p-3 rounded-xl transition-all duration-300 ${
-                              wishlist.includes(item.id)
-                                ? 'bg-red-100 text-red-500'
-                                : 'bg-gray-100 text-gray-400 hover:bg-pink-100 hover:text-pink-500'
-                            }`}
-                            title="Pindah ke Wishlist"
-                          >
-                            <Heart className={`w-5 h-5 ${wishlist.includes(item.id) ? 'fill-current' : ''}`} />
-                          </button>
+                          {/* Actions */}
+                          <div className="flex items-center gap-3">
+                            {/* Quantity */}
+                            <div className="flex items-center gap-2 bg-gradient-to-r from-pink-50 to-cyan-50 rounded-xl border-2 border-pink-200 px-3 py-2">
+                              <button 
+                                onClick={() => handleUpdateQuantity(item.cart_item_id, item.quantity - 1)}
+                                disabled={isLoading || item.quantity <= 1}
+                                className="w-8 h-8 flex items-center justify-center text-pink-500 hover:bg-pink-100 rounded-lg transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <span className="font-bold text-gray-800 w-8 text-center">
+                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : item.quantity}
+                              </span>
+                              <button 
+                                onClick={() => handleUpdateQuantity(item.cart_item_id, item.quantity + 1)}
+                                disabled={isLoading || item.quantity >= product.stock}
+                                className="w-8 h-8 flex items-center justify-center text-cyan-500 hover:bg-cyan-100 rounded-lg transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
 
-                          {/* Delete */}
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            className="p-3 bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 rounded-xl transition-all duration-300"
-                            title="Hapus dari Keranjang"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                            {/* Wishlist */}
+                            <button
+                              onClick={() => addToWishlist(item.cart_item_id)}
+                              disabled={isLoading}
+                              className={`p-3 rounded-xl transition-all duration-300 ${
+                                wishlist.includes(item.cart_item_id)
+                                  ? 'bg-red-100 text-red-500'
+                                  : 'bg-gray-100 text-gray-400 hover:bg-pink-100 hover:text-pink-500'
+                              } disabled:opacity-50`}
+                              title="Pindah ke Wishlist"
+                            >
+                              <Heart className={`w-5 h-5 ${wishlist.includes(item.cart_item_id) ? 'fill-current' : ''}`} />
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleRemoveItem(item.cart_item_id)}
+                              disabled={isLoading}
+                              className="p-3 bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 rounded-xl transition-all duration-300 disabled:opacity-50"
+                              title="Hapus dari Keranjang"
+                            >
+                              {isLoading ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-5 h-5" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Continue Shopping */}
               <button
