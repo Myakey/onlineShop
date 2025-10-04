@@ -39,6 +39,7 @@ model products {
   // Relations
   cart_items  cart_items[]
   order_items order_items[]
+  @@fulltext([name])
 }
 
 model user_addresses {
