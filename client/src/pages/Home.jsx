@@ -7,7 +7,6 @@ import TimelineSection from "../components/sections/TimelineSection";
 import ProductInfoSection from "../components/sections/ProductInfoSection";
 import ProductGrid from "../components/sections/ProductGrid";
 import NewsletterSection from "../components/sections/NewsletterSection";
-import { useCart } from "../context/cartContext";
 
 // Data boneka contoh
 const mockProducts = [
