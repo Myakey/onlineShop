@@ -359,9 +359,10 @@ export default function Profile() {
                             </div>
 
                             <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
-                                {user?.firstName || user?.username}
+                                {user?.firstName && user?.lastName 
+                                    ? `${user.firstName} ${user.lastName}` 
+                                    : user?.firstName || user?.username}
                             </h1>
-                            <p className="text-gray-600 mb-4">@{user?.username}</p>
 
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 justify-center bg-pink-50 px-4 py-2 rounded-full">
