@@ -15,8 +15,11 @@ import {
   Sparkles
 } from "lucide-react";
 
+import { useCart } from "../context/cartContext";
+
 const Cart = () => {
   const navigate = useNavigate();
+  const { fetchCart, updateItem, removeItem, clearCart, cart, loading } = useCart();
   
   const [cartItems, setCartItems] = useState([
     {
@@ -65,10 +68,10 @@ const Cart = () => {
   };
 
   // Remove item
-  const removeItem = (id) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-    setSelectedItems(selectedItems.filter(itemId => itemId !== id));
-  };
+  // const removeItem = (id) => {
+  //   setCartItems(cartItems.filter(item => item.id !== id));
+  //   setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+  // };
 
   // Toggle item selection
   const toggleSelectItem = (id) => {

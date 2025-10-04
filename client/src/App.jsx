@@ -5,7 +5,7 @@ import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
-import AdminPage from "./pages/admin";
+// import AdminPage from "./pages/admin";
 import CartPage from "./pages/Cart";
 
 // Pages
@@ -15,7 +15,7 @@ import Register from "./pages/Register";
 import Cart from "./pages/Cart";
 
 // Admin pages
-import AdminPage from "./pages/AdminPage";
+
 import AddProduct from "./pages/AddProduct";
 import AdminReviews from "./pages/AdminReviews";
 import AdminProduct from "./pages/AdminProduct";
@@ -58,7 +58,7 @@ function App() {
                 path="/adminDashboard"
                 element={
                   <AdminRoute>
-                    <AdminPage />
+                   
                   </AdminRoute>
                 }
               />
