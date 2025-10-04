@@ -5,7 +5,6 @@ import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
-import AdminPage from "./pages/admin";
 import CartPage from "./pages/Cart";
 
 // Pages

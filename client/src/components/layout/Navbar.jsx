@@ -168,7 +168,7 @@ const Navbar = ({ currentPage = "home", isAdmin = false }) => {
               </svg>
             </div>
             <span className="text-pink-700 font-bold text-xl hidden md:block">
-              FoodStore
+              Ambalabus
             </span>
           </div>
         </div>
