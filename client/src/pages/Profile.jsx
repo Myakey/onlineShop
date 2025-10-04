@@ -1,21 +1,18 @@
-//TODO: JANGAN LUPA HARDCODE https://localhost:8080 ntar dirubah Y
 import React, { useEffect, useState, useRef } from 'react';
 import authService from '../services/authService';
+import { User, Phone, MapPin, Edit2, Trash2, Plus, X, Check, Camera } from 'lucide-react';
 
 export default function Profile() {
-    // Profile data
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
-    
-    // Profile form
+
     const [profileForm, setProfileForm] = useState({
         firstName: '',
         lastName: '',
         phoneNumber: ''
     });
-    
-    // Address states
+
     const [addresses, setAddresses] = useState([]);
     const [provinces, setProvinces] = useState([]);
     const [cities, setCities] = useState([]);
@@ -33,10 +30,16 @@ export default function Profile() {
         notes: '',
         isDefault: false
     });
-    
-    // Image upload
+
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef(null);
+
+    // Table controls
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortKey, setSortKey] = useState('label');
+    const [sortDir, setSortDir] = useState('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const PAGE_SIZE = 6;
 
     useEffect(() => {
         loadProfileData();
@@ -47,15 +50,20 @@ export default function Profile() {
         try {
             const response = await authService.getProfile();
             const userData = response.user;
-            
+
             setUser(userData);
             setProfileForm({
                 firstName: userData.firstName || '',
                 lastName: userData.lastName || '',
                 phoneNumber: userData.phoneNumber || ''
             });
-            setAddresses(userData.addresses || []);
             
+            const addrs = userData.addresses || [];
+            setAddresses(addrs.map((a) => ({
+                ...a,
+                id: a.address_id || a.id || Math.random().toString(36).slice(2, 9)
+            })));
+
             localStorage.setItem('user', JSON.stringify(userData));
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -138,7 +146,7 @@ export default function Profile() {
 
     const handleDeleteImage = async () => {
         if (!confirm('Are you sure you want to delete your profile picture?')) return;
-        
+
         setIsUploading(true);
         try {
             await authService.deleteProfileImage();
@@ -216,7 +224,7 @@ export default function Profile() {
                 await authService.addAddress(addressForm);
                 setMessage('Address added successfully!');
             }
-            
+
             closeAddressModal();
             await loadProfileData();
         } catch (error) {
@@ -229,7 +237,7 @@ export default function Profile() {
 
     const handleDeleteAddress = async (addressId) => {
         if (!confirm('Are you sure you want to delete this address?')) return;
-        
+
         try {
             await authService.deleteAddress(addressId);
             setMessage('Address deleted successfully!');
@@ -240,318 +248,502 @@ export default function Profile() {
         }
     };
 
+    // Table utilities
+    const filteredAddresses = addresses
+        .filter((a) => {
+            const q = searchQuery.trim().toLowerCase();
+            if (!q) return true;
+            return (
+                (a.label || '').toLowerCase().includes(q) ||
+                (a.recipient_name || '').toLowerCase().includes(q) ||
+                (a.street_address || '').toLowerCase().includes(q) ||
+                (a.city || '').toLowerCase().includes(q) ||
+                (a.postal_code || '').toLowerCase().includes(q)
+            );
+        })
+        .sort((x, y) => {
+            const a = (x[sortKey] || '').toString().toLowerCase();
+            const b = (y[sortKey] || '').toString().toLowerCase();
+            if (a === b) return 0;
+            if (sortDir === 'asc') return a < b ? -1 : 1;
+            return a > b ? -1 : 1;
+        });
+
+    const totalPages = Math.max(1, Math.ceil(filteredAddresses.length / PAGE_SIZE));
+    const currentPageItems = filteredAddresses.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const changeSort = (key) => {
+        if (sortKey === key) {
+            setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortKey(key);
+            setSortDir('asc');
+        }
+    };
+
     if (isLoading && !user) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="flex justify-center items-center h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-pink-200 border-t-pink-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 font-medium">Loading your profile...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8 px-4">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 py-12 px-4">
+            <div className="max-w-7xl mx-auto">
                 {message && (
-                    <div className={`mb-4 p-4 rounded-lg ${
+                    <div className={`mb-6 p-5 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
                         message.includes('successfully') 
-                            ? 'bg-green-100 text-green-700 border border-green-300' 
-                            : 'bg-red-100 text-red-700 border border-red-300'
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-2 border-green-300' 
+                            : 'bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-2 border-red-300'
                     }`}>
-                        {message}
+                        <div className="flex items-center gap-3">
+                            {message.includes('successfully') ? (
+                                <Check className="w-6 h-6 text-green-600" />
+                            ) : (
+                                <X className="w-6 h-6 text-red-600" />
+                            )}
+                            <span className="font-semibold">{message}</span>
+                        </div>
                     </div>
                 )}
 
-                {/* Profile Section */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800 mb-6">Edit Profile</h1>
-                    
-                    {/* Profile Image */}
-                    <div className="flex items-center space-x-6 mb-6">
-                        <div className="relative">
-                            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-4 border-white shadow-lg">
-                                {user?.profileImageUrl ? (
-                                    <img
-                                        src={`http://localhost:8080${user.profileImageUrl}`}
-                                        alt="Profile"
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-2xl font-bold">
-                                        {user?.firstName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase()}
-                                    </div>
-                                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+
+                {/* Top Section: Profile Picture + Edit Profile Side by Side */}
+                <div className="grid lg:grid-cols-3 gap-8 mb-8">
+                    {/* Left Column - Profile Picture */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-3xl shadow-2xl p-5 text-center transform hover:shadow-3xl transition-all duration-300">
+                            <div className="relative inline-block mb-6">
+                                <div className="w-48 h-48 rounded-full overflow-hidden bg-white border-4 border-white shadow-2xl ring-4 ring-pink-200 mx-auto">
+                                    {user?.profileImageUrl ? (
+                                        <img
+                                            src={`http://localhost:8080${user.profileImageUrl}`}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-400 via-rose-400 to-pink-500 text-white text-6xl font-bold">
+                                            {user?.firstName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isUploading}
+                                        className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-3 rounded-full hover:from-pink-600 hover:to-rose-600 shadow-xl disabled:from-gray-400 disabled:to-gray-400 transition-all duration-300 hover:scale-110"
+                                    >
+                                        {isUploading ? (
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <Camera className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                    {user?.profileImageUrl && (
+                                        <button
+                                            onClick={handleDeleteImage}
+                                            disabled={isUploading}
+                                            className="bg-gradient-to-r from-red-500 to-rose-600 text-white p-3 rounded-full hover:from-red-600 hover:to-rose-700 shadow-xl disabled:from-gray-400 disabled:to-gray-400 transition-all duration-300 hover:scale-110"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 shadow-lg disabled:bg-gray-400"
-                            >
-                                {isUploading ? (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                ) : (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+
+                            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
+                                {user?.firstName || user?.username}
+                            </h1>
+                            <p className="text-gray-600 mb-4">@{user?.username}</p>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 justify-center bg-pink-50 px-4 py-2 rounded-full">
+                                    <User className="w-5 h-5 text-pink-600" />
+                                    <span className="font-medium text-sm">@{user?.username}</span>
+                                </div>
+                                <div className="flex items-center gap-2 justify-center bg-rose-50 px-4 py-2 rounded-full">
+                                    <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
-                                )}
-                            </button>
-                            {user?.profileImageUrl && (
-                                <button
-                                    onClick={handleDeleteImage}
-                                    disabled={isUploading}
-                                    className="absolute -bottom-1 -left-1 bg-red-600 text-white p-1 rounded-full hover:bg-red-700 shadow-lg disabled:bg-gray-400"
-                                >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-600">Username: <strong>{user?.username}</strong></p>
-                            <p className="text-sm text-gray-600">Email: <strong>{user?.email}</strong></p>
+                                    <span className="font-medium text-sm">{user?.email}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                    />
-
-                    {/* Profile Form */}
-                    <form onSubmit={handleProfileSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    value={profileForm.firstName}
-                                    onChange={(e) => setProfileForm({...profileForm, firstName: e.target.value})}
-                                    required
-                                    disabled={isLoading}
-                                />
+                    {/* Right Column - Edit Profile Form */}
+                    <div className="lg:col-span-2">
+                        <div className="bg-white rounded-3xl shadow-2xl p-8 transform hover:shadow-3xl transition-all duration-300">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="p-3 bg-gradient-to-br from-pink-100 to-rose-100 rounded-2xl">
+                                    <Edit2 className="w-7 h-7 text-pink-600" />
+                                </div>
+                                <h2 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                                    Edit Profile Information
+                                </h2>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                                <input
-                                    type="text"
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    value={profileForm.lastName}
-                                    onChange={(e) => setProfileForm({...profileForm, lastName: e.target.value})}
+
+                            <form onSubmit={handleProfileSubmit} className="space-y-6">
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">First Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                            value={profileForm.firstName}
+                                            onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                                            required
+                                            disabled={isLoading}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
+                                        <input
+                                            type="text"
+                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                            value={profileForm.lastName}
+                                            onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
+                                            disabled={isLoading}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <Phone className="w-5 h-5 text-pink-600" />
+                                        Phone Number
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                        value={profileForm.phoneNumber}
+                                        onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className={`w-full rounded-2xl py-4 text-white font-bold text-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg ${isLoading
+                                            ? 'bg-gray-400 cursor-not-allowed'
+                                            : 'bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 hover:shadow-2xl'
+                                        }`}
                                     disabled={isLoading}
-                                />
-                            </div>
+                                >
+                                    {isLoading ? 'Saving...' : 'Save Profile'}
+                                </button>
+                            </form>
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                            <input
-                                type="tel"
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                value={profileForm.phoneNumber}
-                                onChange={(e) => setProfileForm({...profileForm, phoneNumber: e.target.value})}
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            className={`w-full rounded-lg py-2 text-white transition-colors ${
-                                isLoading 
-                                    ? 'bg-gray-400 cursor-not-allowed' 
-                                    : 'bg-blue-600 hover:bg-blue-700'
-                            }`}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Saving...' : 'Save Profile'}
-                        </button>
-                    </form>
+                    </div>
                 </div>
 
-                {/* Addresses Section */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">My Addresses</h2>
-                        <button
-                            onClick={() => openAddressModal()}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                        >
-                            Add Address
-                        </button>
+                {/* Bottom Section: Addresses Table (Full Width) */}
+                <div className="bg-white w-full rounded-3xl shadow-2xl p-8 transform hover:shadow-3xl transition-all duration-300">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-gradient-to-br from-rose-100 to-pink-100 rounded-2xl">
+                                <MapPin className="w-7 h-7 text-rose-600" />
+                            </div>
+                            <h2 className="text-3xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+                                My Addresses
+                            </h2>
+                        </div>
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className="flex-1 md:flex-none">
+                                <input
+                                    placeholder="Search addresses..."
+                                    value={searchQuery}
+                                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                    className="w-full md:w-80 rounded-2xl border-2 border-pink-100 px-4 py-3 focus:outline-none focus:ring-4 focus:ring-pink-50"
+                                />
+                            </div>
+                            <button
+                                onClick={() => openAddressModal()}
+                                className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white px-6 py-3 rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 font-semibold"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Add
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="grid gap-4">
-                        {addresses.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">
-                                <p>No addresses found. Add your first address.</p>
-                            </div>
-                        ) : (
-                            addresses.map((address) => (
-                                <div key={address.address_id} className="border rounded-lg p-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <h3 className="text-lg font-semibold">{address.label}</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-gradient-to-r from-pink-50 to-rose-50 text-gray-700">
+                                    <th className="py-3 px-4 text-left cursor-pointer font-bold" onClick={() => changeSort('label')}>
+                                        Label {sortKey === 'label' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
+                                    </th>
+                                    <th className="py-3 px-4 text-left font-bold">Recipient</th>
+                                    <th className="py-3 px-4 text-left font-bold">Phone</th>
+                                    <th className="py-3 px-4 text-left font-bold">Address</th>
+                                    <th className="py-3 px-4 text-left font-bold">City</th>
+                                    <th className="py-3 px-4 text-left font-bold">Postal</th>
+                                    <th className="py-3 px-4 text-left font-bold">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentPageItems.map((address) => (
+                                    <tr key={address.id || address.address_id} className="hover:bg-pink-50 transition border-b border-pink-100">
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-gray-800">{address.label}</span>
                                                 {address.is_default && (
-                                                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                                    <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs px-2 py-1 rounded-full font-bold">
                                                         Default
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-gray-700 font-medium">{address.recipient_name}</p>
-                                            <p className="text-gray-600">{address.phone_number}</p>
-                                            <p className="text-gray-600 mt-2">{address.street_address}</p>
-                                            <p className="text-gray-600">
-                                                {address.district && `${address.district}, `}
-                                                {address.city}, {address.province} {address.postal_code}
-                                            </p>
-                                            {address.notes && (
-                                                <p className="text-gray-500 text-sm mt-2 italic">Note: {address.notes}</p>
-                                            )}
-                                        </div>
-                                        <div className="flex gap-2 ml-4">
-                                            <button
-                                                onClick={() => openAddressModal(address)}
-                                                className="text-blue-600 hover:text-blue-800 px-3 py-1 text-sm border border-blue-600 rounded hover:bg-blue-50"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteAddress(address.address_id)}
-                                                className="text-red-600 hover:text-red-800 px-3 py-1 text-sm border border-red-600 rounded hover:bg-red-50"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+                                        </td>
+                                        <td className="py-4 px-4 align-top text-gray-700">{address.recipient_name}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700">{address.phone_number}</td>
+                                        <td className="py-4 px-4 align-top leading-relaxed text-gray-700">
+                                            {address.street_address}
+                                            {address.district && <><br /><span className="text-sm text-gray-600">{address.district}</span></>}
+                                        </td>
+                                        <td className="py-4 px-4 align-top text-gray-700">{address.city}, {address.province}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700">{address.postal_code}</td>
+                                        <td className="py-4 px-4 align-top">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => openAddressModal(address)}
+                                                    className="text-pink-600 hover:text-white hover:bg-pink-600 px-4 py-2 text-sm font-semibold border-2 border-pink-600 rounded-xl transition-all duration-300 flex items-center gap-2"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteAddress(address.address_id || address.id)}
+                                                    className="text-red-600 hover:text-white hover:bg-red-600 px-4 py-2 text-sm font-semibold border-2 border-red-600 rounded-xl transition-all duration-300 flex items-center gap-2"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+
+                                {filteredAddresses.length === 0 && (
+                                    <tr>
+                                        <td colSpan="7" className="text-center py-12">
+                                            <div className="bg-gradient-to-br from-pink-100 to-rose-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <MapPin className="w-10 h-10 text-pink-400" />
+                                            </div>
+                                            <p className="text-lg font-semibold text-gray-700 mb-1">No addresses found</p>
+                                            <p className="text-gray-500 text-sm">Add your first address to get started</p>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
+
+                    {filteredAddresses.length > 0 && (
+                        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="text-sm text-gray-600">
+                                Showing {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredAddresses.length)} of {filteredAddresses.length}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(1)}
+                                    disabled={currentPage === 1}
+                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                >
+                                    First
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                >
+                                    Prev
+                                </button>
+                                <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold">
+                                    {currentPage} / {totalPages}
+                                </div>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                >
+                                    Next
+                                </button>
+                                <button
+                                    onClick={() => setCurrentPage(totalPages)}
+                                    disabled={currentPage === totalPages}
+                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                >
+                                    Last
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Address Modal */}
                 {isAddressModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                            <div className="p-6">
-                                <h2 className="text-xl font-bold mb-4">
-                                    {editingAddress ? 'Edit Address' : 'Add New Address'}
-                                </h2>
-                                
-                                <form onSubmit={handleAddressSubmit} className="space-y-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Address Label (e.g., Home, Office)"
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                        value={addressForm.label}
-                                        onChange={(e) => setAddressForm({...addressForm, label: e.target.value})}
-                                        required
-                                    />
-                                    
-                                    <div className="grid grid-cols-2 gap-4">
+                    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                            <div className="sticky top-0 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white p-8 rounded-t-3xl">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-3xl font-bold flex items-center gap-3">
+                                        <MapPin className="w-8 h-8" />
+                                        {editingAddress ? 'Edit Address' : 'Add New Address'}
+                                    </h2>
+                                    <button
+                                        onClick={closeAddressModal}
+                                        className="p-2.5 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-300"
+                                    >
+                                        <X className="w-7 h-7" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-8">
+                                <form onSubmit={handleAddressSubmit} className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Address Label</label>
                                         <input
                                             type="text"
-                                            placeholder="Recipient Name"
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={addressForm.recipientName}
-                                            onChange={(e) => setAddressForm({...addressForm, recipientName: e.target.value})}
-                                            required
-                                        />
-                                        <input
-                                            type="tel"
-                                            placeholder="Phone Number"
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={addressForm.phoneNumber}
-                                            onChange={(e) => setAddressForm({...addressForm, phoneNumber: e.target.value})}
+                                            placeholder="e.g., Home, Office, Parents House"
+                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                            value={addressForm.label}
+                                            onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
                                             required
                                         />
                                     </div>
-                                    
-                                    <textarea
-                                        placeholder="Street Address"
-                                        rows="3"
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                        value={addressForm.streetAddress}
-                                        onChange={(e) => setAddressForm({...addressForm, streetAddress: e.target.value})}
-                                        required
-                                    />
-                                    
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <select
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={addressForm.province}
-                                            onChange={(e) => handleProvinceChange(e.target.value)}
-                                            required
-                                        >
-                                            <option value="">Select Province</option>
-                                            {provinces.map((province) => (
-                                                <option key={province.province_id} value={province.province_id}>
-                                                    {province.province_name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        
-                                        <select
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={addressForm.city}
-                                            onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
-                                            required
-                                            disabled={!addressForm.province}
-                                        >
-                                            <option value="">Select City</option>
-                                            {cities.map((city) => (
-                                                <option key={city.city_id} value={city.city_name}>
-                                                    {city.city_type} {city.city_name}
-                                                </option>
-                                            ))}
-                                        </select>
+
+                                    <div className="grid md:grid-cols-2 gap-5">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Recipient Name</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Full name"
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.recipientName}
+                                                onChange={(e) => setAddressForm({ ...addressForm, recipientName: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
+                                            <input
+                                                type="tel"
+                                                placeholder="08xxxxxxxxxx"
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.phoneNumber}
+                                                onChange={(e) => setAddressForm({ ...addressForm, phoneNumber: e.target.value })}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <input
-                                            type="text"
-                                            placeholder="District (optional)"
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={addressForm.district}
-                                            onChange={(e) => setAddressForm({...addressForm, district: e.target.value})}
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Postal Code"
-                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                            value={addressForm.postalCode}
-                                            onChange={(e) => setAddressForm({...addressForm, postalCode: e.target.value})}
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Street Address</label>
+                                        <textarea
+                                            placeholder="House number, street name, building name, etc."
+                                            rows="3"
+                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 resize-none"
+                                            value={addressForm.streetAddress}
+                                            onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
                                             required
                                         />
                                     </div>
-                                    
-                                    <textarea
-                                        placeholder="Additional Notes (optional)"
-                                        rows="2"
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                        value={addressForm.notes}
-                                        onChange={(e) => setAddressForm({...addressForm, notes: e.target.value})}
-                                    />
-                                    
-                                    <label className="flex items-center space-x-2">
+
+                                    <div className="grid md:grid-cols-2 gap-5">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Province</label>
+                                            <select
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.province}
+                                                onChange={(e) => handleProvinceChange(e.target.value)}
+                                                required
+                                            >
+                                                <option value="">Select Province</option>
+                                                {provinces.map((province) => (
+                                                    <option key={province.province_id} value={province.province_id}>
+                                                        {province.province_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">City</label>
+                                            <select
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
+                                                value={addressForm.city}
+                                                onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                                                required
+                                                disabled={!addressForm.province}
+                                            >
+                                                <option value="">Select City</option>
+                                                {cities.map((city) => (
+                                                    <option key={city.city_id} value={city.city_name}>
+                                                        {city.city_type} {city.city_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-5">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">District (Optional)</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Kecamatan"
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.district}
+                                                onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">Postal Code</label>
+                                            <input
+                                                type="text"
+                                                placeholder="12345"
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.postalCode}
+                                                onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Additional Notes (Optional)</label>
+                                        <textarea
+                                            placeholder="Delivery instructions, landmarks, etc."
+                                            rows="2"
+                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 resize-none"
+                                            value={addressForm.notes}
+                                            onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <label className="flex items-center space-x-3 p-5 bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl cursor-pointer hover:from-pink-100 hover:to-rose-100 transition-all duration-300 border-2 border-pink-200">
                                         <input
                                             type="checkbox"
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            className="w-5 h-5 rounded border-pink-300 text-pink-600 focus:ring-pink-500"
                                             checked={addressForm.isDefault}
-                                            onChange={(e) => setAddressForm({...addressForm, isDefault: e.target.checked})}
+                                            onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })}
                                         />
-                                        <span className="text-sm text-gray-700">Set as default address</span>
+                                        <span className="text-sm font-bold text-gray-700">Set as default address</span>
                                     </label>
-                                    
-                                    <div className="flex gap-3 pt-4">
+
+                                    <div className="flex gap-4 pt-4">
                                         <button
                                             type="submit"
-                                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                                            className="flex-1 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white py-4 rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                                             disabled={isLoading}
                                         >
                                             {isLoading ? 'Saving...' : (editingAddress ? 'Update Address' : 'Add Address')}
@@ -559,7 +751,7 @@ export default function Profile() {
                                         <button
                                             type="button"
                                             onClick={closeAddressModal}
-                                            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400"
+                                            className="flex-1 bg-gray-200 text-gray-700 py-4 rounded-2xl hover:bg-gray-300 font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                                             disabled={isLoading}
                                         >
                                             Cancel
