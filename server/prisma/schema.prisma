@@ -48,9 +48,9 @@ model user_addresses {
   recipient_name String   @db.VarChar(200)
   phone_number   String   @db.VarChar(20)
   street_address String   @db.VarChar(500)
-  province       String   @db.VarChar(100)
-  city           String   @db.VarChar(100)
-  district       String?  @db.VarChar(100)
+  province_id    Int?
+  city_id        Int?
+  district_id    Int?
   postal_code    String   @db.VarChar(10)
   notes          String?  @db.Text
   is_default     Boolean  @default(false)
@@ -58,7 +58,10 @@ model user_addresses {
   updated_at     DateTime @updatedAt
   
   // Relations
-  user           users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user           users                     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  province       indonesian_provinces?     @relation(fields: [province_id], references: [province_id])
+  city           indonesian_cities?        @relation(fields: [city_id], references: [city_id])
+  district       indonesian_districts?     @relation(fields: [district_id], references: [district_id])
   orders         orders[]
 }
 
@@ -133,26 +136,71 @@ model otp_codes {
   user       users?      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
 
+// Indonesian Location Tables
 model indonesian_provinces {
-  province_id   Int    @id @default(autoincrement())
-  province_name String @unique @db.VarChar(100)
-  province_code String @unique @db.VarChar(10)
+  province_id        Int      @id @default(autoincrement())
+  province_name      String   @unique @db.VarChar(100)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
   
   // Relations
-  cities        indonesian_cities[]
+  cities             indonesian_cities[]
+  user_addresses     user_addresses[]
+  shipping_mappings  shipping_provider_mappings[]
 }
 
 model indonesian_cities {
-  city_id      Int    @id @default(autoincrement())
-  province_id  Int
-  city_name    String @db.VarChar(100)
-  city_type    String @db.VarChar(20)
-  postal_codes String? @db.Text
+  city_id            Int      @id @default(autoincrement())
+  province_id        Int
+  city_name          String   @db.VarChar(100)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
   
   // Relations
-  province     indonesian_provinces @relation(fields: [province_id], references: [province_id])
+  province           indonesian_provinces @relation(fields: [province_id], references: [province_id], onDelete: Cascade)
+  districts          indonesian_districts[]
+  user_addresses     user_addresses[]
+  shipping_mappings  shipping_provider_mappings[]
   
   @@unique([province_id, city_name])
+}
+
+model indonesian_districts {
+  district_id        Int      @id @default(autoincrement())
+  city_id            Int
+  district_name      String   @db.VarChar(100)
+  zip_code           String?  @db.VarChar(10)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  
+  // Relations
+  city               indonesian_cities @relation(fields: [city_id], references: [city_id], onDelete: Cascade)
+  user_addresses     user_addresses[]
+  shipping_mappings  shipping_provider_mappings[]
+  
+  @@unique([city_id, district_name])
+}
+
+// Shipping provider mapping (for API integration)
+model shipping_provider_mappings {
+  mapping_id         Int      @id @default(autoincrement())
+  provider_name      String   @db.VarChar(50) // e.g., "rajaongkir", "shipper", etc
+  entity_type        String   @db.VarChar(20) // "province", "city", "district"
+  entity_id          Int      // Our internal ID
+  provider_id        Int      // Provider's ID
+  province_id        Int?
+  city_id            Int?
+  district_id        Int?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  
+  // Relations
+  province           indonesian_provinces? @relation(fields: [province_id], references: [province_id], onDelete: Cascade)
+  city               indonesian_cities? @relation(fields: [city_id], references: [city_id], onDelete: Cascade)
+  district           indonesian_districts? @relation(fields: [district_id], references: [district_id], onDelete: Cascade)
+  
+  @@unique([provider_name, entity_type, entity_id])
+  @@index([provider_name, entity_type, provider_id])
 }
 
 enum users_type {
