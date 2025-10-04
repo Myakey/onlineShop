@@ -72,12 +72,27 @@ async function findById(userId) {
             recipient_name: true,
             phone_number: true,
             street_address: true,
-            province: true,
-            city: true,
-            district: true,
+            province_id: true,
+            city_id: true,
+            district_id: true,
             postal_code: true,
             notes: true,
-            is_default: true
+            is_default: true,
+            province: {
+              select: {
+                province_name: true
+              }
+            },
+            city: {
+              select: {
+                city_name: true
+              }
+            },
+            district: {
+              select: {
+                district_name: true
+              }
+            }
           },
           orderBy: [
             { is_default: 'desc' },
@@ -181,9 +196,8 @@ async function updateUser(userId, updateData) {
 // OTP related functions
 async function createOTP(email, code, purpose, userId = null) {
   try {
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     
-    // Delete any existing unused OTP for this email and purpose
     await prisma.otp_codes.deleteMany({
       where: {
         email,
@@ -226,7 +240,6 @@ async function verifyOTP(email, code, purpose) {
       return { valid: false, message: 'Invalid or expired OTP' };
     }
     
-    // Mark OTP as used
     await prisma.otp_codes.update({
       where: { otp_id: otpRecord.otp_id },
       data: { is_used: true }
@@ -246,15 +259,14 @@ async function addUserAddress(userId, addressData) {
       recipientName,
       phoneNumber,
       streetAddress,
-      province,
-      city,
-      district,
+      provinceId,
+      cityId,
+      districtId,
       postalCode,
       notes,
       isDefault = false
     } = addressData;
     
-    // If this is set as default, remove default from other addresses
     if (isDefault) {
       await prisma.user_addresses.updateMany({
         where: { user_id: userId },
@@ -269,9 +281,9 @@ async function addUserAddress(userId, addressData) {
         recipient_name: recipientName,
         phone_number: phoneNumber,
         street_address: streetAddress,
-        province,
-        city,
-        district,
+        province_id: provinceId,
+        city_id: cityId,
+        district_id: districtId,
         postal_code: postalCode,
         notes,
         is_default: isDefault
@@ -291,15 +303,14 @@ async function updateUserAddress(addressId, userId, addressData) {
       recipientName,
       phoneNumber,
       streetAddress,
-      province,
-      city,
-      district,
+      provinceId,
+      cityId,
+      districtId,
       postalCode,
       notes,
       isDefault
     } = addressData;
     
-    // If this is set as default, remove default from other addresses
     if (isDefault) {
       await prisma.user_addresses.updateMany({
         where: { 
@@ -313,16 +324,16 @@ async function updateUserAddress(addressId, userId, addressData) {
     const updatedAddress = await prisma.user_addresses.update({
       where: { 
         address_id: addressId,
-        user_id: userId // Ensure user owns this address
+        user_id: userId
       },
       data: {
         label,
         recipient_name: recipientName,
         phone_number: phoneNumber,
         street_address: streetAddress,
-        province,
-        city,
-        district,
+        province_id: provinceId,
+        city_id: cityId,
+        district_id: districtId,
         postal_code: postalCode,
         notes,
         is_default: isDefault
@@ -343,7 +354,7 @@ async function deleteUserAddress(addressId, userId) {
     await prisma.user_addresses.delete({
       where: { 
         address_id: addressId,
-        user_id: userId // Ensure user owns this address
+        user_id: userId
       }
     });
     return true;
@@ -359,6 +370,11 @@ async function getUserAddresses(userId) {
   try {
     const addresses = await prisma.user_addresses.findMany({
       where: { user_id: userId },
+      include: {
+        province: true,
+        city: true,
+        district: true
+      },
       orderBy: [
         { is_default: 'desc' },
         { created_at: 'asc' }
@@ -385,12 +401,24 @@ async function getProvinces() {
 async function getCitiesByProvince(provinceId) {
   try {
     const cities = await prisma.indonesian_cities.findMany({
-      where: { province_id: provinceId },
+      where: { province_id: parseInt(provinceId) },
       orderBy: { city_name: 'asc' }
     });
     return cities;
   } catch (error) {
     throw new Error(`Error fetching cities: ${error.message}`);
+  }
+}
+
+async function getDistrictsByCity(cityId) {
+  try {
+    const districts = await prisma.indonesian_districts.findMany({
+      where: { city_id: parseInt(cityId) },
+      orderBy: { district_name: 'asc' }
+    });
+    return districts;
+  } catch (error) {
+    throw new Error(`Error fetching districts: ${error.message}`);
   }
 }
 
@@ -407,5 +435,6 @@ module.exports = {
   deleteUserAddress,
   getUserAddresses,
   getProvinces,
-  getCitiesByProvince
+  getCitiesByProvince,
+  getDistrictsByCity
 };
