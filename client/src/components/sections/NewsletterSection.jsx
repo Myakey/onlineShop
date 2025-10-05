@@ -9,7 +9,6 @@ const NewsletterSection = () => (
     </div>
     
     <div className="max-w-4xl mx-auto text-center relative z-10">
-      <div className="text-6xl mb-6">🧸</div>
       <h2 className="text-5xl font-black text-gray-900 mb-6">
         Bergabung dengan Keluarga Boneka Kami
       </h2>

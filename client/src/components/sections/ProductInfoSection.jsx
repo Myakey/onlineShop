@@ -1,5 +1,6 @@
 import React from "react";
 import { Award } from "lucide-react";
+import plushiesImg from "../../assets/HuggingPlushies.png";
 
 const ProductInfoSection = () => (
   <section className="py-24 px-6 bg-[#FFF5FA]">
@@ -33,11 +34,17 @@ const ProductInfoSection = () => (
             ))}
           </ul>
         </div>
-
+        
         {/* Bagian Gambar/Ilustrasi */}
         <div className="relative">
-          <div className="aspect-square bg-gradient-to-br from-cyan-200/40 via-pink-200/40 to-pink-300/40 rounded-3xl border border-cyan-300 flex items-center justify-center">
-            <div className="text-8xl">🧸</div>
+          <div className="aspect-square bg-gradient-to-br from-cyan-200/40 via-pink-200/40 to-pink-300/40 rounded-3xl border border-cyan-300 flex items-center justify-center relative overflow-hidden">
+            {/* Semi-transparent image overlay inside square */}
+            <img
+              src={plushiesImg}
+              alt="Plushies"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Emoji on top */}
           </div>
           <div className="absolute -bottom-6 -right-6 bg-gradient-to-br from-pink-400 to-cyan-500 rounded-2xl p-6 shadow-xl">
             <div className="text-white">
