@@ -33,6 +33,11 @@ const Navbar = ({ currentPage = "home" }) => {
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
   const toggleProfile = () => setShowProfile((prev) => !prev);
   const clearSearch = () => setSearchQuery("");
+  const handleSearch = (e) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
    useEffect(() => {
     const currentPath = location.pathname;
@@ -78,7 +83,7 @@ const Navbar = ({ currentPage = "home" }) => {
 
 
   const navItems = (() => {
-  if (loading) return []; // Or you could return a loading skeleton later
+  if (loading) return [];
   if (isAdmin) {
     return [
       {
@@ -213,11 +218,11 @@ const Navbar = ({ currentPage = "home" }) => {
             </div>
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-12 pr-12 py-3 bg-white border border-cyan-200 text-pink-700 rounded-full placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:border-pink-400 transition-all duration-300"
-              placeholder="Cari boneka favoritmu..."
-            />
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearch}
+                className="block w-full pl-12 pr-12 py-3 bg-white border border-cyan-200 text-pink-700 rounded-full placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:border-pink-400 transition-all duration-300"
+                placeholder="Cari boneka favoritmu..."            />
             {searchQuery && (
               <button
                 onClick={clearSearch}

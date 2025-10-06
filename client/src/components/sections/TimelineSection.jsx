@@ -1,5 +1,8 @@
 import React from "react";
 import { TrendingUp } from "lucide-react";
+import timeline1Img from "../../assets/Timeline1.png";
+import timeline2Img from "../../assets/Timeline2.png";
+import timeline3Img from "../../assets/Timeline3.png";
 
 const TimelineSection = () => {
   const timelineData = [
@@ -7,19 +10,19 @@ const TimelineSection = () => {
       year: "2020",
       title: "Awal Perjalanan",
       desc: "Toko Boneka Lucu lahir dari hobi mengoleksi boneka imut dan keinginan menghadirkan kebahagiaan.",
-      img: "https://source.unsplash.com/600x400/?teddy,bear",
+      img: timeline1Img,
     },
     {
       year: "2022",
       title: "Ekspansi Besar",
       desc: "Mulai membuka toko offline dan online dengan koleksi boneka yang semakin lengkap dan eksklusif.",
-      img: "https://source.unsplash.com/600x400/?toy,shop",
+      img: timeline2Img,
     },
     {
       year: "2025",
       title: "Inovasi Digital",
       desc: "Meluncurkan platform belanja boneka online untuk memudahkan pelanggan di seluruh Indonesia.",
-      img: "https://source.unsplash.com/600x400/?ecommerce,toys",
+      img: timeline3Img,
     },
   ];
 
@@ -66,13 +69,14 @@ const TimelineSection = () => {
                   <div className="w-6 h-6 rounded-full bg-cyan-500 border-4 border-white shadow-md" />
                 </div>
 
-                {/* Gambar */}
                 <div className="md:w-1/2 flex justify-center px-6 md:px-12 mt-6 md:mt-0">
-                  <img
-                    src={item.img}
-                    alt={item.title}
-                    className="w-80 h-52 object-cover rounded-2xl shadow-lg border-4 border-pink-200"
-                  />
+                  <div className="relative w-80 h-52 rounded-2xl shadow-lg border-4 border-pink-200 overflow-hidden bg-gradient-to-br from-pink-100 to-cyan-100">
+                    <img
+                      src={item.img}
+                      alt={item.title}
+                      className="w-full h-full object-cover "
+                    />
+                  </div>
                 </div>
               </div>
             ))}
