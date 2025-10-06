@@ -19,8 +19,6 @@ import AdminOrderDetail from "./pages/AdminOrderDetail";
 import AdminProductDetail from "./pages/AdminProductDetail";
 import AdminProductEdit from "./pages/AdminProductEdit";
 
-import Payment from "./pages/Payment";
-
 // Product pages
 import Product from "./pages/Product";
 import ProductDetails from "./pages/ProductDetails";
@@ -60,25 +58,47 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/order" element={<Order />}/>
-              <Route path="/payment" element={<Payment />} />
-
-              <Route path="/debug-page" element={<DebugPage />}/>
-              <Route
-                path="/admin-dashboard"
-                element={
-                  <AdminRoute>
-                    <AdminDebugPage />
-                  </AdminRoute>
-                }
-              />
-
               <Route
                 path="/cart"
                 element={
                   <ProtectedRoute>
                     <CartPage />
                   </ProtectedRoute>
+                }
+              />
+              <Route path="/order" element={<Order />} />
+
+              {/* Admin Routes */}
+              <Route
+                path="/admin-dashboard"
+                element={
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/products"
+                element={
+                  <AdminRoute>
+                    <AdminProduct />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/orders"
+                element={
+                  <AdminRoute>
+                    <AdminOrder />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/add-product"
+                element={
+                  <AdminRoute>
+                    <AddProduct />
+                  </AdminRoute>
                 }
               />
               <Route path="/order" element={<Order />} />
