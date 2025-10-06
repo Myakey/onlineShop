@@ -101,7 +101,7 @@ function AddProduct() {
 
       // Redirect after 2 seconds
       setTimeout(() => {
-        navigate("/product");
+        navigate("/admin/products");
       }, 2000);
 
       console.log("Product created:", response.data);
