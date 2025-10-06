@@ -398,10 +398,11 @@ async function getProvinces() {
   }
 }
 
-async function getCitiesByProvince(provinceId) {
+async function getCitiesByProvince(province) {
+  
   try {
     const cities = await prisma.indonesian_cities.findMany({
-      where: { province_id: parseInt(provinceId) },
+      where: { province_id: parseInt(province) },
       orderBy: { city_name: 'asc' }
     });
     return cities;
@@ -410,10 +411,10 @@ async function getCitiesByProvince(provinceId) {
   }
 }
 
-async function getDistrictsByCity(cityId) {
+async function getDistrictsByCity(city) {
   try {
     const districts = await prisma.indonesian_districts.findMany({
-      where: { city_id: parseInt(cityId) },
+      where: { city_id: parseInt(city) },
       orderBy: { district_name: 'asc' }
     });
     return districts;

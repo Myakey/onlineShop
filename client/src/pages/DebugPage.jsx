@@ -8,7 +8,7 @@ export default function DebugPage() {
         <>
             <h1>
                 Button For adding to Cart
-                <button className="p-2 bg-amber-300" onClick={() => addItem(3, 1)}>Add Item</button>
+                <button className="p-2 bg-amber-300" onClick={() => addItem(2, 1)}>Add Item</button>
             </h1>
         </>
     )

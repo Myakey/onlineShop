@@ -2,7 +2,9 @@ const express = require("express");
 const app = express();
 const productsRoutes = require('./routes/productsRoutes');
 const authRoutes = require("./routes/authRoutes");
-const cartRoutes = require("./routes/cartRoutes");  
+const cartRoutes = require("./routes/cartRoutes"); 
+const shippingRoutes = require("./routes/shipping"); 
+const orderRoutes = require("./routes/orderRoutes");
 const cors = require("cors");
 const path = require("path");
 const { requireAdmin } = require("./middleware/authMiddleware");
@@ -28,6 +30,10 @@ app.use("/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
 
 app.use("/api/admin/products", requireAdmin, productsRoutes);
+
+app.use("/api/shipping", shippingRoutes);
+
+app.use("/api/orders", orderRoutes);
 
 //Error handling
 

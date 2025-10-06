@@ -30,5 +30,6 @@ router.delete('/addresses/:addressId', authenticateToken, authController.deleteA
 // Location data routes (public)
 router.get('/provinces', authController.getProvinces);
 router.get('/provinces/:provinceId/cities', authController.getCities);
+router.get('/cities/:cityId/districts', authController.getDistricts);
 
 module.exports = router;

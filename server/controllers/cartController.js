@@ -3,7 +3,6 @@ const cartModels = require("../models/cart");
 // Get user's cart
 const getCart = async (req, res) => {
   try {
-    console.log(req.user)
     const userId = req.user.id; // From authenticated user
     console.log("Fetching cart for user ID:", userId);
     const cart = await cartModels.getOrCreateCart(userId);
@@ -157,9 +156,29 @@ const getCartItemCount = async (req, res) => {
 // Validate cart (before checkout)
 const validateCart = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const validation = await cartModels.validateCart(userId);
+    const userId = req.user.id; //Just for authenticated user so the database won't break
+    const { items } = req.body;
+
+    console.log("Validating cart items for user ID:", userId, "Items:", items);
     
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: "No items provided for validation" 
+      });
+    }
+    
+    const validation = await cartModels.validateSelectedItems(items);
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: validation.message,
+        invalidItems: validation.invalidItems
+      });
+    }
+
     res.json({
       success: true,
       data: validation

@@ -229,6 +229,15 @@ const authService = {
         }
     },
 
+    async getDistricts(cityId) {
+        try {
+            const response = await axios.get(`http://localhost:8080/auth/cities/${cityId}/districts`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    },
+
     async uploadProfileImage(formData) {
         try {
             const response = await api.post('/auth/upload-profile-image', formData, {

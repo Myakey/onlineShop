@@ -5,7 +5,7 @@ import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
-import DebugPage from "./pages/DebugPage";
+
 // import AdminPage from "./pages/admin";
 import CartPage from "./pages/Cart";
 
@@ -25,6 +25,8 @@ import AdminProductEdit from "./pages/AdminProductEdit";
 import AdminOrder from "./pages/AdminOrder";
 import AdminOrderDetail from "./pages/AdminOrderDetail";
 
+import Payment from "./pages/Payment";
+
 // Product pages
 import Product from "./pages/Product";
 import ProductDetails from "./pages/ProductDetails";
@@ -34,6 +36,10 @@ import Reviews from "./pages/AdminReviews"; // pastikan ada file Reviews.jsx
 import Order from "./pages/Order"; // pastikan ada file Order.jsx
 import { UserProvider } from "./context/userContext";
 import { CartProvider } from "./context/cartContext";
+
+//Some debugs temporary files:
+import DebugPage from "./pages/DebugPage";
+import AdminDebugPage from "./pages/AdminDebugPage";
 
 function App() {
   return (
@@ -59,10 +65,10 @@ function App() {
 
               <Route path="/debug-page" element={<DebugPage />}/>
               <Route
-                path="/adminDashboard"
+                path="/admin-dashboard"
                 element={
                   <AdminRoute>
-                   
+                    <AdminDebugPage />
                   </AdminRoute>
                 }
               />
@@ -72,6 +78,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <CartPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/payment"
+                element={
+                  <ProtectedRoute>
+                    <Payment />
                   </ProtectedRoute>
                 }
               />

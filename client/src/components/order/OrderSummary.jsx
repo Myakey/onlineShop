@@ -1,4 +1,4 @@
-const OrderSummary = ({ products, selectedShipping, voucher }) => {
+const OrderSummary = ({ products, selectedShipping, voucher, makeOrder }) => {
   const subtotal = products.reduce((acc, p) => acc + p.price * p.quantity, 0);
   const shippingCost = selectedShipping.price || 0;
   const discount = voucher ? 20000 : 0; // contoh diskon fix
@@ -28,7 +28,7 @@ const OrderSummary = ({ products, selectedShipping, voucher }) => {
           <span>Rp {total.toLocaleString('id-ID')}</span>
         </div>
       </div>
-      <button className="mt-5 w-full py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold rounded-2xl hover:opacity-90 transition">
+      <button className="mt-5 w-full py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold rounded-2xl hover:opacity-90 transition" onClick={makeOrder}>
         Buat Pesanan
       </button>
     </section>
