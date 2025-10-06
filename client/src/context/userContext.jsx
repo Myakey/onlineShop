@@ -10,6 +10,7 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
 
   // Load profile and check authentication
@@ -22,7 +23,9 @@ export const UserProvider = ({ children }) => {
       if (valid && user) {
         setUser(user);
         setIsAuthenticated(true);
-
+      
+        setIsAdmin(user.type === "admin");
+        console.log("Is Admin:", user.type === "admin");
         // cache user in localStorage (optional)
         localStorage.setItem("user", JSON.stringify(user));
       } else {
@@ -56,6 +59,7 @@ export const UserProvider = ({ children }) => {
     <UserContext.Provider
       value={{
         user,
+        isAdmin,
         setUser,
         loading,
         isAuthenticated,

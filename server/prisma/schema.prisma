@@ -92,22 +92,28 @@ model cart_items {
 }
 
 model orders {
-  order_id       Int            @id @default(autoincrement())
-  user_id        Int
-  address_id     Int
-  order_number   String         @unique @db.VarChar(50)
-  total_amount   Decimal        @db.Decimal(10, 2)
-  status         order_status   @default(pending)
-  payment_method String?        @db.VarChar(50)
-  payment_status payment_status @default(unpaid)
-  notes          String?        @db.Text
-  created_at     DateTime       @default(now())
-  updated_at     DateTime       @updatedAt
-  
+  order_id         Int            @id @default(autoincrement())
+  user_id          Int
+  address_id       Int
+  order_number     String         @unique @db.VarChar(50)
+  total_amount     Decimal        @db.Decimal(10, 2)
+  shipping_cost    Decimal?       @db.Decimal(10, 2)   // NEW: shipping fee
+  voucher_discount Decimal?       @db.Decimal(10, 2)   // NEW: voucher discount amount
+  status           order_status   @default(pending)
+  payment_method   String?        @db.VarChar(50)
+  payment_status   payment_status @default(unpaid)
+  payment_proof    String?        @db.VarChar(255)     // NEW: path / url to uploaded proof
+  notes            String?        @db.Text
+  payment_due_at   DateTime?                                // optional
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+
   // Relations
-  user           users          @relation(fields: [user_id], references: [user_id])
-  address        user_addresses @relation(fields: [address_id], references: [address_id])
-  items          order_items[]
+  user             users          @relation(fields: [user_id], references: [user_id])
+  address          user_addresses @relation(fields: [address_id], references: [address_id])
+  items            order_items[]
+
+  @@map("orders")
 }
 
 model order_items {

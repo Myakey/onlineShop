@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import * as cartService from "../services/cartService"; // import all service functions
+import cartService from "../services/cartService"; // ✅ updated import (default export)
 
 const CartContext = createContext();
 
@@ -8,23 +8,24 @@ export const CartProvider = ({ children }) => {
   const [cartCount, setCartCount] = useState(0); // for navbar badge
   const [loading, setLoading] = useState(true);
 
-  // Fetch full cart
+  
   const fetchCart = async () => {
-  setLoading(true);
-  try {
-    const data = await cartService.getCart();
-    console.log("Cart API:", data); // 👈 log here
-    setCart(data.data);
-    setCartCount(data.data?.totalItems || data.data?.items?.length || 0);
-  } catch (error) {
-    console.error("Failed to fetch cart:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      const data = await cartService.getCart();
+      console.log("Cart API:", data);
 
+      // Expecting { success: true, data: {...} }
+      setCart(data.data);
+      setCartCount(data.data?.totalItems || data.data?.items?.length || 0);
+    } catch (error) {
+      console.error("Failed to fetch cart:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Fetch only cart count (lighter API call)
+  // ==================== FETCH CART COUNT ====================
   const fetchCartCount = async () => {
     try {
       const count = await cartService.getCartCount();
@@ -34,18 +35,18 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Add product to cart
+  // ==================== ADD ITEM ====================
   const addItem = async (productId, quantity = 1) => {
     try {
       await cartService.addToCart(productId, quantity);
-      await fetchCart(); // refresh after add
+      await fetchCart();
     } catch (error) {
       console.error("Failed to add item:", error);
       throw error;
     }
   };
 
-  // Update item quantity
+  // ==================== UPDATE ITEM ====================
   const updateItem = async (cartItemId, quantity) => {
     try {
       await cartService.updateCartItem(cartItemId, quantity);
@@ -56,7 +57,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Remove item
+  // ==================== REMOVE ITEM ====================
   const removeItem = async (cartItemId) => {
     try {
       await cartService.removeFromCart(cartItemId);
@@ -67,7 +68,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Clear entire cart
+  // ==================== CLEAR CART ====================
   const clearCart = async () => {
     try {
       await cartService.clearCart();
@@ -79,7 +80,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Validate cart before checkout
+  // ==================== VALIDATE CART ====================
   const validate = async () => {
     try {
       return await cartService.validateCart();
@@ -89,11 +90,12 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // Load cart on first render
+  // ==================== INITIAL LOAD ====================
   useEffect(() => {
     fetchCart();
   }, []);
 
+  // ==================== CONTEXT VALUE ====================
   return (
     <CartContext.Provider
       value={{
@@ -114,5 +116,5 @@ export const CartProvider = ({ children }) => {
   );
 };
 
-// custom hook
+// ==================== CUSTOM HOOK ====================
 export const useCart = () => useContext(CartContext);

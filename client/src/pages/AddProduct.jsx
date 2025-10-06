@@ -85,7 +85,10 @@ export default function ProductForm() {
         body: form,
       });
 
-      if (!res.ok) throw new Error("Failed to save product");
+      // Redirect after 2 seconds
+      setTimeout(() => {
+        navigate("/admin/products");
+      }, 2000);
 
       setMessage(isEdit ? "Produk berhasil diperbarui!" : "Produk berhasil ditambahkan!");
       setTimeout(() => navigate("/admin/products"), 1500);

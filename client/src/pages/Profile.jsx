@@ -16,6 +16,7 @@ export default function Profile() {
     const [addresses, setAddresses] = useState([]);
     const [provinces, setProvinces] = useState([]);
     const [cities, setCities] = useState([]);
+    const [districts, setDistricts] = useState([]);
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [editingAddress, setEditingAddress] = useState(null);
     const [addressForm, setAddressForm] = useState({
@@ -59,6 +60,7 @@ export default function Profile() {
             });
             
             const addrs = userData.addresses || [];
+            console.log(addrs);
             setAddresses(addrs.map((a) => ({
                 ...a,
                 id: a.address_id || a.id || Math.random().toString(36).slice(2, 9)
@@ -86,10 +88,22 @@ export default function Profile() {
         try {
             const response = await authService.getCities(provinceId);
             setCities(response.cities || []);
+            console.log(response);
         } catch (error) {
             console.error('Failed to load cities:', error);
         }
     };
+
+    const loadDistricts = async (cityId) => {
+        try {
+            const response = await authService.getDistricts(cityId);
+            console.log("response", response.districts)
+            setDistricts(response.districts || []);
+        } catch (error) {
+            console.error('Failed to load districts:', error);
+            return [];
+        }
+    }
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
@@ -169,15 +183,18 @@ export default function Profile() {
                 recipientName: address.recipient_name,
                 phoneNumber: address.phone_number,
                 streetAddress: address.street_address,
-                province: address.province,
-                city: address.city,
-                district: address.district || '',
+                province: address.province_id,
+                city: address.city_id,
+                district: address.district_id,
                 postalCode: address.postal_code,
                 notes: address.notes || '',
                 isDefault: address.is_default
             });
             if (address.province) {
-                loadCities(address.province);
+                loadCities(address.province_id);
+            }
+            if (address.city){
+                loadDistricts(address.city_id);
             }
         } else {
             setAddressForm({
@@ -209,6 +226,16 @@ export default function Profile() {
             loadCities(provinceId);
         } else {
             setCities([]);
+        }
+    };
+
+    const handleCityChange = async (cityId) => {
+        setAddressForm(prev => ({ ...prev, city: cityId, district: '' }));
+        if (cityId) {
+            await loadDistricts(cityId);
+            console.log(districts);
+        } else {
+            setDistricts([]);
         }
     };
 
@@ -507,9 +534,9 @@ export default function Profile() {
                                         <td className="py-4 px-4 align-top text-gray-700">{address.phone_number}</td>
                                         <td className="py-4 px-4 align-top leading-relaxed text-gray-700">
                                             {address.street_address}
-                                            {address.district && <><br /><span className="text-sm text-gray-600">{address.district}</span></>}
+                                            {address.district.district_name && <><br /><span className="text-sm text-gray-600">{address.district.district_name}</span></>}
                                         </td>
-                                        <td className="py-4 px-4 align-top text-gray-700">{address.city}, {address.province}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700">{address.city.city_name}, {address.province.province_name}</td>
                                         <td className="py-4 px-4 align-top text-gray-700">{address.postal_code}</td>
                                         <td className="py-4 px-4 align-top">
                                             <div className="flex gap-2">
@@ -682,14 +709,14 @@ export default function Profile() {
                                             <select
                                                 className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
                                                 value={addressForm.city}
-                                                onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                                                onChange={(e) => handleCityChange(e.target.value)}
                                                 required
                                                 disabled={!addressForm.province}
                                             >
                                                 <option value="">Select City</option>
                                                 {cities.map((city) => (
-                                                    <option key={city.city_id} value={city.city_name}>
-                                                        {city.city_type} {city.city_name}
+                                                    <option key={city.city_id} value={city.city_id}>
+                                                        {city.city_name}
                                                     </option>
                                                 ))}
                                             </select>
@@ -699,13 +726,27 @@ export default function Profile() {
                                     <div className="grid md:grid-cols-2 gap-5">
                                         <div className="space-y-2">
                                             <label className="block text-sm font-bold text-gray-700 mb-2">District (Optional)</label>
-                                            <input
+                                            <select
+                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
+                                                value={addressForm.district}
+                                                onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                                                required
+                                                disabled={!addressForm.city}
+                                            >
+                                                <option value="">Select District</option>
+                                                {districts.map((district) => (
+                                                    <option key={district.district_id} value={district.district_id}>
+                                                        {district.district_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {/* <input
                                                 type="text"
                                                 placeholder="Kecamatan"
                                                 className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                                 value={addressForm.district}
                                                 onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
-                                            />
+                                            /> */}
                                         </div>
                                         <div className="space-y-2">
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Postal Code</label>

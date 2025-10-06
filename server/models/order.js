@@ -191,11 +191,10 @@ const createOrder = async (orderData) => {
       payment_method = null,
       payment_status = 'unpaid', 
       notes = null,
-      items = [], // Array of { product_id, quantity, price }
-      decrementStock = false // Only decrement if payment confirmed or processing
+      items = [],
+      decrementStock = false
     } = orderData;
 
-    // Create order with items in a transaction
     const newOrder = await prisma.$transaction(async (tx) => {
       // Validate stock availability first
       if (items.length > 0) {
@@ -242,7 +241,7 @@ const createOrder = async (orderData) => {
           data: orderItems
         });
 
-        // Only decrement stock if explicitly requested (e.g., when payment is confirmed)
+        // Only decrement stock if explicitly requested
         if (decrementStock) {
           for (const item of items) {
             await tx.products.update({
@@ -292,6 +291,38 @@ const createOrder = async (orderData) => {
   }
 };
 
+// Update payment proof
+const updatePaymentProof = async (orderId, paymentProofPath) => {
+  try {
+    const updatedOrder = await prisma.orders.update({
+      where: {
+        order_id: parseInt(orderId)
+      },
+      data: {
+        payment_proof: paymentProofPath,
+        status: 'confirmed' // Move to confirmed when payment proof uploaded
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    return {
+      ...updatedOrder,
+      items: updatedOrder.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error updating payment proof: ${error.message}`);
+  }
+};
+
 // Update order status
 const updateOrderStatus = async (orderId, status) => {
   try {
@@ -337,7 +368,6 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
     // If payment is confirmed, decrement stock
     if (paymentStatus === 'paid') {
       const updatedOrder = await prisma.$transaction(async (tx) => {
-        // Get order with items
         const order = await tx.orders.findUnique({
           where: { order_id: parseInt(orderId) },
           include: { items: true }
@@ -347,7 +377,6 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
           throw new Error('Order not found');
         }
 
-        // Check if stock was already decremented (prevent double decrement)
         if (order.payment_status === 'paid') {
           throw new Error('Payment already confirmed, stock already adjusted');
         }
@@ -366,7 +395,6 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
             throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
           }
 
-          // Decrement stock
           await tx.products.update({
             where: { product_id: item.product_id },
             data: {
@@ -377,16 +405,18 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
           });
         }
 
-        // Update payment status
+        // Update payment status and move to processing
         return await tx.orders.update({
           where: { order_id: parseInt(orderId) },
-          data: updateData
+          data: {
+            ...updateData,
+            status: 'processing' // Auto move to processing when paid
+          }
         });
       });
 
       return updatedOrder;
     } else {
-      // For other status changes (unpaid, failed, refunded), just update without stock changes
       const updatedOrder = await prisma.orders.update({
         where: {
           order_id: parseInt(orderId)
@@ -405,7 +435,6 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
 const cancelOrder = async (orderId) => {
   try {
     const cancelledOrder = await prisma.$transaction(async (tx) => {
-      // Get order items to restore stock
       const order = await tx.orders.findUnique({
         where: { order_id: parseInt(orderId) },
         include: { items: true }
@@ -415,7 +444,7 @@ const cancelOrder = async (orderId) => {
         throw new Error('Order not found');
       }
 
-      // Only restore stock if payment was already confirmed (stock was decremented)
+      // Only restore stock if payment was already confirmed
       if (order.payment_status === 'paid') {
         for (const item of order.items) {
           await tx.products.update({
@@ -429,7 +458,6 @@ const cancelOrder = async (orderId) => {
         }
       }
 
-      // Update order status
       return await tx.orders.update({
         where: { order_id: parseInt(orderId) },
         data: {
@@ -470,6 +498,7 @@ module.exports = {
   getOrderById,
   getOrderByOrderNumber,
   createOrder,
+  updatePaymentProof,
   updateOrderStatus,
   updatePaymentStatus,
   cancelOrder,
