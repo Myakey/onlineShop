@@ -126,7 +126,7 @@ const AdminProduct = () => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold text-gray-800">Produk</h2>
           <button
-            onClick={() => openModal()}
+            onClick={() => navigate('/admin/add-product')}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-xl shadow"
           >
             <Plus size={18} /> Tambah Produk
