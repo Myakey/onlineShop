@@ -5,31 +5,47 @@ import Footer from "../components/layout/Footer";
 import ProductCard from "../components/product/ProductCard";
 import FilterPanel from "../components/product/FilterPanel";
 
-// Mock data boneka 🧸
-const mockProducts = [
-  { product_id: 1, name: "Teddy Bear Classic", desc: "Boneka beruang klasik, lembut dan nyaman dipeluk.", price: "$25.99", image: "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=400&h=300&fit=crop" },
-  { product_id: 2, name: "Bunny Plush White", desc: "Boneka kelinci putih imut dengan telinga panjang.", price: "$19.99", image: "https://images.unsplash.com/photo-1612549244923-d72b9d34658f?w=400&h=300&fit=crop" },
-  { product_id: 3, name: "Pink Unicorn Doll", desc: "Unicorn pink dengan tanduk emas yang elegan.", price: "$29.99", image: "https://images.unsplash.com/photo-1620035279440-867a58b35b13?w=400&h=300&fit=crop" },
-  { product_id: 4, name: "Brown Dog Plush", desc: "Boneka anjing cokelat setia dan menggemaskan.", price: "$21.99", image: "https://images.unsplash.com/photo-1614940390135-980e461a8d40?w=400&h=300&fit=crop" },
-  { product_id: 5, name: "Panda Bear Hug", desc: "Panda hitam putih yang siap dipeluk kapan saja.", price: "$27.99", image: "https://images.unsplash.com/photo-1574172363938-0f3c52d69f8d?w=400&h=300&fit=crop" },
-];
-
 const Product = () => {
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [filterOpen, setFilterOpen] = useState(false);
   const [priceRange, setPriceRange] = useState("all");
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => setProducts(mockProducts), []);
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/api/products");
+        const data = await res.json();
 
-  const filteredProducts = products.filter(product => {
+        // Jika API mengembalikan price sebagai Decimal, ubah ke number
+        const formattedData = data.map((p) => ({
+          ...p,
+          price: parseFloat(p.price),
+        }));
+
+        setProducts(formattedData);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Filter products based on search and price
+  const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const price = parseFloat(product.price.replace("$", ""));
     let matchesPrice = true;
-    if (priceRange === "low") matchesPrice = price < 22;
-    if (priceRange === "mid") matchesPrice = price >= 22 && price < 27;
-    if (priceRange === "high") matchesPrice = price >= 27;
+
+    if (priceRange === "low") matchesPrice = product.price < 22;
+    if (priceRange === "mid") matchesPrice = product.price >= 22 && product.price < 27;
+    if (priceRange === "high") matchesPrice = product.price >= 27;
+
     return matchesSearch && matchesPrice;
   });
 
@@ -55,23 +71,14 @@ const Product = () => {
 
           {/* Controls */}
           <div className="flex gap-3">
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              className="flex items-center gap-2 px-4 py-3 bg-pink-50 hover:bg-pink-100 text-gray-700 rounded-xl transition-all border border-pink-200"
-            >
+            <button onClick={() => setFilterOpen(!filterOpen)} className="flex items-center gap-2 px-4 py-3 bg-pink-50 hover:bg-pink-100 text-gray-700 rounded-xl transition-all border border-pink-200">
               <Filter size={20} /> Filter
             </button>
             <div className="flex bg-pink-50 rounded-xl border border-pink-200 overflow-hidden">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-3 transition-all ${viewMode === "grid" ? "bg-gradient-to-r from-pink-400 to-sky-400 text-white" : "text-gray-700 hover:bg-pink-100"}`}
-              >
+              <button onClick={() => setViewMode("grid")} className={`p-3 transition-all ${viewMode === "grid" ? "bg-gradient-to-r from-pink-400 to-sky-400 text-white" : "text-gray-700 hover:bg-pink-100"}`}>
                 <Grid size={20} />
               </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-3 transition-all ${viewMode === "list" ? "bg-gradient-to-r from-pink-400 to-sky-400 text-white" : "text-gray-700 hover:bg-pink-100"}`}
-              >
+              <button onClick={() => setViewMode("list")} className={`p-3 transition-all ${viewMode === "list" ? "bg-gradient-to-r from-pink-400 to-sky-400 text-white" : "text-gray-700 hover:bg-pink-100"}`}>
                 <List size={20} />
               </button>
             </div>
@@ -85,7 +92,9 @@ const Product = () => {
       {/* Product List/Grid */}
       <div className="px-8 py-12 flex-1">
         <div className="max-w-7xl mx-auto">
-          {filteredProducts.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16 text-gray-500">Loading products...</div>
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 text-xl">Tidak ada boneka ditemukan</p>
             </div>

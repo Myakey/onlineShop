@@ -1,23 +1,51 @@
-import React, { useState } from 'react';
-import RegisterForm from '../components/forms/RegisterForm';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import RegisterForm from "../components/forms/RegisterForm";
 
 const Register = () => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    address: '',
-    phone: ''
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    phoneNumber: "",
   });
 
-  const handleRegister = () => {
-    console.log('Register submitted:', formData);
-    // Add your registration logic here
+  const [loading, setLoading] = useState(false);
+
+  // 🔹 Handle Register Function
+  const handleRegister = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8080/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Registration successful! You can now log in.");
+        navigate("/login");
+      } else {
+        alert(data.error || "Registration failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Register error:", error);
+      alert("Something went wrong. Please check your server connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // 🔹 Redirect to Login
   const handleLoginRedirect = () => {
-    console.log('Redirect to login page');
-    // Add navigation to login page here
+    navigate("/login");
   };
 
   return (
@@ -34,12 +62,7 @@ const Register = () => {
       </div>
 
       {/* Register Form */}
-      <RegisterForm
-        formData={formData}
-        setFormData={setFormData}
-        handleRegister={handleRegister}
-        handleLoginRedirect={handleLoginRedirect}
-      />
+      <RegisterForm formData={formData} setFormData={setFormData} handleRegister={handleRegister} handleLoginRedirect={handleLoginRedirect} loading={loading} />
     </div>
   );
 };
