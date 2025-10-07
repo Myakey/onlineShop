@@ -340,24 +340,31 @@ async function addAddress(req, res) {
             isDefault
         } = req.body;
 
+        const districtId = parseInt(district) || null;
+        const provinceId = parseInt(province) || null;
+        const cityId = parseInt(city) || null;
+
         if (!label || !recipientName || !phoneNumber || !streetAddress || !province || !city || !postalCode) {
             return res.status(400).json({ 
                 error: "Label, recipient name, phone number, street address, province, city, and postal code are required" 
             });
         }
 
+        console.log("List of accepthing address",province, city, district)
+
         const address = await user.addUserAddress(req.user.id, {
             label,
             recipientName,
             phoneNumber,
             streetAddress,
-            province,
-            city,
-            district,
+            provinceId,
+            cityId,
+            districtId,
             postalCode,
             notes,
             isDefault
         });
+
 
         res.status(201).json({
             message: "Address added successfully",
@@ -387,14 +394,18 @@ async function updateAddress(req, res) {
             isDefault
         } = req.body;
 
+        const districtId = parsetInt(district) || null;
+        const provinceId = parseInt(province) || null;
+        const cityId = parseInt(city) || null;
+
         const updatedAddress = await user.updateUserAddress(parseInt(addressId), req.user.id, {
             label,
             recipientName,
             phoneNumber,
             streetAddress,
-            province,
-            city,
-            district,
+            provinceId,
+            cityId,
+            districtId,
             postalCode,
             notes,
             isDefault
@@ -460,11 +471,24 @@ async function getProvinces(req, res) {
 async function getCities(req, res) {
     try {
         const { provinceId } = req.params;
+        console.log("Fetching cities for provinceId:", provinceId);
         const cities = await user.getCitiesByProvince(parseInt(provinceId));
         res.json({ cities });
     } catch (err) {
         console.error('Get cities error:', err);
         res.status(500).json({ error: "Failed to fetch cities" });
+    }
+}
+
+async function getDistricts(req, res) {
+    try{
+        const { cityId } = req.params;
+        console.log("Fetching districts for cityId:", cityId);
+        const districts = await user.getDistrictsByCity(parseInt(cityId));
+        res.json({ districts });
+    } catch (err){
+        console.error('Get districts error:', err);
+        res.status(500).json({ error: "Failed to fetch districts" });
     }
 }
 
@@ -588,5 +612,6 @@ module.exports = {
     getProvinces,
     getCities,
     uploadProfileImage,
-    deleteProfileImage
+    deleteProfileImage,
+    getDistricts
 };

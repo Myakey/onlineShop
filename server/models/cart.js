@@ -323,6 +323,56 @@ const validateCart = async (userId) => {
   }
 };
 
+const validateSelectedItems = async (itemsToValidate) => {
+  try {
+    const invalidItems = [];
+    const productIds = itemsToValidate.map(item => parseInt(item.product_id));
+
+    
+    // Fetch current stock for all requested product IDs
+    const products = await prisma.products.findMany({
+      where: { product_id: { in: productIds } },
+      select: { product_id: true, name: true, stock: true }
+    });
+
+    const productMap = new Map(products.map(p => [p.product_id, p]));
+
+    // Check requested quantities against current stock
+    for (const item of itemsToValidate) {
+      const productId = parseInt(item.product_id);
+      const requestedQuantity = parseInt(item.quantity);
+      const product = productMap.get(productId);
+
+      if (!product || product.stock < requestedQuantity) {
+        // Find the product name or use a default if not found
+        const productName = product ? product.name : `Product ID ${productId}`;
+        
+        invalidItems.push({
+          product_id: productId,
+          product_name: productName,
+          requested: requestedQuantity,
+          available: product ? product.stock : 0
+        });
+      }
+    }
+
+    if (invalidItems.length > 0) {
+      return {
+        valid: false,
+        message: 'Some selected items have insufficient stock',
+        invalidItems
+      };
+    }
+
+    return {
+      valid: true,
+      message: 'All selected items are in stock.'
+    };
+  } catch (error) {
+    throw new Error(`Error validating selected cart items: ${error.message}`);
+  }
+};
+
 module.exports = {
   getOrCreateCart,
   getCartByUserId,
@@ -332,4 +382,5 @@ module.exports = {
   clearCart,
   getCartItemCount,
   validateCart,
+  validateSelectedItems
 };

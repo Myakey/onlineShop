@@ -5,35 +5,34 @@ import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
-import DebugPage from "./pages/DebugPage";
+
 // import AdminPage from "./pages/admin";
 import CartPage from "./pages/Cart";
-
-// Pages
 import Register from "./pages/Register";
 
-// import halaman cart
-import Cart from "./pages/Cart";
-
 // Admin pages
-
+import AdminPage from "./pages/AdminPage";
 import AddProduct from "./pages/AddProduct";
-import AdminReviews from "./pages/AdminReviews";
 import AdminProduct from "./pages/AdminProduct";
-import AdminProductDetail from "./pages/AdminProductDetail";
-import AdminProductEdit from "./pages/AdminProductEdit";
 import AdminOrder from "./pages/AdminOrder";
 import AdminOrderDetail from "./pages/AdminOrderDetail";
+import AdminProductDetail from "./pages/AdminProductDetail";
+import AdminProductEdit from "./pages/AdminProductEdit";
 
 // Product pages
 import Product from "./pages/Product";
 import ProductDetails from "./pages/ProductDetails";
 
 // Review & Order pages
-import Reviews from "./pages/AdminReviews"; // pastikan ada file Reviews.jsx
-import Order from "./pages/Order"; // pastikan ada file Order.jsx
+import Reviews from "./pages/AdminReviews";
+import Order from "./pages/Order";
+
 import { UserProvider } from "./context/userContext";
 import { CartProvider } from "./context/cartContext";
+
+//Some debugs temporary files:
+import DebugPage from "./pages/DebugPage";
+import AdminDebugPage from "./pages/AdminDebugPage";
 
 function App() {
   return (
@@ -42,12 +41,15 @@ function App() {
         <UserProvider>
           <CartProvider>
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<HomePage />} />
               <Route path="/about" element={<About />} />
-              <Route path="/products" element={<Product />} />
-              <Route path="/add-product" element={<AddProduct />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/debug-page" element={<DebugPage />} />
+
+              {/* Protected Routes */}
               <Route
                 path="/profile"
                 element={
@@ -56,17 +58,82 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/order" element={<Order />} />
-
-              <Route path="/debug-page" element={<DebugPage />} />
-              <Route path="/adminDashboard" element={<AdminRoute></AdminRoute>} />
-
               <Route
                 path="/cart"
                 element={
                   <ProtectedRoute>
                     <CartPage />
                   </ProtectedRoute>
+                }
+              />
+              <Route path="/order" element={<Order />} />
+
+              {/* Admin Routes */}
+              <Route
+                path="/admin-dashboard"
+                element={
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/products"
+                element={
+                  <AdminRoute>
+                    <AdminProduct />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/orders"
+                element={
+                  <AdminRoute>
+                    <AdminOrder />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/add-product"
+                element={
+                  <AdminRoute>
+                    <AddProduct />
+                  </AdminRoute>
+                }
+              />
+              <Route path="/order" element={<Order />} />
+
+              {/* Admin Routes */}
+              <Route
+                path="/adminDashboard"
+                element={
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/products"
+                element={
+                  <AdminRoute>
+                    <AdminProduct />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/orders"
+                element={
+                  <AdminRoute>
+                    <AdminOrder />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/add-product"
+                element={
+                  <AdminRoute>
+                    <AddProduct />
+                  </AdminRoute>
                 }
               />
             </Routes>
