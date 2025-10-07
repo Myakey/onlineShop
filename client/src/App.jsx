@@ -45,6 +45,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<HomePage />} />
               <Route path="/about" element={<About />} />
+              <Route path="/products" element={<Product />} />
               <Route path="/add-product" element={<AddProduct />} />
               <Route path="/login" element={<Login />} />
               <Route
@@ -55,17 +56,10 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/order" element={<Order />}/>
+              <Route path="/order" element={<Order />} />
 
-              <Route path="/debug-page" element={<DebugPage />}/>
-              <Route
-                path="/adminDashboard"
-                element={
-                  <AdminRoute>
-                   
-                  </AdminRoute>
-                }
-              />
+              <Route path="/debug-page" element={<DebugPage />} />
+              <Route path="/adminDashboard" element={<AdminRoute></AdminRoute>} />
 
               <Route
                 path="/cart"
