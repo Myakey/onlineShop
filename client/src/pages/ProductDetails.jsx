@@ -1,43 +1,130 @@
 // src/pages/ProductDetails.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ShoppingCart, Minus, Plus, Star, ArrowLeft, Loader2 } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import ReviewCard from "../components/review/ReviewCard";
 import ReviewStats from "../components/review/ReviewStats";
 import ReviewFilters from "../components/review/ReviewFilters";
+import { useCart } from "../context/cartContext";
 
 const ProductDetails = () => {
-  const { id } = useParams(); // ambil product_id dari URL
+  const { id } = useParams();
   const navigate = useNavigate();
+  const { addItem } = useCart();
 
-  // Data produk sementara
-  const mockProducts = [
-    { id: 1, name: "Teddy Bear Classic", price: "$25.99", desc: "Boneka beruang klasik, lembut dan nyaman dipeluk.", image: "https://images.unsplash.com/photo-1592194996308-7b43878e84a6?w=500" },
-    { id: 2, name: "Bunny Plush White", price: "$19.99", desc: "Boneka kelinci putih imut dengan telinga panjang.", image: "https://images.unsplash.com/photo-1612549244923-d72b9d34658f?w=500" },
-    { id: 3, name: "Pink Unicorn Doll", price: "$29.99", desc: "Unicorn pink dengan tanduk emas yang elegan.", image: "https://images.unsplash.com/photo-1620035279440-867a58b35b13?w=500" },
-  ];
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+  const [addingToCart, setAddingToCart] = useState(false);
 
-  const product = mockProducts.find(p => p.id === parseInt(id));
+  // Mock reviews (will be replaced with actual API later)
+  const [reviews] = useState([
+    { id: 1, title: "Sangat lucu!", body: "Bonekanya lembut dan nyaman dipeluk.", rating: 5, reviewer: "Alice", date: "1 Oct" },
+    { id: 2, title: "Bagus tapi kecil", body: "Ukuran lebih kecil dari ekspektasi.", rating: 4, reviewer: "Bob", date: "3 Oct" },
+  ]);
 
-  // Mock reviews berdasarkan product_id
-  const initialReviews = [
-    { id: 1, product_id: 1, title: "Sangat lucu!", body: "Bonekanya lembut dan nyaman dipeluk.", rating: 5, reviewer: "Alice", date: "1 Oct" },
-    { id: 2, product_id: 1, title: "Bagus tapi kecil", body: "Ukuran lebih kecil dari ekspektasi.", rating: 4, reviewer: "Bob", date: "3 Oct" },
-    { id: 3, product_id: 2, title: "Imut banget", body: "Kelinci putihnya menggemaskan.", rating: 5, reviewer: "Charlie", date: "5 Oct" },
-    { id: 4, product_id: 3, title: "Unicorn cantik", body: "Tanduk emasnya membuat unicorn ini spesial.", rating: 5, reviewer: "Diana", date: "6 Oct" },
-  ];
+  // Fetch product details from API
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`http://localhost:8080/api/products/${id}`);
+        const data = await res.json();
+        
+        // Format product data
+        const formattedProduct = {
+          ...data,
+          price: parseFloat(data.price),
+        };
+        
+        setProduct(formattedProduct);
+      } catch (err) {
+        console.error("Error fetching product:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const [reviews, setReviews] = useState(initialReviews.filter(r => r.product_id === parseInt(id)));
+    fetchProduct();
+  }, [id]);
 
-  const handleDeleteReview = (rid) => setReviews(reviews.filter(r => r.id !== rid));
-  const handleReply = (rid) => console.log("Reply to review:", rid);
+  const handleQuantityChange = (change) => {
+    const newQty = quantity + change;
+    if (newQty >= 1 && newQty <= (product?.stock || 999)) {
+      setQuantity(newQty);
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (!product) return;
+    
+    try {
+      setAddingToCart(true);
+      await addItem(product.product_id, quantity);
+      alert(`${quantity}x ${product.name} berhasil ditambahkan ke keranjang!`);
+      setQuantity(1); // Reset quantity after adding
+    } catch (err) {
+      console.error("Error adding to cart:", err);
+      alert("Gagal menambahkan ke keranjang. Silakan coba lagi.");
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!product) return;
+    
+    try {
+      setAddingToCart(true);
+      await addItem(product.product_id, quantity);
+      navigate("/cart");
+    } catch (err) {
+      console.error("Error adding to cart:", err);
+      alert("Gagal menambahkan ke keranjang. Silakan coba lagi.");
+      setAddingToCart(false);
+    }
+  };
+
+  const handleDeleteReview = (rid) => {
+    console.log("Delete review:", rid);
+  };
+
+  const handleReply = (rid) => {
+    console.log("Reply to review:", rid);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-white via-pink-50 to-sky-50">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading product...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!product) {
     return (
-      <div>
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-white via-pink-50 to-sky-50">
         <Navbar />
-        <p className="text-center mt-20 text-gray-500">Produk tidak ditemukan</p>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-500 text-xl mb-4">Produk tidak ditemukan</p>
+            <button
+              onClick={() => navigate("/products")}
+              className="px-6 py-3 bg-gradient-to-r from-pink-400 to-sky-400 text-white rounded-xl hover:from-pink-500 hover:to-sky-500"
+            >
+              Kembali ke Produk
+            </button>
+          </div>
+        </div>
         <Footer />
       </div>
     );
@@ -47,42 +134,160 @@ const ProductDetails = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-white via-pink-50 to-sky-50">
       <Navbar />
 
-      {/* Konten utama */}
       <div className="flex-1 p-8">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="mb-6 px-4 py-2 bg-gradient-to-r from-pink-400 to-sky-400 text-white rounded-lg shadow hover:from-pink-500 hover:to-sky-500"
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-6 px-4 py-2 bg-gradient-to-r from-pink-400 to-sky-400 text-white rounded-lg shadow hover:from-pink-500 hover:to-sky-500 flex items-center gap-2 transition-all"
         >
-          ← Kembali
+          <ArrowLeft size={20} />
+          Kembali
         </button>
 
-        <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-2 mb-12">
-          <img src={product.image} alt={product.name} className="w-full h-96 object-cover" />
-          <div className="p-8 flex flex-col justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-4">{product.name}</h1>
-              <p className="text-gray-600 mb-6">{product.desc}</p>
-              <p className="text-pink-600 text-2xl font-bold mb-4">{product.price}</p>
+        {/* Product Details */}
+        <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2">
+            {/* Product Image */}
+            <div className="relative bg-gradient-to-br from-pink-50 to-sky-50 p-8">
+              <img
+                src={product.image_url || "https://via.placeholder.com/500"}
+                alt={product.name}
+                className="w-full h-96 object-contain rounded-2xl"
+              />
+              {product.stock < 10 && product.stock > 0 && (
+                <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                  Stok Terbatas!
+                </div>
+              )}
+              {product.stock === 0 && (
+                <div className="absolute top-4 right-4 bg-gray-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                  Habis
+                </div>
+              )}
             </div>
-            <button className="bg-gradient-to-r from-pink-400 to-sky-400 text-white py-3 px-6 rounded-xl hover:from-pink-500 hover:to-sky-500 shadow-lg">
-              Tambahkan ke Keranjang
-            </button>
+
+            {/* Product Info */}
+            <div className="p-8 flex flex-col justify-between">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-800 mb-4">
+                  {product.name}
+                </h1>
+                
+                {/* Rating */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={20} fill={i < 4 ? "currentColor" : "none"} />
+                    ))}
+                  </div>
+                  <span className="text-gray-600 text-sm">(4.0 dari 5)</span>
+                </div>
+
+                <p className="text-gray-600 mb-6 leading-relaxed">
+                  {product.description || "Produk berkualitas tinggi dengan bahan lembut dan nyaman."}
+                </p>
+
+                {/* Price */}
+                <div className="mb-6">
+                  <p className="text-4xl font-bold text-pink-600">
+                    Rp {product.price.toLocaleString('id-ID')}
+                  </p>
+                </div>
+
+                {/* Stock Info */}
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600">
+                    Stok tersedia: <span className="font-semibold text-gray-800">{product.stock}</span>
+                  </p>
+                </div>
+
+                {/* Quantity Selector */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Jumlah
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={quantity <= 1}
+                      className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Minus size={20} />
+                    </button>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        if (val >= 1 && val <= product.stock) {
+                          setQuantity(val);
+                        }
+                      }}
+                      className="w-20 h-10 text-center border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-400"
+                    />
+                    <button
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={quantity >= product.stock}
+                      className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0 || addingToCart}
+                  className="w-full bg-gradient-to-r from-pink-400 to-sky-400 text-white py-4 px-6 rounded-xl hover:from-pink-500 hover:to-sky-500 shadow-lg hover:shadow-xl transition-all font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {addingToCart ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Menambahkan...
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart size={20} />
+                      Tambahkan ke Keranjang
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={handleBuyNow}
+                  disabled={product.stock === 0 || addingToCart}
+                  className="w-full bg-gradient-to-r from-purple-400 to-indigo-400 text-white py-4 px-6 rounded-xl hover:from-purple-500 hover:to-indigo-500 shadow-lg hover:shadow-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Beli Sekarang
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Reviews Section */}
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">Customer Reviews</h2>
-          
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold mb-6 text-gray-800">Customer Reviews</h2>
+
           {reviews.length === 0 ? (
-            <p className="text-gray-500">Belum ada review untuk produk ini.</p>
+            <div className="bg-white rounded-2xl shadow-md p-12 text-center">
+              <p className="text-gray-500">Belum ada review untuk produk ini.</p>
+            </div>
           ) : (
             <>
               <ReviewStats reviews={reviews} />
               <ReviewFilters />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                {reviews.map(review => (
-                  <ReviewCard key={review.id} review={review} onDelete={handleDeleteReview} onReply={handleReply} />
+                {reviews.map((review) => (
+                  <ReviewCard
+                    key={review.id}
+                    review={review}
+                    onDelete={handleDeleteReview}
+                    onReply={handleReply}
+                  />
                 ))}
               </div>
             </>

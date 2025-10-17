@@ -18,6 +18,7 @@ import orderService from "../services/orderService";
 
 //ICONS
 import { Loader2 } from "lucide-react";
+import { useCart } from "../context/cartContext";
 
 /**
  * Preferences and keywords (case-insensitive checks)
@@ -48,6 +49,8 @@ const PREMIUM_SERVICE_KEYWORDS = ["NEXTDAY", "ONS", "BEST", "BOSSPACK"];
 
 const Order = () => {
   const navigate = useNavigate();
+
+  const { removeProduct } = useCart();
 
   // Loading & error states
   const [isLoading, setIsLoading] = useState(true);
@@ -342,7 +345,7 @@ const Order = () => {
   /**
    * Remove product
    */
-  const removeProduct = (id) => {
+  const removeProducts = (id) => {
     if (!window.confirm("Remove this item from order?")) return;
     setProducts((prev) => {
       const updated = prev.filter((p) => p.id !== id);
@@ -391,60 +394,64 @@ const Order = () => {
   };
 
   const makeOrder = async () => {
-    if (products.length === 0) {
-      window.alert("No products in order");
-      return;
-    }
-    if (!selectedAddress) {
-      window.alert("Please select a delivery address");
-      return;
-    }
-    if (!selectedShipping) {
-      window.alert("Please select a shipping option");
-      return;
-    }
-    if (!selectedPayment) {
-      window.alert("Please select a payment method");
-      return;
-    }
+  if (products.length === 0) {
+    window.alert("No products in order");
+    return;
+  }
+  if (!selectedAddress) {
+    window.alert("Please select a delivery address");
+    return;
+  }
+  if (!selectedShipping) {
+    window.alert("Please select a shipping option");
+    return;
+  }
+  if (!selectedPayment) {
+    window.alert("Please select a payment method");
+    return;
+  }
 
-    try {
-      // Build request payload according to backend
-      const payload = {
-        address_id: selectedAddress.id,
-        payment_method: selectedPayment.name,
-        notes: "", // optional, can integrate a notes input later
-        items: products.map((p) => ({
-          product_id: p.productId,
-          quantity: p.quantity,
-          price: p.price,
-        })),
-        shipping_cost: selectedShipping.price || 0,
-        voucher_discount: voucher ? 5000 : 0, // Adjust this logic to use actual discount
-      };
+  try {
+    // Build request payload according to backend
+    const payload = {
+      address_id: selectedAddress.id,
+      payment_method: selectedPayment.name,
+      notes: "",
+      items: products.map((p) => ({
+        product_id: p.productId,
+        quantity: p.quantity,
+        price: p.price,
+      })),
+      shipping_cost: selectedShipping.price || 0,
+      voucher_discount: voucher ? 5000 : 0,
+    };
 
-      // Send to backend
-      const response = await orderService.createOrder(payload);
-      console.log(response);
-      const resData = response;
+    // Send to backend
+    const response = await orderService.createOrder(payload);
+    const resData = response;
 
+    if (resData?.success) {
+      window.alert(
+        "Order created successfully! Please upload payment proof."
+      );
       
-
-      if (resData?.success) {
-        window.alert(
-          "Order created successfully! Please upload payment proof."
-        );
-        // Optional: clear checkout session
-        sessionStorage.removeItem("checkoutData");
-        sessionStorage.setItem("newOrderId", resData?.data?.order_id);
-        navigate("/payment"); // redirect to payment page
-      } else {
-        throw new Error(resData?.message || "Order creation failed");
-      }
-    } catch (err) {
-      console.error("Error creating order:", err);
-      window.alert(err?.message || "Failed to create order. Please try again.");
+      // ✅ Remove only the selected items from cart
+      const cartItemIds = products.map(p => p.id); // Get cart_item_ids
+      await removeProduct(cartItemIds);
+      
+      // Clear session storage
+      sessionStorage.removeItem("checkoutData");
+      sessionStorage.setItem("newOrderId", resData?.data?.order_id);
+      
+      // Redirect to payment page with order ID
+      navigate(`/payment`);
+    } else {
+      throw new Error(resData?.message || "Order creation failed");
     }
+  } catch (err) {
+    console.error("Error creating order:", err);
+    window.alert(err?.message || "Failed to create order. Please try again.");
+  }
   };
 
   //=======================================================================================
@@ -547,7 +554,7 @@ const Order = () => {
           <OrderProducts
             products={products}
             updateQuantity={updateQuantity}
-            removeProduct={removeProduct}
+            removeProduct={removeProducts}
           />
 
           <OrderShipping

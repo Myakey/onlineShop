@@ -49,9 +49,6 @@ function Home() {
       <TimelineSection title="Perjalanan Toko Boneka Kami" />
       <ProductInfoSection title="Mengapa Boneka Kami Spesial?" />
 
-      <button onClick={handleTryBuyProduct} className="m-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
-        COBAIN ANJING
-      </button>
 
       {/* Section Produk */}
       <section className="py-24 px-6 bg-gradient-to-br from-pink-50 via-white to-cyan-50">

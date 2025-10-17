@@ -26,6 +26,7 @@ model users {
   otp_codes         otp_codes[]
   shopping_cart     shopping_carts?
   orders            orders[]
+  reviews           reviews[]
 }
 
 model products {
@@ -39,7 +40,32 @@ model products {
   // Relations
   cart_items  cart_items[]
   order_items order_items[]
+  reviews     reviews[]
+  
   @@fulltext([name])
+}
+
+model reviews {
+  review_id   Int      @id @default(autoincrement())
+  user_id     Int
+  product_id  Int
+  order_id    Int?     // Optional: link to specific order
+  rating      Int      // 1-5 stars
+  title       String?  @db.VarChar(200)
+  comment     String?  @db.Text
+  images      String?  @db.Text  // JSON array of image URLs
+  is_verified Boolean  @default(false)  // verified purchase
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  // Relations
+  user        users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  product     products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  order       orders?  @relation(fields: [order_id], references: [order_id], onDelete: SetNull)
+  
+  @@unique([user_id, product_id, order_id])
+  @@index([product_id])
+  @@index([user_id])
 }
 
 model user_addresses {
@@ -97,14 +123,14 @@ model orders {
   address_id       Int
   order_number     String         @unique @db.VarChar(50)
   total_amount     Decimal        @db.Decimal(10, 2)
-  shipping_cost    Decimal?       @db.Decimal(10, 2)   // NEW: shipping fee
-  voucher_discount Decimal?       @db.Decimal(10, 2)   // NEW: voucher discount amount
+  shipping_cost    Decimal?       @db.Decimal(10, 2)
+  voucher_discount Decimal?       @db.Decimal(10, 2)
   status           order_status   @default(pending)
   payment_method   String?        @db.VarChar(50)
   payment_status   payment_status @default(unpaid)
-  payment_proof    String?        @db.VarChar(255)     // NEW: path / url to uploaded proof
+  payment_proof    String?        @db.VarChar(255)
   notes            String?        @db.Text
-  payment_due_at   DateTime?                                // optional
+  payment_due_at   DateTime?
   created_at       DateTime       @default(now())
   updated_at       DateTime       @updatedAt
 
@@ -112,6 +138,7 @@ model orders {
   user             users          @relation(fields: [user_id], references: [user_id])
   address          user_addresses @relation(fields: [address_id], references: [address_id])
   items            order_items[]
+  reviews          reviews[]
 
   @@map("orders")
 }
@@ -188,13 +215,12 @@ model indonesian_districts {
   @@unique([city_id, district_name])
 }
 
-// Shipping provider mapping (for API integration)
 model shipping_provider_mappings {
   mapping_id         Int      @id @default(autoincrement())
-  provider_name      String   @db.VarChar(50) // e.g., "rajaongkir", "shipper", etc
-  entity_type        String   @db.VarChar(20) // "province", "city", "district"
-  entity_id          Int      // Our internal ID
-  provider_id        Int      // Provider's ID
+  provider_name      String   @db.VarChar(50)
+  entity_type        String   @db.VarChar(20)
+  entity_id          Int
+  provider_id        Int
   province_id        Int?
   city_id            Int?
   district_id        Int?

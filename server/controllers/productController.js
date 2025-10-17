@@ -199,7 +199,7 @@
 // }
 
 const { PrismaClient } = require("@prisma/client");
-const productModels = require("../models/productsModels");
+const productModels = require("../models/productsModel");
 const fs = require("fs");
 const path = require("path");
 

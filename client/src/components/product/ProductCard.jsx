@@ -1,8 +1,17 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "../../context/cartContext";
 
 const ProductCard = ({ product, viewMode }) => {
   const navigate = useNavigate();
+  const { addItem } = useCart();  
+
+  const handleAddToCart = (product) => {
+    console.log(
+      "PRODUCta", product
+    )
+    addItem(product, 1)
+  }
 
   return (
     <div
@@ -32,7 +41,8 @@ const ProductCard = ({ product, viewMode }) => {
             hover:from-pink-500 hover:to-sky-500 transition-all shadow-md hover:shadow-lg"
             onClick={(e) => {
               e.stopPropagation();
-              alert(`${product.name} ditambahkan ke keranjang!`);
+              alert(`${product.name} ditambahkan ke keranjang!`)
+              handleAddToCart(product.product_id);
             }}
           >
             Add

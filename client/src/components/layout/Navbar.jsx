@@ -65,7 +65,7 @@ const Navbar = ({ currentPage = "home" }) => {
       {
         name: "Dashboard",
         key: "dashboard",
-        path: "/admin",
+        path: "/admin-dashboard",
         description: "Kelola dashboard admin dan statistik",
       },
       {
@@ -111,7 +111,7 @@ const Navbar = ({ currentPage = "home" }) => {
     {
       name: "Order",
       key: "order",
-      path: "/order",
+      path: "/order-list",
       description: "Pesan makanan favorit Anda sekarang",
     },
   ];
