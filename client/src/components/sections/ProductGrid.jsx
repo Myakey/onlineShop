@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Star, X, Loader2, AlertCircle } from "lucide-react";
-import { getProducts } from "../../services/exampleService";
 
 const ProductGridPage = () => {
   const [products, setProducts] = useState([]);
