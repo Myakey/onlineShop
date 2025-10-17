@@ -1,9 +1,19 @@
 // src/services/authService.js
 import axios from "axios";
-import { authApi } from "./api";
+
 
 const rootURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const authApi = axios.create({
+  baseURL: `${rootURL}/auth`,
+  headers: { "Content-Type": "application/json" },
+});
 const api = authApi;
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("accessToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 const authService = {
   /** LOGIN */

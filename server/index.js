@@ -20,7 +20,7 @@ const corsOptions = {
   origin:
     process.env.NODE_ENV === "production"
       ? process.env.CLIENT_URL // e.g. https://yourfrontend.com
-      : ["http://localhost:5173", "http://localhost:3000"], // dev servers
+      : "*", // dev servers
   credentials: true,
 };
 
