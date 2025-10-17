@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import authService from '../services/authService';
 import { User, Phone, MapPin, Edit2, Trash2, Plus, X, Check, Camera } from 'lucide-react';
+import Navbar from '../components/layout/Navbar';
 
 export default function Profile() {
     const [user, setUser] = useState(null);
@@ -320,7 +321,10 @@ export default function Profile() {
     }
 
     return (
+        <> 
+            <Navbar />
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 py-12 px-4">
+            
             <div className="max-w-7xl mx-auto">
                 {message && (
                     <div className={`mb-6 p-5 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
@@ -806,5 +810,6 @@ export default function Profile() {
                 )}
             </div>
         </div>
+        </>
     );
 }

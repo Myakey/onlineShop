@@ -14,7 +14,7 @@ const NavbarAdmin = () => {
   const currentPath = location.pathname;
 
   const navItems = [
-  { name: 'Dashboard', key: 'dashboard', path: '/adminDashboard', icon: <LayoutDashboard className="w-6 h-6" /> },
+  { name: 'Dashboard', key: 'dashboard', path: '/admin-dashboard', icon: <LayoutDashboard className="w-6 h-6" /> },
   { name: 'Product', key: 'product', path: '/admin/products', icon: <Package className="w-6 h-6" /> }, // ubah path
   { name: 'Orders', key: 'orders', path: '/admin/orders', icon: <FileText className="w-6 h-6" /> },
   { name: 'Add Product', key: 'add-product', path: '/admin/add-product', icon: <Plus className="w-6 h-6" /> },

@@ -1,4 +1,4 @@
-const cartModels = require("../models/cart");
+const cartModels = require("../models/cartModel");
 
 // Get user's cart
 const getCart = async (req, res) => {
@@ -6,15 +6,15 @@ const getCart = async (req, res) => {
     const userId = req.user.id; // From authenticated user
     console.log("Fetching cart for user ID:", userId);
     const cart = await cartModels.getOrCreateCart(userId);
-    
+
     res.json({
       success: true,
-      data: cart || { items: [], totalItems: 0, totalAmount: "0.00" }
+      data: cart || { items: [], totalItems: 0, totalAmount: "0.00" },
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -24,40 +24,44 @@ const addItemToCart = async (req, res) => {
   try {
     const userId = req.user.id;
     const { product_id, quantity = 1 } = req.body;
-    
+
     if (!product_id) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Product ID is required" 
+        message: "Product ID is required",
       });
     }
-    
+
     if (quantity < 1) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Quantity must be at least 1" 
+        message: "Quantity must be at least 1",
       });
     }
-    
-    const cartItem = await cartModels.addItemToCart(userId, product_id, quantity);
-    
+
+    const cartItem = await cartModels.addItemToCart(
+      userId,
+      product_id,
+      quantity
+    );
+
     res.status(201).json({
       success: true,
       message: "Item added to cart successfully",
-      data: cartItem
+      data: cartItem,
     });
   } catch (err) {
     // Handle specific error messages
-    if (err.message.includes('not found') || err.message.includes('stock')) {
-      return res.status(400).json({ 
+    if (err.message.includes("not found") || err.message.includes("stock")) {
+      return res.status(400).json({
         success: false,
-        message: err.message 
+        message: err.message,
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -67,32 +71,35 @@ const updateCartItem = async (req, res) => {
   try {
     const { cartItemId } = req.params;
     const { quantity } = req.body;
-    
+
     if (!quantity || quantity < 1) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Valid quantity is required" 
+        message: "Valid quantity is required",
       });
     }
-    
-    const updatedItem = await cartModels.updateCartItemQuantity(cartItemId, quantity);
-    
+
+    const updatedItem = await cartModels.updateCartItemQuantity(
+      cartItemId,
+      quantity
+    );
+
     res.json({
       success: true,
       message: "Cart item updated successfully",
-      data: updatedItem
+      data: updatedItem,
     });
   } catch (err) {
-    if (err.message.includes('not found') || err.message.includes('stock')) {
-      return res.status(400).json({ 
+    if (err.message.includes("not found") || err.message.includes("stock")) {
+      return res.status(400).json({
         success: false,
-        message: err.message 
+        message: err.message,
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -101,17 +108,17 @@ const updateCartItem = async (req, res) => {
 const removeItemFromCart = async (req, res) => {
   try {
     const { cartItemId } = req.params;
-    
+
     const result = await cartModels.removeItemFromCart(cartItemId);
-    
+
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -120,17 +127,17 @@ const removeItemFromCart = async (req, res) => {
 const clearCart = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const result = await cartModels.clearCart(userId);
-    
+
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -140,15 +147,15 @@ const getCartItemCount = async (req, res) => {
   try {
     const userId = req.user.id;
     const count = await cartModels.getCartItemCount(userId);
-    
+
     res.json({
       success: true,
-      data: { count }
+      data: { count },
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -159,34 +166,31 @@ const validateCart = async (req, res) => {
     const userId = req.user.id; //Just for authenticated user so the database won't break
     const { items } = req.body;
 
-    console.log("Validating cart items for user ID:", userId, "Items:", items);
-    
-
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "No items provided for validation" 
+        message: "No items provided for validation",
       });
     }
-    
+
     const validation = await cartModels.validateSelectedItems(items);
 
     if (!validation.valid) {
       return res.status(400).json({
         success: false,
         message: validation.message,
-        invalidItems: validation.invalidItems
+        invalidItems: validation.invalidItems,
       });
     }
 
     res.json({
       success: true,
-      data: validation
+      data: validation,
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: err.message 
+      message: err.message,
     });
   }
 };
@@ -198,5 +202,5 @@ module.exports = {
   removeItemFromCart,
   clearCart,
   getCartItemCount,
-  validateCart
+  validateCart,
 };

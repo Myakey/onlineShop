@@ -26,9 +26,11 @@ import ProductDetails from "./pages/ProductDetails";
 // Review & Order pages
 import Reviews from "./pages/AdminReviews";
 import Order from "./pages/Order";
+import MyOrders from "./pages/OrderList";
 
 import { UserProvider } from "./context/userContext";
 import { CartProvider } from "./context/cartContext";
+import Payment from "./pages/Payment"
 
 //Some debugs temporary files:
 import DebugPage from "./pages/DebugPage";
@@ -48,6 +50,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/debug-page" element={<DebugPage />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
 
               {/* Protected Routes */}
               <Route
@@ -67,7 +70,8 @@ function App() {
                 }
               />
               <Route path="/order" element={<Order />} />
-
+              <Route path="/products" element={<Product />} />
+                <Route path="/payment" element={<Payment />} />
               {/* Admin Routes */}
               <Route
                 path="/admin-dashboard"
@@ -102,6 +106,7 @@ function App() {
                 }
               />
               <Route path="/order" element={<Order />} />
+              <Route path="/order-list" element={<MyOrders />} />
 
               {/* Admin Routes */}
               <Route

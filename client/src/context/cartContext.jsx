@@ -1,21 +1,19 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import cartService from "../services/cartService"; // ✅ updated import (default export)
+import cartService from "../services/cartService";
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(null); // full cart data {cart_id, items, totalItems, totalAmount}
-  const [cartCount, setCartCount] = useState(0); // for navbar badge
+  const [cart, setCart] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  
+  // ==================== FETCH CART ====================
   const fetchCart = async () => {
     setLoading(true);
     try {
       const data = await cartService.getCart();
       console.log("Cart API:", data);
-
-      // Expecting { success: true, data: {...} }
       setCart(data.data);
       setCartCount(data.data?.totalItems || data.data?.items?.length || 0);
     } catch (error) {
@@ -80,6 +78,36 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // ==================== REMOVE PRODUCT (for Order page) ====================
+  /**
+   * Remove selected product(s) from cart after order is placed
+   * @param {Array|number} cartItemIds - Single cart_item_id or array of cart_item_ids to remove
+   * Must provide cart_item_ids from the selected checkout items
+   */
+  const removeProduct = async (cartItemIds) => {
+    try {
+      // cartItemIds is required
+      if (!cartItemIds || (Array.isArray(cartItemIds) && cartItemIds.length === 0)) {
+        console.warn("removeProduct: No cart item IDs provided");
+        return;
+      }
+
+      // If single ID (number), convert to array
+      const idsToRemove = Array.isArray(cartItemIds) ? cartItemIds : [cartItemIds];
+
+      // Remove each item from backend
+      for (const itemId of idsToRemove) {
+        await cartService.removeFromCart(itemId);
+      }
+
+      // Refresh cart after removal
+      await fetchCart();
+    } catch (error) {
+      console.error("Failed to remove product(s):", error);
+      throw error;
+    }
+  };
+
   // ==================== VALIDATE CART ====================
   const validate = async () => {
     try {
@@ -107,6 +135,7 @@ export const CartProvider = ({ children }) => {
         addItem,
         updateItem,
         removeItem,
+        removeProduct, // ✅ Added for Order page
         clearCart,
         validate,
       }}
