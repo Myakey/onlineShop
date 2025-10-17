@@ -1,268 +1,149 @@
+// src/services/authService.js
 import axios from "axios";
+import { authApi } from "./api";
 
-const api = axios.create({
-    baseURL: "http://localhost:8080",
-    headers:{
-        'Content-Type': 'application/json'
-    },
-})
-
-//Interceptor to use authorization token
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('accessToken');
-        if(token){
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) =>{
-        return Promise.reject(error);
-    }
-)
-
-//Interceptor to handle the token refresh
-api.interceptors.response.use(
-    (response) => response,
-    async(error) => {
-        const originalRequest = error.config;
-
-        if(error.response?.status === 403 && !originalRequest._retry){
-            originalRequest._retry = true;
-
-            try{
-                const refreshToken = localStorage.getItem('refreshToken');
-                if(refreshToken){
-                    const response = await axios.post(
-                        `http://localhost:8080/auth/refresh-token`, 
-                        { refreshToken }
-                    );
-
-                    const { accessToken } = response.data;
-                    localStorage.setItem('accessToken', accessToken);
-
-                    //Retry original request with the new token
-                    originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-                    return api(originalRequest);
-                }
-            } catch(refreshError){
-                //Refresh failed, redirect to login
-                authService.logout();
-                window.location.href = '/login';
-                return Promise.reject(refreshError);
-            }
-        }
-
-        return Promise.reject(error);
-    }
-);
+const rootURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const api = authApi;
 
 const authService = {
-    //login user
-    async login(credentials){
-        try{
-            const response = await api.post('/auth/login', credentials);
-            return response.data;
-        } catch(error){
-            throw error;
-        }
-    },
+  /** LOGIN */
+  async login(credentials) {
+    const { data } = await api.post("/login", credentials);
+    return data;
+  },
 
-    //Register
-    async register(userData){
-        try{
-            const response = await api.post("/auth/register", userData);
-            return response.data;
-        } catch (error){
-            throw error;
-        }
-    },
+  /** REGISTER */
+  async register(userData) {
+    const { data } = await api.post("/register", userData);
+    return data;
+  },
 
-    // Get the user profile
-    async getProfile(){
-        try{
-            const response = await api.get("/auth/profile");
-            return response.data;
-        } catch (error){
-            throw error;
-        }
-    },
+  /** GET PROFILE */
+  async getProfile() {
+    const { data } = await api.get("/profile");
+    return data;
+  },
 
-    async updateProfile(profileData){
-        try {
-            const response = await api.put('/auth/profile', profileData);
-            return response.data;
-        } catch(error){
-            throw error;
-        }
-    },
+  /** UPDATE PROFILE */
+  async updateProfile(profileData) {
+    const { data } = await api.put("/profile", profileData);
+    return data;
+  },
 
-    async logout(){
-        try{
-            const refreshToken = localStorage.getItem("refreshToken");
-            if(refreshToken){
-                await api.post('/auth/logout', {refreshToken});
-            }
-        } catch (error){
-            console.error('Logout error: ', error);
-        } finally {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-        }
-    },
-
-    //Check if user is authenticated
-    isAuthenticated(){
-        const token = localStorage.getItem('accessToken');
-        const user = localStorage.getItem('user');
-        return !!(token && user);
-    },
-
-    // FIXED: Changed getitem to getItem (capital I)
-    getCurrentUser() {
-        const userStr = localStorage.getItem('user');
-        return userStr ? JSON.parse(userStr) : null;
-    },
-
-    isAdmin() {
-        const user = this.getCurrentUser();
-        return user && user.type === 'admin';
-    },
-
-    //Refreshing the token
-    async refreshToken(){
-        try {
-            const refreshToken = localStorage.getItem('refreshToken');
-            if(!refreshToken) {
-                throw new Error('No refresh token available!');
-            }
-
-            // FIXED: Changed refresh-Token to refresh-token
-            const response = await axios.post(
-                `http://localhost:8080/auth/refresh-token`, 
-                {refreshToken}
-            );
-
-            const {accessToken} = response.data;
-            localStorage.setItem('accessToken', accessToken);
-            return accessToken;
-        } catch (error){
-            this.logout();
-            throw error;
-        }
-    },
-
-    // Verify email with OTP
-    async verifyEmail(data) {
-        try {
-            const response = await axios.post(`http://localhost:8080/auth/verify-email`, data);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Resend OTP
-    async resendOTP(data) {
-        try {
-            const response = await axios.post(`http://localhost:8080/auth/resend-otp`, data);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Address management
-    async getAddresses() {
-        try {
-            const response = await api.get('/auth/addresses');
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async addAddress(addressData) {
-        try {
-            const response = await api.post('/auth/addresses', addressData);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async updateAddress(addressId, addressData) {
-        try {
-            const response = await api.put(`/auth/addresses/${addressId}`, addressData);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async deleteAddress(addressId) {
-        try {
-            const response = await api.delete(`/auth/addresses/${addressId}`);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Location data
-    async getProvinces() {
-        try {
-            const response = await axios.get('http://localhost:8080/auth/provinces');
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async getCities(provinceId) {
-        try {
-            const response = await axios.get(`http://localhost:8080/auth/provinces/${provinceId}/cities`);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async getDistricts(cityId) {
-        try {
-            const response = await axios.get(`http://localhost:8080/auth/cities/${cityId}/districts`);
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    async uploadProfileImage(formData) {
-        try {
-            const response = await api.post('/auth/upload-profile-image', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    // Token validation method
-    async validateToken() {
-        try {
-            const response = await api.get('/auth/profile');
-            return { valid: true, user: response.data.user };
-        } catch (error) {
-            if (error.response?.status === 403 || error.response?.status === 401) {
-                return { valid: false, user: null };
-            }
-            throw error; // Re-throw other errors
-        }
+  /** LOGOUT */
+  async logout() {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (refreshToken) {
+        await api.post("/logout", { refreshToken });
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
     }
-}
+  },
+
+  /** AUTH HELPERS */
+  isAuthenticated() {
+    return !!(localStorage.getItem("accessToken") && localStorage.getItem("user"));
+  },
+
+  getCurrentUser() {
+    const userStr = localStorage.getItem("user");
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  isAdmin() {
+    const user = this.getCurrentUser();
+    return user && user.type === "admin";
+  },
+
+  /** REFRESH TOKEN */
+  async refreshToken() {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) throw new Error("No refresh token available!");
+
+    try {
+      const { data } = await axios.post(`${rootURL}/auth/refresh-token`, { refreshToken });
+      localStorage.setItem("accessToken", data.accessToken);
+      return data.accessToken;
+    } catch (error) {
+      this.logout();
+      throw error;
+    }
+  },
+
+  /** EMAIL VERIFICATION */
+  async verifyEmail(data) {
+    const res = await axios.post(`${rootURL}/auth/verify-email`, data);
+    return res.data;
+  },
+
+  async resendOTP(data) {
+    const res = await axios.post(`${rootURL}/auth/resend-otp`, data);
+    return res.data;
+  },
+
+  /** ADDRESS MANAGEMENT */
+  async getAddresses() {
+    const { data } = await api.get("/addresses");
+    return data;
+  },
+
+  async addAddress(addressData) {
+    const { data } = await api.post("/addresses", addressData);
+    return data;
+  },
+
+  async updateAddress(addressId, addressData) {
+    const { data } = await api.put(`/addresses/${addressId}`, addressData);
+    return data;
+  },
+
+  async deleteAddress(addressId) {
+    const { data } = await api.delete(`/addresses/${addressId}`);
+    return data;
+  },
+
+  /** LOCATION DATA */
+  async getProvinces() {
+    const { data } = await axios.get(`${rootURL}/auth/provinces`);
+    return data;
+  },
+
+  async getCities(provinceId) {
+    const { data } = await axios.get(`${rootURL}/auth/provinces/${provinceId}/cities`);
+    return data;
+  },
+
+  async getDistricts(cityId) {
+    const { data } = await axios.get(`${rootURL}/auth/cities/${cityId}/districts`);
+    return data;
+  },
+
+  /** PROFILE IMAGE UPLOAD */
+  async uploadProfileImage(formData) {
+    const { data } = await api.post("/upload-profile-image", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  },
+
+  /** TOKEN VALIDATION */
+  async validateToken() {
+    try {
+      const { data } = await api.get("/profile");
+      return { valid: true, user: data.user };
+    } catch (error) {
+      if ([401, 403].includes(error.response?.status)) {
+        return { valid: false, user: null };
+      }
+      throw error;
+    }
+  },
+};
 
 export default authService;
