@@ -7,7 +7,6 @@ import TimelineSection from "../components/sections/TimelineSection";
 import ProductInfoSection from "../components/sections/ProductInfoSection";
 import ProductGrid from "../components/sections/ProductGrid";
 import NewsletterSection from "../components/sections/NewsletterSection";
-import { getProducts } from "../services/exampleService"; // TAMBAHKAN INI
 
 function Home() {
   const [products, setProducts] = useState([]);

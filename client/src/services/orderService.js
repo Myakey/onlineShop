@@ -1,25 +1,5 @@
 // services/orderService.js
-
-import axios from "axios";
-
-const API_URL = "http://localhost:8080/api";
-
-// Create an Axios instance (like in authService)
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// Automatically attach token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import api from "./api";
 
 // Helper function for cleaner error logging
 const handleError = (error, message) => {

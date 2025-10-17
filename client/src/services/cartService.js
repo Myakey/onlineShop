@@ -1,66 +1,6 @@
-// ==================== FRONTEND API WORKFLOW ====================
-// services/cartService.js
+import api from "../services/api"
 
-import axios from "axios";
-import authService from "./authService"; // for logout on refresh fail
-
-// Create axios instance
-const api = axios.create({
-  baseURL: "http://localhost:8080/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// ==================== INTERCEPTORS ====================
-
-// Request interceptor – attach token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response interceptor – handle refresh token
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 403 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        if (refreshToken) {
-          const response = await axios.post(
-            "http://localhost:8080/auth/refresh-token",
-            { refreshToken }
-          );
-
-          const { accessToken } = response.data;
-          localStorage.setItem("accessToken", accessToken);
-
-          // Retry the original request
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
-        authService.logout();
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
+//backend blm ada /api
 
 // ==================== CART SERVICE ====================
 
