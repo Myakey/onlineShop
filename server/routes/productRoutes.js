@@ -6,6 +6,9 @@ const { upload, uploadWithErrorHandling } = require("../middleware/uploadImage")
 // Get all products
 router.get('/', productsController.getAllProducts);
 
+// Search product 
+router.get('/search', productsController.searchProduct);
+
 // Get product by ID
 router.get('/:id', productsController.getProductById);
 
