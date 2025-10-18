@@ -1,42 +1,67 @@
-// src/components/admin/ReviewStats.jsx
-import React from 'react';
-import { Star, ThumbsUp, Calendar } from 'lucide-react';
+// Update ReviewStats to use the stats object from API
+import React from "react";
+import { Star } from "lucide-react";
 
-const ReviewStats = ({ reviews }) => {
-  const totalReviews = reviews.length;
-  const averageRating = totalReviews
-    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalReviews).toFixed(1)
-    : 0;
-
-  // Hitung persentase review positif (rating >= 4)
-  const positiveReviews = totalReviews
-    ? Math.round((reviews.filter(r => r.rating >= 4).length / totalReviews) * 100)
-    : 0;
-
-  // Hitung review bulan ini (dummy)
-  const thisMonth = totalReviews; // bisa diganti logic tanggal sesuai data nyata
-
-  const stats = [
-    { label: 'Total Reviews', value: totalReviews, icon: <Star className="w-6 h-6 text-yellow-500" /> },
-    { label: 'Average Rating', value: averageRating, icon: <Star className="w-6 h-6 text-yellow-400" /> },
-    { label: 'Positive Reviews', value: `${positiveReviews}%`, icon: <ThumbsUp className="w-6 h-6 text-green-500" /> },
-    { label: 'This Month', value: thisMonth, icon: <Calendar className="w-6 h-6 text-blue-500" /> },
-  ];
+const ReviewStats = ({ stats }) => {
+  const {
+    average_rating = 0,
+    total_reviews = 0,
+    rating_distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+    rating_percentages = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+  } = stats || {};
 
   return (
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-      {stats.map((stat, idx) => (
-        <div
-          key={idx}
-          className="bg-white rounded-lg p-4 flex items-center space-x-4 shadow-md hover:shadow-lg transition-shadow"
-        >
-          <div className="p-2 bg-gray-100 rounded-full">{stat.icon}</div>
-          <div>
-            <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
-            <p className="text-gray-600">{stat.label}</p>
+    <div className="bg-white rounded-2xl shadow-md p-8 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Overall Rating */}
+        <div className="flex flex-col items-center justify-center border-r border-gray-200">
+          <div className="text-6xl font-bold text-gray-900 mb-2">
+            {average_rating.toFixed(1)}
           </div>
+          <div className="flex items-center gap-1 mb-2">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                size={24}
+                className={
+                  i < Math.round(average_rating)
+                    ? "text-yellow-400 fill-yellow-400"
+                    : "text-gray-300"
+                }
+              />
+            ))}
+          </div>
+          <p className="text-gray-600 text-sm">
+            Based on {total_reviews} {total_reviews === 1 ? 'review' : 'reviews'}
+          </p>
         </div>
-      ))}
+
+        {/* Rating Distribution */}
+        <div className="space-y-2">
+          {[5, 4, 3, 2, 1].map((star) => (
+            <div key={star} className="flex items-center gap-3">
+              <div className="flex items-center gap-1 w-12">
+                <span className="text-sm font-medium text-gray-700">{star}</span>
+                <Star size={14} className="text-yellow-400 fill-yellow-400" />
+              </div>
+              
+              {/* Progress Bar */}
+              <div className="flex-1 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-yellow-400 to-yellow-500 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${rating_percentages[star] || 0}%` }}
+                />
+              </div>
+              
+              <div className="w-16 text-right">
+                <span className="text-sm text-gray-600">
+                  {rating_distribution[star] || 0}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

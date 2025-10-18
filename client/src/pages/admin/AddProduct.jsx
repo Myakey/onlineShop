@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import NavbarAdmin from "../../components/layout/NavbarAdmin";
 import Footer from "../../components/layout/Footer";
 import { Save, Upload, X } from "lucide-react";
+import productService from "../../services/productService";
 
 const API_URL = "http://localhost:8080/api/products";
 
@@ -28,9 +29,8 @@ export default function ProductForm() {
     if (isEdit) {
       const fetchProduct = async () => {
         try {
-          const res = await fetch(`${API_URL}/${id}`);
-          if (!res.ok) throw new Error("Failed to fetch product");
-          const data = await res.json();
+          const res = await productService.getProductById(id);
+          const data = res.data;
           setFormData({
             name: data.name || "",
             description: data.description || "",

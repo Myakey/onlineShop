@@ -99,7 +99,7 @@ const AdminOrder = () => {
   };
 
   const viewPaymentProof = (url) => {
-    const baseUrl = "http://localhost:8080";
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
     setImageUrl(url.startsWith("http") ? url : `${baseUrl}${url}`);
     setShowImageModal(true);
   };

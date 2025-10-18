@@ -38,7 +38,7 @@ model products {
   order_items order_items[]
   reviews     reviews[]
 
-  @@fulltext([name])
+  @@fulltext([name, description])
 }
 
 model reviews {

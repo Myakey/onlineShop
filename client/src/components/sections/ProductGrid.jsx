@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Star, X, Loader2, AlertCircle } from "lucide-react";
+import reviewService from "../../services/reviewService";
 
 const ProductGridPage = () => {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reviewSummaries, setReviewSummaries] = useState({});
 
   // Fetch products dari database saat komponen dimuat
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+  if (products.length > 0) {
+    fetchReviewSummaries();
+  }
+}, [products]);
 
   const fetchProducts = async () => {
     try {
@@ -34,6 +42,24 @@ const ProductGridPage = () => {
       setLoading(false);
     }
   };
+
+  const fetchReviewSummaries = async () => {
+  try {
+    const productIds = products.map(p => p.product_id);
+    const response = await reviewService.getProductsReviewSummary(productIds);
+    
+    if (response.success) {
+      // Convert array to object for easy lookup
+      const summariesMap = {};
+      response.data.forEach(summary => {
+        summariesMap[summary.product_id] = summary;
+      });
+      setReviewSummaries(summariesMap);
+    }
+  } catch (err) {
+    console.error("Error fetching review summaries:", err);
+  }
+};
 
   const handleOpenModal = (product) => {
     setSelectedProduct(product);

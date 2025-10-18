@@ -4,7 +4,7 @@ class ReviewController {
   // Create a new review
   async createReview(req, res) {
     try {
-      const user_id = req.user.userId;
+      const user_id = req.user.id;
       const { product_id, order_id, rating, title, comment, images } = req.body;
 
       // Validation
@@ -101,7 +101,7 @@ class ReviewController {
   // Get user's reviews
   async getUserReviews(req, res) {
     try {
-      const user_id = req.user.userId;
+      const user_id = req.user.id;
       const { page = 1, limit = 10 } = req.query;
 
       const result = await ReviewModels.getUserReviews(user_id, {
@@ -125,7 +125,7 @@ class ReviewController {
   // Update a review
   async updateReview(req, res) {
     try {
-      const user_id = req.user.userId;
+      const user_id = req.user.id;
       const { reviewId } = req.params;
       const { rating, title, comment, images } = req.body;
 
@@ -161,7 +161,7 @@ class ReviewController {
   // Delete a review
   async deleteReview(req, res) {
     try {
-      const user_id = req.user.userId;
+      const user_id = req.user.id;
       const { reviewId } = req.params;
 
       const result = await ReviewModels.deleteReview(parseInt(reviewId), user_id);
@@ -183,7 +183,7 @@ class ReviewController {
   // Check if user can review a product
   async canUserReview(req, res) {
     try {
-      const user_id = req.user.userId;
+      const user_id = req.user.id;
       const { productId } = req.params;
       const { orderId } = req.query;
 

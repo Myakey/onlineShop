@@ -1,12 +1,20 @@
 // src/pages/ProductDetails.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ShoppingCart, Minus, Plus, Star, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  ShoppingCart,
+  Minus,
+  Plus,
+  Star,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
 import ReviewCard from "../../components/review/ReviewCard";
 import ReviewStats from "../../components/review/ReviewStats";
 import ReviewFilters from "../../components/review/ReviewFilters";
+import reviewService from "../../services/reviewService";
 
 //
 import { useCart } from "../../context/cartContext";
@@ -22,11 +30,15 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
 
-  // Mock reviews (will be replaced with actual API later)
-  const [reviews] = useState([
-    { id: 1, title: "Sangat lucu!", body: "Bonekanya lembut dan nyaman dipeluk.", rating: 5, reviewer: "Alice", date: "1 Oct" },
-    { id: 2, title: "Bagus tapi kecil", body: "Ukuran lebih kecil dari ekspektasi.", rating: 4, reviewer: "Bob", date: "3 Oct" },
-  ]);
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewFilters, setReviewFilters] = useState({
+    page: 1,
+    limit: 10,
+    rating: null,
+    sort: "recent",
+  });
 
   // Fetch product details from API
   useEffect(() => {
@@ -35,13 +47,13 @@ const ProductDetails = () => {
         setLoading(true);
         const res = await fetch(`http://localhost:8080/api/products/${id}`);
         const data = await res.json();
-        
+
         // Format product data
         const formattedProduct = {
           ...data,
           price: parseFloat(data.price),
         };
-        
+
         setProduct(formattedProduct);
       } catch (err) {
         console.error("Error fetching product:", err);
@@ -53,6 +65,44 @@ const ProductDetails = () => {
     fetchProduct();
   }, [id]);
 
+  useEffect(() => {
+    if (product?.product_id) {
+      fetchReviews();
+      fetchReviewStats();
+    }
+  }, [product?.product_id, reviewFilters]);
+
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const response = await reviewService.getProductReviews(
+        product.product_id,
+        reviewFilters
+      );
+
+      if (response.success) {
+        setReviews(response.data.reviews || []);
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const fetchReviewStats = async () => {
+    try {
+      const response = await reviewService.getProductReviewStats(
+        product.product_id
+      );
+      if (response.success) {
+        setReviewStats(response.data);
+      }
+    } catch (err) {
+      console.error("Error fetching review stats:", err);
+    }
+  };
+
   const handleQuantityChange = (change) => {
     const newQty = quantity + change;
     if (newQty >= 1 && newQty <= (product?.stock || 999)) {
@@ -62,7 +112,7 @@ const ProductDetails = () => {
 
   const handleAddToCart = async () => {
     if (!product) return;
-    
+
     try {
       setAddingToCart(true);
       await addItem(product.product_id, quantity);
@@ -78,7 +128,7 @@ const ProductDetails = () => {
 
   const handleBuyNow = async () => {
     if (!product) return;
-    
+
     try {
       setAddingToCart(true);
       await addItem(product.product_id, quantity);
@@ -90,12 +140,29 @@ const ProductDetails = () => {
     }
   };
 
-  const handleDeleteReview = (rid) => {
-    console.log("Delete review:", rid);
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus review ini?"))
+      return;
+
+    try {
+      const response = await reviewService.deleteReview(reviewId);
+      if (response.success) {
+        alert("Review berhasil dihapus!");
+        fetchReviews(); // Refresh reviews
+        fetchReviewStats(); // Refresh stats
+      }
+    } catch (err) {
+      console.error("Error deleting review:", err);
+      alert("Gagal menghapus review. Silakan coba lagi.");
+    }
   };
 
   const handleReply = (rid) => {
     console.log("Reply to review:", rid);
+  };
+
+  const handleFilterChange = (filters) => {
+    setReviewFilters((prev) => ({ ...prev, ...filters, page: 1 }));
   };
 
   if (loading) {
@@ -175,32 +242,49 @@ const ProductDetails = () => {
                 <h1 className="text-4xl font-bold text-gray-800 mb-4">
                   {product.name}
                 </h1>
-                
+
                 {/* Rating */}
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={20} fill={i < 4 ? "currentColor" : "none"} />
-                    ))}
+                {reviewStats && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex text-yellow-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={20}
+                          fill={
+                            i < Math.round(reviewStats.average_rating)
+                              ? "currentColor"
+                              : "none"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <span className="text-gray-600 text-sm">
+                      ({reviewStats.average_rating.toFixed(1)} dari 5 •{" "}
+                      {reviewStats.total_reviews} review)
+                    </span>
                   </div>
-                  <span className="text-gray-600 text-sm">(4.0 dari 5)</span>
-                </div>
+                )}
 
                 <p className="text-gray-600 mb-6 leading-relaxed">
-                  {product.description || "Produk berkualitas tinggi dengan bahan lembut dan nyaman."}
+                  {product.description ||
+                    "Produk berkualitas tinggi dengan bahan lembut dan nyaman."}
                 </p>
 
                 {/* Price */}
                 <div className="mb-6">
                   <p className="text-4xl font-bold text-pink-600">
-                    Rp {product.price.toLocaleString('id-ID')}
+                    Rp {product.price.toLocaleString("id-ID")}
                   </p>
                 </div>
 
                 {/* Stock Info */}
                 <div className="mb-6">
                   <p className="text-sm text-gray-600">
-                    Stok tersedia: <span className="font-semibold text-gray-800">{product.stock}</span>
+                    Stok tersedia:{" "}
+                    <span className="font-semibold text-gray-800">
+                      {product.stock}
+                    </span>
                   </p>
                 </div>
 
@@ -258,7 +342,7 @@ const ProductDetails = () => {
                     </>
                   )}
                 </button>
-                
+
                 <button
                   onClick={handleBuyNow}
                   disabled={product.stock === 0 || addingToCart}
@@ -273,26 +357,72 @@ const ProductDetails = () => {
 
         {/* Reviews Section */}
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6 text-gray-800">Customer Reviews</h2>
+          <h2 className="text-3xl font-bold mb-6 text-gray-800">
+            Customer Reviews
+          </h2>
 
-          {reviews.length === 0 ? (
+          {reviewsLoading ? (
             <div className="bg-white rounded-2xl shadow-md p-12 text-center">
-              <p className="text-gray-500">Belum ada review untuk produk ini.</p>
+              <Loader2 className="w-12 h-12 text-pink-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600">Memuat reviews...</p>
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-md p-12 text-center">
+              <p className="text-gray-500">
+                Belum ada review untuk produk ini.
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                Jadilah yang pertama memberikan review!
+              </p>
             </div>
           ) : (
             <>
-              <ReviewStats reviews={reviews} />
-              <ReviewFilters />
+              {reviewStats && <ReviewStats stats={reviewStats} />}
+              <ReviewFilters
+                onFilterChange={handleFilterChange}
+                currentFilters={reviewFilters}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 {reviews.map((review) => (
                   <ReviewCard
-                    key={review.id}
+                    key={review.review_id}
                     review={review}
                     onDelete={handleDeleteReview}
-                    onReply={handleReply}
                   />
                 ))}
               </div>
+
+              {/* Pagination - if you want to add it */}
+              {reviews.length >= reviewFilters.limit && (
+                <div className="flex justify-center mt-8 gap-2">
+                  <button
+                    onClick={() =>
+                      setReviewFilters((prev) => ({
+                        ...prev,
+                        page: prev.page - 1,
+                      }))
+                    }
+                    disabled={reviewFilters.page === 1}
+                    className="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-pink-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-4 py-2 bg-white border-2 border-pink-400 rounded-lg">
+                    {reviewFilters.page}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setReviewFilters((prev) => ({
+                        ...prev,
+                        page: prev.page + 1,
+                      }))
+                    }
+                    className="px-4 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-pink-400"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

@@ -28,6 +28,7 @@ const MyOrders = () => {
     try {
       setLoading(true);
       const response = await orderService.getMyOrders();
+      console.log("BLALBVALVLS", response.data);
       setOrders(response.data);
     } catch (error) {
       console.error("Error loading orders:", error);
@@ -69,25 +70,26 @@ const MyOrders = () => {
     });
   };
 
-  const handleViewDetails = (orderId) => {
-    window.location.href = `/orders/${orderId}`;
+  const handleViewDetails = (token) => {
+    window.location.href = `/orders/${token}`;
   };
 
-  const handlePayNow = (orderId) => {
-    window.location.href = `/payment/${orderId}`;
+  const handlePayNow = (token) => {
+    window.location.href = `/payment/${token}`;
   };
 
-  const handleWriteReview = (orderId) => {
-    window.location.href = `/orders/${orderId}/review`;
+  const handleWriteReview = (token) => {
+    console.log(token);
+    window.location.href = `/orders/${token}/review`;
   };
 
-  const handleCancelOrder = async (orderId) => {
+  const handleCancelOrder = async (token) => {
     if (!window.confirm("Are you sure you want to cancel this order?")) {
       return;
     }
 
     try {
-      await orderService.cancelOrder(orderId);
+      await orderService.cancelOrder(token);
       alert("Order cancelled successfully");
       loadOrders();
     } catch (error) {
@@ -174,7 +176,7 @@ const MyOrders = () => {
 
               return (
                 <div 
-                  key={order.order_id} 
+                  key={order.secure_token} 
                   className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-all border-2 border-pink-100 overflow-hidden"
                 >
                   <div className="bg-gradient-to-r from-pink-50 to-cyan-50 p-4 border-b-2 border-pink-100">
@@ -260,7 +262,7 @@ const MyOrders = () => {
 
                     <div className="flex flex-wrap gap-3">
                       <button
-                        onClick={() => handleViewDetails(order.order_id)}
+                        onClick={() => handleViewDetails(order.secure_token)}
                         className="flex-1 min-w-fit px-4 py-3 bg-gradient-to-r from-pink-100 to-cyan-100 text-gray-800 rounded-xl font-semibold hover:from-pink-200 hover:to-cyan-200 transition-all flex items-center justify-center gap-2"
                       >
                         <Eye className="w-4 h-4" />
@@ -270,7 +272,7 @@ const MyOrders = () => {
                       {/* ✅ Show Write Review button for delivered orders */}
                       {order.status === "delivered" && (
                         <button
-                          onClick={() => handleWriteReview(order.order_id)}
+                          onClick={() => handleWriteReview(order.secure_token)}
                           className="flex-1 min-w-fit px-4 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white rounded-xl font-semibold hover:from-yellow-500 hover:to-orange-500 transition-all flex items-center justify-center gap-2 shadow-md"
                         >
                           <Star className="w-4 h-4" />
@@ -290,7 +292,7 @@ const MyOrders = () => {
 
                       {(order.status === "pending" || order.status === "confirmed") && order.payment_status === "unpaid" && (
                         <button
-                          onClick={() => handleCancelOrder(order.order_id)}
+                          onClick={() => handleCancelOrder(order.secure_token)}
                           className="px-4 py-3 bg-red-100 text-red-700 rounded-xl font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2"
                         >
                           <XCircle className="w-4 h-4" />

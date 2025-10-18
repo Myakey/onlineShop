@@ -1,10 +1,6 @@
-
-const { PrismaClient } = require("@prisma/client");
 const productModels = require("../models/productsModel");
 const fs = require("fs");
 const path = require("path");
-
-const prisma = new PrismaClient();
 
 // Helper function to delete image file
 const deleteImageFile = (imagePath) => {
@@ -166,21 +162,15 @@ const deleteProductImage = async (req, res) => {
 const searchProduct = async (req, res) => {
   try {
     const q = req.query.q?.trim() || "";
-    console.log("Search query:", q);
 
     if (!q) {
-      const all = await prisma.products.findMany();
+      const all = await productModels.getAllProducts()
       return res.json(all);
     }
 
-    const products = await prisma.products.findMany({
-      where: {
-        OR: [
-          { name: { contains: q } },
-          { description: { contains: q } },
-        ],
-      },
-    });
+    const searchTerm = q;
+
+    const products = await productModels.searchProducts(searchTerm)
 
     res.json(products);
   } catch (error) {

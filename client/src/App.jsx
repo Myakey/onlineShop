@@ -32,9 +32,10 @@ import { UserProvider } from "./context/userContext";
 import { CartProvider } from "./context/cartContext";
 import Payment from "./pages/user/Payment";
 
+import WriteReview from "./pages/user/WriteReview";
+
 //Some debugs temporary files:
 import DebugPage from "./pages/DebugPage";
-import AdminDebugPage from "./pages/AdminDebugPage";
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
                 <Route path="/order" element={<Order />} />
                 <Route path="/order-list" element={<MyOrders />} />
                 <Route path="/payment/:token" element={<Payment />} />
+                <Route path="/orders/:token/review" element={<WriteReview />}/>
               </Route>
 
               {/* Admin Routes */}

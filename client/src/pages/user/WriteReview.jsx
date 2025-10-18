@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Star, Upload, X, Check, AlertCircle, ShoppingBag, Package } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import reviewService from '../../services/reviewService';
+import { getOrderByToken } from '../../services/orderService';
 import api from '../../services/api';
 
 export default function WriteReview() {
-  const { orderId } = useParams();
+  const { token } = useParams(); // Changed from orderId to token
   const navigate = useNavigate();
 
   const [order, setOrder] = useState(null);
@@ -20,12 +21,21 @@ export default function WriteReview() {
 
   useEffect(() => {
     loadOrderDetails();
-  }, [orderId]);
+  }, [token]);
 
   const loadOrderDetails = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get(`/orders/${orderId}`);
+      setError('');
+
+      // Use secure token to fetch order
+      const response = await getOrderByToken(token);
+      
+      if (!response.success) {
+        setError(response.message || 'Failed to load order');
+        return;
+      }
+
       const orderData = response.data;
 
       // Check if order is eligible for review
@@ -39,25 +49,37 @@ export default function WriteReview() {
       // Initialize review states for each product
       const initialStates = {};
       for (const item of orderData.items) {
-        // Check if product can be reviewed
-        const canReview = await reviewService.canUserReview(
-          item.product.product_id,
-          parseInt(orderId)
-        );
+        try {
+          // Check if product can be reviewed using order_id
+          const canReview = await reviewService.canUserReview(
+            item.product.product_id,
+            orderData.order_id // Use the actual order_id from response
+          );
 
-        initialStates[item.product.product_id] = {
-          rating: 5,
-          title: '',
-          comment: '',
-          images: [],
-          canReview: canReview.data?.canReview || false,
-          reason: canReview.data?.reason || '',
-        };
+          initialStates[item.product.product_id] = {
+            rating: 5,
+            title: '',
+            comment: '',
+            images: [],
+            canReview: canReview.data?.canReview || false,
+            reason: canReview.data?.reason || '',
+          };
+        } catch (err) {
+          console.error(`Failed to check review eligibility for product ${item.product.product_id}:`, err);
+          initialStates[item.product.product_id] = {
+            rating: 5,
+            title: '',
+            comment: '',
+            images: [],
+            canReview: false,
+            reason: 'Unable to verify review eligibility',
+          };
+        }
       }
       setReviewStates(initialStates);
     } catch (err) {
       console.error('Failed to load order:', err);
-      setError(err.response?.data?.message || 'Failed to load order details');
+      setError(err.response?.data?.message || 'Failed to load order details. This order may not exist or you do not have permission to access it.');
     } finally {
       setIsLoading(false);
     }
@@ -86,8 +108,24 @@ export default function WriteReview() {
       return;
     }
 
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB max
+      
+      if (!isValidType) {
+        setError('Only image files are allowed');
+        return false;
+      }
+      if (!isValidSize) {
+        setError('Image size must be less than 5MB');
+        return false;
+      }
+      return true;
+    });
+
     // Create preview URLs
-    const newImages = files.map(file => ({
+    const newImages = validFiles.map(file => ({
       file,
       preview: URL.createObjectURL(file)
     }));
@@ -99,9 +137,18 @@ export default function WriteReview() {
         images: [...currentImages, ...newImages]
       }
     }));
+
+    setError(''); // Clear error if successful
   };
 
   const removeImage = (productId, index) => {
+    const imageToRemove = reviewStates[productId].images[index];
+    
+    // Revoke object URL to prevent memory leaks
+    if (imageToRemove?.preview) {
+      URL.revokeObjectURL(imageToRemove.preview);
+    }
+
     setReviewStates(prev => ({
       ...prev,
       [productId]: {
@@ -136,7 +183,6 @@ export default function WriteReview() {
           formData.append('images', img.file);
         });
 
-        // You'll need an image upload endpoint
         try {
           const uploadResponse = await api.post('/upload/review-images', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -147,17 +193,18 @@ export default function WriteReview() {
         }
       }
 
-      // Submit review
+      // Submit review with actual order_id
       await reviewService.createReview({
         product_id: productId,
-        order_id: parseInt(orderId),
+        order_id: order.order_id, // Use the actual order_id from the order data
         rating: reviewData.rating,
         title: reviewData.title || null,
         comment: reviewData.comment,
         images: imageUrls.length > 0 ? imageUrls : null,
       });
 
-      setSuccess(`Review submitted for ${order.items.find(i => i.product.product_id === productId)?.product.name}`);
+      const productName = order.items.find(i => i.product.product_id === productId)?.product.name;
+      setSuccess(`Review submitted for ${productName}`);
 
       // Update review state to mark as reviewed
       setReviewStates(prev => ({
@@ -232,7 +279,7 @@ export default function WriteReview() {
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Unable to Load Order</h2>
               <p className="text-gray-600 mb-6">{error}</p>
               <button
-                onClick={() => navigate('/orders')}
+                onClick={() => navigate('/order-list')}
                 className="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-6 py-3 rounded-2xl hover:from-pink-600 hover:to-rose-600 font-semibold transition-all duration-300"
               >
                 Back to Orders
@@ -321,7 +368,7 @@ export default function WriteReview() {
                     <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
                       {item.product.image_url ? (
                         <img
-                          src={`http://localhost:8080${item.product.image_url}`}
+                          src={item.product.image_url}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                         />
@@ -464,7 +511,7 @@ export default function WriteReview() {
           {/* Back Button */}
           <div className="mt-8 text-center">
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate('/order-list')}
               className="bg-white text-gray-700 px-8 py-3 rounded-2xl hover:bg-gray-100 font-semibold shadow-lg transition-all duration-300 border-2 border-gray-200"
             >
               Back to Orders
