@@ -47,11 +47,5 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong!" });
 });
 
-// ⚡️ Only listen locally (NOT on Vercel)
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 8080;
-  app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
-}
-
-// ✅ Export the app for Vercel serverless
-module.exports = app;
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
