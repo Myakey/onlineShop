@@ -47,37 +47,37 @@ async function main() {
     // ===== SAMPLE PRODUCTS =====
     const productsCount = await prisma.products.count();
     
-    if (productsCount === 0) {
-      await prisma.products.createMany({
-        data: [
-          {
-            name: 'Wireless Headphones',
-            description: 'High-quality wireless headphones with noise cancellation',
-            price: 299000,
-            stock: 50,
-            image_url: 'https://via.placeholder.com/300'
-          },
-          {
-            name: 'Smart Watch',
-            description: 'Fitness tracking smartwatch with heart rate monitor',
-            price: 899000,
-            stock: 30,
-            image_url: 'https://via.placeholder.com/300'
-          },
-          {
-            name: 'Laptop Backpack',
-            description: 'Durable waterproof backpack for laptops up to 15.6 inch',
-            price: 249000,
-            stock: 100,
-            image_url: 'https://via.placeholder.com/300'
-          }
-        ]
-      });
+    // if (productsCount === 0) {
+    //   await prisma.products.createMany({
+    //     data: [
+    //       {
+    //         name: 'Wireless Headphones',
+    //         description: 'High-quality wireless headphones with noise cancellation',
+    //         price: 299000,
+    //         stock: 50,
+    //         image_url: 'https://via.placeholder.com/300'
+    //       },
+    //       {
+    //         name: 'Smart Watch',
+    //         description: 'Fitness tracking smartwatch with heart rate monitor',
+    //         price: 899000,
+    //         stock: 30,
+    //         image_url: 'https://via.placeholder.com/300'
+    //       },
+    //       {
+    //         name: 'Laptop Backpack',
+    //         description: 'Durable waterproof backpack for laptops up to 15.6 inch',
+    //         price: 249000,
+    //         stock: 100,
+    //         image_url: 'https://via.placeholder.com/300'
+    //       }
+    //     ]
+    //   });
       
-      console.log('✓ Sample products created');
-    } else {
-      console.log('✓ Products already exist, skipping');
-    }
+    //   console.log('✓ Sample products created');
+    // } else {
+    //   console.log('✓ Products already exist, skipping');
+    // }
 
     // ===== ALL INDONESIAN PROVINCES =====
     const provincesCount = await prisma.indonesian_provinces.count();

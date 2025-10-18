@@ -7,7 +7,7 @@ const handleError = (error, message) => {
   throw error;
 };
 
-// ==================== ORDER OPERATIONS ====================
+// ==================== USER ORDER OPERATIONS (using secure tokens) ====================
 
 // 1. CREATE ORDER - Checkout from cart
 export const createOrder = async (orderData) => {
@@ -29,13 +29,13 @@ export const getMyOrders = async () => {
   }
 };
 
-// 3. GET ORDER BY ID - Order detail page
-export const getOrderById = async (orderId) => {
+// 3. GET ORDER BY SECURE TOKEN - Order detail page (PRIMARY METHOD)
+export const getOrderByToken = async (secureToken) => {
   try {
-    const res = await api.get(`/orders/${orderId}`);
+    const res = await api.get(`/orders/secure/${secureToken}`);
     return res.data;
   } catch (err) {
-    handleError(err, "Error fetching order by ID");
+    handleError(err, "Error fetching order by token");
   }
 };
 
@@ -49,13 +49,13 @@ export const trackOrder = async (orderNumber) => {
   }
 };
 
-// 5. UPLOAD PAYMENT PROOF - Payment page
-export const uploadPaymentProof = async (orderId, file) => {
+// 5. UPLOAD PAYMENT PROOF - Payment page (using secure token)
+export const uploadPaymentProof = async (secureToken, file) => {
   try {
     const formData = new FormData();
     formData.append("paymentProof", file);
 
-    const res = await api.post(`/orders/${orderId}/payment-proof`, formData, {
+    const res = await api.post(`/orders/secure/${secureToken}/payment-proof`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
@@ -65,17 +65,17 @@ export const uploadPaymentProof = async (orderId, file) => {
   }
 };
 
-// 6. CANCEL ORDER - User can cancel pending orders
-export const cancelOrder = async (orderId) => {
+// 6. CANCEL ORDER - User can cancel pending orders (using secure token)
+export const cancelOrder = async (secureToken) => {
   try {
-    const res = await api.put(`/orders/${orderId}/cancel`, {});
+    const res = await api.put(`/orders/secure/${secureToken}/cancel`, {});
     return res.data;
   } catch (err) {
     handleError(err, "Error cancelling order");
   }
 };
 
-// ==================== ADMIN OPERATIONS ====================
+// ==================== ADMIN OPERATIONS (using order IDs) ====================
 
 // 7. GET ALL ORDERS (Admin only)
 export const getAllOrders = async () => {
@@ -87,7 +87,17 @@ export const getAllOrders = async () => {
   }
 };
 
-// 8. UPDATE ORDER STATUS (Admin only)
+// 8. GET ORDER BY ID (Admin only)
+export const getOrderById = async (orderId) => {
+  try {
+    const res = await api.get(`/orders/admin/${orderId}`);
+    return res.data;
+  } catch (err) {
+    handleError(err, "Error fetching order by ID");
+  }
+};
+
+// 9. UPDATE ORDER STATUS (Admin only)
 export const updateOrderStatus = async (orderId, status) => {
   try {
     const res = await api.put(`/orders/${orderId}/status`, { status });
@@ -97,7 +107,7 @@ export const updateOrderStatus = async (orderId, status) => {
   }
 };
 
-// 9. UPDATE PAYMENT STATUS (Admin only)
+// 10. UPDATE PAYMENT STATUS (Admin only)
 export const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null) => {
   try {
     const res = await api.put(`/orders/${orderId}/payment-status`, {
@@ -110,15 +120,30 @@ export const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod 
   }
 };
 
+// 11. CANCEL ORDER BY ID (Admin only)
+export const cancelOrderById = async (orderId) => {
+  try {
+    const res = await api.put(`/orders/admin/${orderId}/cancel`, {});
+    return res.data;
+  } catch (err) {
+    handleError(err, "Error cancelling order");
+  }
+};
+
 // Default export for cleaner imports
 export default {
+  // User operations (use secure tokens)
   createOrder,
   getMyOrders,
-  getOrderById,
+  getOrderByToken,
   trackOrder,
   uploadPaymentProof,
   cancelOrder,
+  
+  // Admin operations (use order IDs)
   getAllOrders,
+  getOrderById,
   updateOrderStatus,
   updatePaymentStatus,
+  cancelOrderById,
 };

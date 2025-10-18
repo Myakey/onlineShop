@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarAdmin from "../components/layout/NavbarAdmin";
 import { Edit3, Trash2, Eye, Plus } from "lucide-react";
+import productService from "../services/productService";
 
 const AdminProduct = () => {
   const navigate = useNavigate();
@@ -20,8 +21,8 @@ const AdminProduct = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:8080/api/products");
-      const data = await res.json();
+      const res = await productService.getProducts();
+      const data = res.data;
       setProducts(data);
     } catch (error) {
       console.error("Failed to fetch products:", error);
@@ -58,11 +59,7 @@ const AdminProduct = () => {
   const handleDeleteProduct = async (product) => {
     if (!window.confirm(`Hapus produk "${product.name}"?`)) return;
     try {
-      const res = await fetch(
-        `http://localhost:8080/api/products/${product.product_id}`,
-        { method: "DELETE" }
-      );
-      if (!res.ok) throw new Error("Gagal menghapus produk");
+      const res = await productService.deleteProduct(product.product_id);
       setProducts((prev) =>
         prev.filter((p) => p.product_id !== product.product_id)
       );

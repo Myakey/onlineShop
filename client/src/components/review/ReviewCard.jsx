@@ -1,56 +1,119 @@
-// src/components/admin/ReviewCard.jsx
-import React from 'react';
-import { X, MessageCircle, Star } from 'lucide-react';
+// Update the ReviewCard component to match the API response format
+import React from "react";
+import { Star, Trash2, Shield } from "lucide-react";
 
-const ReviewCard = ({ review, onDelete, onReply }) => {
-  const renderStars = (rating) => {
-    return (
-      <div className="flex space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
+const ReviewCard = ({ review, onDelete, currentUserId }) => {
+  const {
+    review_id,
+    rating,
+    title,
+    comment,
+    images = [],
+    is_verified,
+    created_at,
+    user,
+  } = review;
+
+  // Format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', { 
+      day: 'numeric', 
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  // Check if current user owns this review
+  const isOwner = currentUserId && user?.user_id === currentUserId;
+
+  console.log('review', review);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition-shadow">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          {/* User Avatar */}
+          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-pink-400 to-sky-400 flex items-center justify-center text-white font-bold">
+            {user?.profileImageUrl ? (
+              <img 
+                src={user.profileImageUrl} 
+                alt={user.username}
+                className="w-full h-full rounded-full object-cover"
+              />
+            ) : (
+              user?.username?.charAt(0).toUpperCase() || '?'
+            )}
+          </div>
+          
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-gray-900">
+                {user?.full_name || user?.username || 'Anonymous'}
+              </h4>
+              {is_verified && (
+                <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">
+                  <Shield size={12} />
+                  <span>Verified Purchase</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-gray-500">{formatDate(created_at)}</p>
+          </div>
+        </div>
+
+        {/* Delete Button - only show for review owner */}
+        {isOwner && onDelete && (
+          <button
+            onClick={() => onDelete(review_id)}
+            className="text-red-500 hover:text-red-700 transition-colors"
+            title="Hapus review"
+          >
+            <Trash2 size={18} />
+          </button>
+        )}
+      </div>
+
+      {/* Star Rating */}
+      <div className="flex items-center gap-1 mb-3">
+        {[...Array(5)].map((_, i) => (
           <Star
-            key={star}
-            className={`w-4 h-4 ${star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+            key={i}
+            size={18}
+            className={i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
           />
         ))}
       </div>
-    );
-  };
 
-  return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-lg">
-      <div className="h-48 bg-gray-300 flex items-center justify-center">
-        <div className="w-16 h-16 bg-gray-400 rounded"></div>
-      </div>
-      <div className="p-6">
-        {renderStars(review.rating)}
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">{review.title}</h3>
-        <p className="text-gray-600 text-sm mb-4">{review.body}</p>
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-800">{review.reviewer}</p>
-            <p className="text-xs text-gray-500">{review.date}</p>
-          </div>
+      {/* Review Title */}
+      {title && (
+        <h5 className="font-semibold text-gray-900 mb-2 text-lg">
+          {title}
+        </h5>
+      )}
+
+      {/* Review Comment */}
+      {comment && (
+        <p className="text-gray-700 mb-4 leading-relaxed">
+          {comment}
+        </p>
+      )}
+
+      {/* Review Images */}
+      {images && images.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          {images.map((img, idx) => (
+            <img
+              key={idx}
+              src={img}
+              alt={`Review ${idx + 1}`}
+              className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => window.open(img, '_blank')}
+            />
+          ))}
         </div>
-        <div className="space-y-2">
-          <button
-            onClick={() => onDelete(review.id)}
-            className="w-full py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors flex items-center justify-center"
-          >
-            <X className="w-4 h-4 mr-2" /> Delete Review
-          </button>
-          <button
-            onClick={() => onReply(review.id)}
-            className="w-full py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
-          >
-            <MessageCircle className="w-4 h-4 mr-2" /> Reply
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -161,34 +161,45 @@ exports.getProductsPaginated = async (page = 1, limit = 10) => {
 // Search products by name or description
 exports.searchProducts = async (searchTerm) => {
   try {
-    const products = await prisma.products.findMany({
-      where: {
-        OR: [
-          {
-            name: {
-              contains: searchTerm,
-              mode: 'insensitive' // Case-insensitive search
-            }
-          },
-          {
-            description: {
-              contains: searchTerm,
-              mode: 'insensitive'
-            }
-          }
-        ]
-      },
-      orderBy: {
-        name: 'asc'
-      }
-    });
-    
+    const term = searchTerm?.trim();
+    if (!term) {
+      // If empty, just return all products
+      const all = await prisma.products.findMany({
+        orderBy: { name: 'asc' },
+      });
+      return addFullImageUrls(all);
+    }
+
+    // Try full-text search first
+    const products = await prisma.$queryRaw`
+      SELECT 
+        p.*,
+        MATCH(p.name, p.description) AGAINST (${term} IN NATURAL LANGUAGE MODE) AS relevance
+      FROM products AS p
+      WHERE MATCH(p.name, p.description) AGAINST (${term} IN NATURAL LANGUAGE MODE)
+      ORDER BY relevance DESC
+      LIMIT 50;
+    `;
+
+    // Fallback: if no fulltext hits, use basic contains
+    if (products.length === 0) {
+      const fallback = await prisma.products.findMany({
+        where: {
+          OR: [
+            { name: { contains: term } },
+            { description: { contains: term } },
+          ],
+        },
+        orderBy: { name: 'asc' },
+      });
+      return addFullImageUrls(fallback);
+    }
+
     return addFullImageUrls(products);
   } catch (error) {
     throw new Error(`Error searching products: ${error.message}`);
   }
 };
-
 // Update product stock
 exports.updateProductStock = async (productId, newStock) => {
   try {

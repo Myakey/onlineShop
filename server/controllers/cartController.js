@@ -4,7 +4,6 @@ const cartModels = require("../models/cartModel");
 const getCart = async (req, res) => {
   try {
     const userId = req.user.id; // From authenticated user
-    console.log("Fetching cart for user ID:", userId);
     const cart = await cartModels.getOrCreateCart(userId);
 
     res.json({

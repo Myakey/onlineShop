@@ -63,13 +63,13 @@ const HeroSection = () => {
             {/* Content must stay on top */}
             <div className="relative z-10 flex flex-col items-center justify-center text-center">
               <div className="text-8xl mb-6">{slide.emoji}</div>
-              <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-white via-pink-100 to-purple-200 bg-clip-text text-transparent drop-shadow-lg">
+              <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-white via-pink-100 to-purple-200 bg-clip-text text-transparent drop-shadow-lg select-none">
                 {slide.title}
               </h1>
-              <p className="text-xl md:text-2xl text-white font-semibold mb-10 max-w-2xl mx-auto drop-shadow-md">
+              <p className="text-xl md:text-2xl text-white font-semibold mb-10 max-w-2xl mx-auto drop-shadow-md select-none">
                 {slide.desc}
               </p>
-              <button className="group px-8 py-5 bg-gradient-to-r from-pink-400 to-purple-500 rounded-2xl font-bold text-lg text-white shadow-2xl hover:shadow-pink-400/50 transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2">
+              <button className="group px-8 py-5 bg-gradient-to-r from-pink-400 to-purple-500 rounded-2xl font-bold text-lg text-white shadow-2xl hover:shadow-pink-400/50 transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2" onClick={() => window.location.href = '/products'}>
                 <span>Belanja Sekarang</span>
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>

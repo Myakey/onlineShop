@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useCart } from "../context/cartContext";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import HeroSection from "../components/sections/HeroSection";
-import TimelineSection from "../components/sections/TimelineSection";
-import ProductInfoSection from "../components/sections/ProductInfoSection";
-import ProductGrid from "../components/sections/ProductGrid";
-import NewsletterSection from "../components/sections/NewsletterSection";
+import { useCart } from "../../context/cartContext";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
+import HeroSection from "../../components/sections/HeroSection";
+import TimelineSection from "../../components/sections/TimelineSection";
+import ProductInfoSection from "../../components/sections/ProductInfoSection";
+import ProductGrid from "../../components/sections/ProductGrid";
+import NewsletterSection from "../../components/sections/NewsletterSection";
 
 function Home() {
   const [products, setProducts] = useState([]);

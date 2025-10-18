@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, Grid, List } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import ProductCard from "../components/product/ProductCard";
-import FilterPanel from "../components/product/FilterPanel";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
+import ProductCard from "../../components/product/ProductCard";
+import FilterPanel from "../../components/product/FilterPanel";
+import productService from "../../services/productService";
 
 const Product = () => {
   const [products, setProducts] = useState([]);
@@ -26,14 +27,15 @@ const Product = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const endpoint = searchTerm
-          ? `http://localhost:8080/api/products/search?q=${encodeURIComponent(searchTerm)}`
-          : `http://localhost:8080/api/products`;
 
-        const res = await fetch(endpoint);
-        const data = await res.json();
+        let data;
+        if (searchTerm.trim() === "") {
+          data = await productService.getProducts();
+        } else {
+          data = await productService.searchProduct(searchTerm);
+        }
 
-        const formattedData = data.map((p) => ({
+        const formattedData = data.data.map((p) => ({
           ...p,
           price: parseFloat(p.price),
         }));
@@ -46,12 +48,14 @@ const Product = () => {
       }
     };
 
-    const delay = setTimeout(fetchProducts, 400); // debounce API calls
+    const delay = setTimeout(fetchProducts, 400); // debounce
     return () => clearTimeout(delay);
   }, [searchTerm]);
 
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = product.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     let matchesPrice = true;
 
     return matchesSearch && matchesPrice;
@@ -122,10 +126,14 @@ const Product = () => {
       <div className="px-8 py-12 flex-1">
         <div className="max-w-7xl mx-auto">
           {loading ? (
-            <div className="text-center py-16 text-gray-500">Loading products...</div>
+            <div className="text-center py-16 text-gray-500">
+              Loading products...
+            </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-gray-500 text-xl">Tidak ada boneka ditemukan</p>
+              <p className="text-gray-500 text-xl">
+                Tidak ada boneka ditemukan
+              </p>
             </div>
           ) : (
             <>

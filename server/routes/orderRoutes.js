@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
 const { authenticateToken } = require("../middleware/authMiddleware");
-// const { isAdmin } = require("../middleware/roleMiddleware");
+const { requireAdmin } = require("../middleware/authMiddleware");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs"); 
@@ -14,6 +14,7 @@ const uploadDirectory = "uploads/payment_proofs/";
 if (!fs.existsSync(uploadDirectory)) {
     fs.mkdirSync(uploadDirectory, { recursive: true });
 }
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/payment_proofs/");
@@ -39,13 +40,13 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
 
-// ==================== USER ROUTES ====================
+// ==================== USER ROUTES (using secure tokens) ====================
 
 // Get user's own orders
 router.get("/my-orders", authenticateToken, orderController.getOrdersByUser);
 
-// Get single order by ID (user can only view their own)
-router.get("/:id", authenticateToken, orderController.getOrderById);
+// Get single order by SECURE TOKEN (primary method for users)
+router.get("/secure/:token", authenticateToken, orderController.getOrderByToken);
 
 // Get order by order number (for tracking)
 router.get("/track/:orderNumber", authenticateToken, orderController.getOrderByOrderNumber);
@@ -53,26 +54,32 @@ router.get("/track/:orderNumber", authenticateToken, orderController.getOrderByO
 // Create new order (checkout)
 router.post("/", authenticateToken, orderController.createOrder);
 
-// Upload payment proof
+// Upload payment proof (using secure token)
 router.post(
-  "/:id/payment-proof",
+  "/secure/:token/payment-proof",
   authenticateToken,
   upload.single("paymentProof"),
   orderController.uploadPaymentProof
 );
 
-// Cancel order (user can cancel their own pending orders)
-router.put("/:id/cancel", authenticateToken, orderController.cancelOrder);
+// Cancel order (user can cancel their own pending orders using token)
+router.put("/secure/:token/cancel", authenticateToken, orderController.cancelOrder);
 
-// ==================== ADMIN ROUTES ====================
+// ==================== ADMIN ROUTES (using order IDs) ====================
 
 // Get all orders (admin only)
-router.get("/", authenticateToken, orderController.getAllOrders);
+router.get("/", authenticateToken, requireAdmin, orderController.getAllOrders);
+
+// Get order by ID (admin only)
+router.get("/admin/:id", authenticateToken, requireAdmin, orderController.getOrderById);
 
 // Update order status (admin only)
-router.put("/:id/status", authenticateToken, orderController.updateOrderStatus);
+router.put("/:id/status", authenticateToken, requireAdmin, orderController.updateOrderStatus);
 
 // Update payment status (admin only)
-router.put("/:id/payment-status", authenticateToken, orderController.updatePaymentStatus);
+router.put("/:id/payment-status", authenticateToken, requireAdmin, orderController.updatePaymentStatus);
+
+// Cancel order by ID (admin only)
+router.put("/admin/:id/cancel", authenticateToken, requireAdmin, orderController.cancelOrderById);
 
 module.exports = router;
