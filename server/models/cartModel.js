@@ -114,11 +114,13 @@ const addItemToCart = async (userId, productId, quantity = 1) => {
   try {
     // Get or create cart
     const cart = await getOrCreateCart(userId);
-
+   
     // Check if product exists and has sufficient stock
     const product = await prisma.products.findUnique({
       where: { product_id: parseInt(productId) },
     });
+
+    console.log(product);
 
     if (!product) {
       throw new Error("Product not found");

@@ -9,10 +9,11 @@ import {
   Loader2,
   AlertCircle,
   CreditCard,
-  Eye
+  Eye,
+  Star
 } from "lucide-react";
-import orderService from "../services/orderService";
-import Navbar from "../components/layout/Navbar";
+import orderService from "../../services/orderService";
+import Navbar from "../../components/layout/Navbar";
 
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -74,6 +75,10 @@ const MyOrders = () => {
 
   const handlePayNow = (orderId) => {
     window.location.href = `/payment/${orderId}`;
+  };
+
+  const handleWriteReview = (orderId) => {
+    window.location.href = `/orders/${orderId}/review`;
   };
 
   const handleCancelOrder = async (orderId) => {
@@ -208,12 +213,22 @@ const MyOrders = () => {
                       </div>
                     )}
 
+                    {/* ✅ Show review reminder for delivered orders */}
+                    {order.status === "delivered" && (
+                      <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl flex items-center gap-2">
+                        <Star className="w-5 h-5 text-yellow-600" />
+                        <span className="text-sm text-yellow-700 font-semibold">
+                          Share your experience! Write a review for this order
+                        </span>
+                      </div>
+                    )}
+
                     <div className="mb-4">
                       <div className="grid grid-cols-1 gap-3">
                         {order.items.slice(0, 2).map((item, idx) => (
                           <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
                             <img 
-                              src={item.product.image_url || '/api/placeholder/60/60'} 
+                              src={item.product.image_url ? `${item.product.image_url}` : '/api/placeholder/60/60'} 
                               alt={item.product.name}
                               className="w-16 h-16 object-cover rounded-lg"
                             />
@@ -252,9 +267,20 @@ const MyOrders = () => {
                         View Details
                       </button>
 
+                      {/* ✅ Show Write Review button for delivered orders */}
+                      {order.status === "delivered" && (
+                        <button
+                          onClick={() => handleWriteReview(order.order_id)}
+                          className="flex-1 min-w-fit px-4 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-white rounded-xl font-semibold hover:from-yellow-500 hover:to-orange-500 transition-all flex items-center justify-center gap-2 shadow-md"
+                        >
+                          <Star className="w-4 h-4" />
+                          Write Review
+                        </button>
+                      )}
+
                       {order.payment_status === "unpaid" && !order.payment_proof && (
                         <button
-                          onClick={() => handlePayNow(order.order_id)}
+                          onClick={() => handlePayNow(order.secure_token)}
                           className="flex-1 min-w-fit px-4 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
                         >
                           <CreditCard className="w-4 h-4" />

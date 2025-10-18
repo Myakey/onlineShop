@@ -1,7 +1,6 @@
 // src/services/authService.js
 import axios from "axios";
 
-
 const rootURL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 const authApi = axios.create({
   baseURL: `${rootURL}/auth`,
@@ -15,28 +14,84 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ✅ SECURITY FIX: Helper to sanitize user data before storing
+const sanitizeUserData = (user) => {
+  return {
+    id: user.id,
+    username: user.username,
+    type: user.type,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    emailVerified: user.emailVerified,
+    profileImageUrl: user.profileImageUrl
+    // ❌ Explicitly exclude sensitive data:
+    // - addresses
+    // - phoneNumber
+    // - email
+    // - profileImageUrl (can be fetched when needed)
+  };
+};
+
 const authService = {
-  /** LOGIN */
+  /** LOGIN - SECURE VERSION */
   async login(credentials) {
     const { data } = await api.post("/login", credentials);
+    
+    // Store tokens
+    if (data.accessToken) {
+      localStorage.setItem("accessToken", data.accessToken);
+    }
+    if (data.refreshToken) {
+      localStorage.setItem("refreshToken", data.refreshToken);
+    }
+    
+    // ✅ SECURITY FIX: Only store sanitized user data
+    if (data.user) {
+      const safeUser = sanitizeUserData(data.user);
+      localStorage.setItem("user", JSON.stringify(safeUser));
+    }
+    
     return data;
   },
 
-  /** REGISTER */
+  /** REGISTER - SECURE VERSION */
   async register(userData) {
     const { data } = await api.post("/register", userData);
+    
+    // Store tokens if provided after registration
+    if (data.accessToken) {
+      localStorage.setItem("accessToken", data.accessToken);
+    }
+    if (data.refreshToken) {
+      localStorage.setItem("refreshToken", data.refreshToken);
+    }
+    
+    // ✅ SECURITY FIX: Only store sanitized user data
+    if (data.user) {
+      const safeUser = sanitizeUserData(data.user);
+      localStorage.setItem("user", JSON.stringify(safeUser));
+    }
+    
     return data;
   },
 
-  /** GET PROFILE */
+  /** GET PROFILE - Returns full profile data (use in React state only) */
   async getProfile() {
     const { data } = await api.get("/profile");
+    // ⚠️ Don't store this in localStorage, use in React state/context
     return data;
   },
 
-  /** UPDATE PROFILE */
+  /** UPDATE PROFILE - SECURE VERSION */
   async updateProfile(profileData) {
     const { data } = await api.put("/profile", profileData);
+    
+    // ✅ SECURITY FIX: Update localStorage with sanitized data only
+    if (data.user) {
+      const safeUser = sanitizeUserData(data.user);
+      localStorage.setItem("user", JSON.stringify(safeUser));
+    }
+    
     return data;
   },
 
@@ -58,7 +113,11 @@ const authService = {
 
   /** AUTH HELPERS */
   isAuthenticated() {
-    return !!(localStorage.getItem("accessToken") && localStorage.getItem("user"));
+    return !!localStorage.getItem("accessToken");
+  },
+
+  getToken() {
+    return localStorage.getItem("accessToken");
   },
 
   getCurrentUser() {
@@ -97,9 +156,10 @@ const authService = {
     return res.data;
   },
 
-  /** ADDRESS MANAGEMENT */
+  /** ADDRESS MANAGEMENT - Fetch on demand, don't store in localStorage */
   async getAddresses() {
     const { data } = await api.get("/addresses");
+    // ⚠️ Use this data in React state, NOT localStorage
     return data;
   },
 
@@ -134,19 +194,30 @@ const authService = {
     return data;
   },
 
-  /** PROFILE IMAGE UPLOAD */
+  /** PROFILE IMAGE UPLOAD - SECURE VERSION */
   async uploadProfileImage(formData) {
     const { data } = await api.post("/upload-profile-image", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+    
+    // ✅ SECURITY FIX: Update localStorage with sanitized data
+    if (data.user) {
+      const safeUser = sanitizeUserData(data.user);
+      localStorage.setItem("user", JSON.stringify(safeUser));
+    }
+    
     return data;
   },
 
-  /** TOKEN VALIDATION */
+  /** TOKEN VALIDATION - SECURE VERSION */
   async validateToken() {
     try {
       const { data } = await api.get("/profile");
-      return { valid: true, user: data.user };
+      
+      // ✅ SECURITY FIX: Return sanitized user data
+      const safeUser = data.user ? sanitizeUserData(data.user) : null;
+      
+      return { valid: true, user: safeUser };
     } catch (error) {
       if ([401, 403].includes(error.response?.status)) {
         return { valid: false, user: null };

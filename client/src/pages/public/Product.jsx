@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, Grid, List } from "lucide-react";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import ProductCard from "../components/product/ProductCard";
-import FilterPanel from "../components/product/FilterPanel";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
+import ProductCard from "../../components/product/ProductCard";
+import FilterPanel from "../../components/product/FilterPanel";
 
 const Product = () => {
   const [products, setProducts] = useState([]);

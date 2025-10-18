@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import NavbarUser from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
+import NavbarUser from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
 import {
   ShoppingCart,
   Trash2,
@@ -17,8 +17,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import { useCart } from "../context/cartContext";
-import cartService from "../services/cartService";
+import { useCart } from "../../context/cartContext";
+import cartService from "../../services/cartService";
 
 const Cart = () => {
   const navigate = useNavigate();

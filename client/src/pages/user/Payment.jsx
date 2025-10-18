@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
 import { 
   Upload, 
   CheckCircle, 
@@ -12,13 +12,11 @@ import {
   Wallet,
   Image as ImageIcon
 } from "lucide-react";
-import orderService from "../services/orderService";
+import orderService from "../../services/orderService";
 
 const Payment = () => {
   const navigate = useNavigate();
-  const orderId = sessionStorage.getItem("newOrderId");
-
-  console.log("Payment page for order ID:", orderId);
+  const { token }= useParams();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,17 +37,17 @@ const Payment = () => {
   // Load order details
   useEffect(() => {
     loadOrderDetails();
-  }, [orderId]);
+  }, [token]);
 
   const loadOrderDetails = async () => {
     try {
       setLoading(true);
-      const data = await orderService.getOrderById(orderId);
+      const data = await orderService.getOrderByToken(token);
       console.log(data);
       setOrder(data?.data);
 
       if (data.payment_status === "paid") {
-        navigate(`/orders/${orderId}`);
+        navigate(`/orders/${token}`);
       }
     } catch (err) {
       console.error("Error loading order:", err);

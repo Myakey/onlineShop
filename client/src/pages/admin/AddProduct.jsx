@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import NavbarAdmin from "../components/layout/NavbarAdmin";
-import Footer from "../components/layout/Footer";
+import NavbarAdmin from "../../components/layout/NavbarAdmin";
+import Footer from "../../components/layout/Footer";
 import { Save, Upload, X } from "lucide-react";
 
 const API_URL = "http://localhost:8080/api/products";

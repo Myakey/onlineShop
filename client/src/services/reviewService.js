@@ -1,5 +1,5 @@
 // src/services/reviewService.js
-import api from "../api/api"; // your axios instance with token interceptor
+import api from "../services/api"; // your axios instance with token interceptor
 
 const reviewService = {
   // 🔹 Get all reviews for a specific product

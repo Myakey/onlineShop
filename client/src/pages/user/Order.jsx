@@ -2,23 +2,23 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 //REACT COMPONENTS
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import OrderAddress from "../components/order/OrderAddress";
-import OrderProducts from "../components/order/OrderProducts";
-import OrderShipping from "../components/order/OrderShipping";
-import OrderPayment from "../components/order/OrderPayment";
-import OrderVoucher from "../components/order/OrderVoucher";
-import OrderSummary from "../components/order/OrderSummary";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
+import OrderAddress from "../../components/order/OrderAddress";
+import OrderProducts from "../../components/order/OrderProducts";
+import OrderShipping from "../../components/order/OrderShipping";
+import OrderPayment from "../../components/order/OrderPayment";
+import OrderVoucher from "../../components/order/OrderVoucher";
+import OrderSummary from "../../components/order/OrderSummary";
 
 //API SERVICES
-import authService from "../services/authService";
-import kurirService from "../services/kurirService";
-import orderService from "../services/orderService";
+import authService from "../../services/authService";
+import kurirService from "../../services/kurirService";
+import orderService from "../../services/orderService";
 
 //ICONS
 import { Loader2 } from "lucide-react";
-import { useCart } from "../context/cartContext";
+import { useCart } from "../../context/cartContext";
 
 /**
  * Preferences and keywords (case-insensitive checks)
@@ -441,10 +441,9 @@ const Order = () => {
       
       // Clear session storage
       sessionStorage.removeItem("checkoutData");
-      sessionStorage.setItem("newOrderId", resData?.data?.order_id);
       
       // Redirect to payment page with order ID
-      navigate(`/payment`);
+      navigate(`/payment/${resData.data?.secure_token}`);
     } else {
       throw new Error(resData?.message || "Order creation failed");
     }

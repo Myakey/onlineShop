@@ -1,6 +1,7 @@
-// models/order.js
+// models/orderModel.js
 
 const { PrismaClient } = require("@prisma/client");
+const crypto = require("crypto");
 const prisma = new PrismaClient();
 
 const addFullImageUrls = (products) => {
@@ -17,6 +18,28 @@ const addFullImageUrls = (products) => {
       image_url: products.image_url ? `${baseUrl}${products.image_url}` : null
     };
   }
+};
+
+// Generate secure random token for URL with collision checking
+const generateSecureToken = async () => {
+  const maxRetries = 10;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    const existingOrder = await prisma.orders.findUnique({
+      where: { secure_token: token },
+      select: { order_id: true }
+    });
+    
+    if (!existingOrder) {
+      return token;
+    }
+    
+    console.warn(`Token collision detected (attempt ${i + 1}/${maxRetries}), generating new token...`);
+  }
+  
+  throw new Error('Failed to generate unique secure token after multiple attempts');
 };
 
 // Get all orders (admin)
@@ -94,7 +117,50 @@ const getOrdersByUser = async (userId) => {
   }
 };
 
-// Get single order by ID
+// Get single order by secure token (NEW - PRIMARY USER METHOD)
+const getOrderByToken = async (secureToken) => {
+  try {
+    const order = await prisma.orders.findUnique({
+      where: {
+        secure_token: secureToken
+      },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+            email: true,
+            first_name: true,
+            last_name: true,
+            phone_number: true
+          }
+        },
+        address: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return null;
+    }
+
+    return {
+      ...order,
+      items: order.items.map(item => ({
+        ...item,
+        product: addFullImageUrls(item.product)
+      }))
+    };
+  } catch (error) {
+    throw new Error(`Error fetching order by token: ${error.message}`);
+  }
+};
+
+// Get single order by ID (keep for admin use)
 const getOrderById = async (orderId) => {
   try {
     const order = await prisma.orders.findUnique({
@@ -151,7 +217,8 @@ const getOrderByOrderNumber = async (orderNumber) => {
             username: true,
             email: true,
             first_name: true,
-            last_name: true
+            last_name: true,
+            phone_number: true
           }
         },
         address: true,
@@ -195,6 +262,9 @@ const createOrder = async (orderData) => {
       decrementStock = false
     } = orderData;
 
+    // Generate unique secure token before transaction
+    const secureToken = await generateSecureToken();
+
     const newOrder = await prisma.$transaction(async (tx) => {
       // Validate stock availability first
       if (items.length > 0) {
@@ -213,12 +283,13 @@ const createOrder = async (orderData) => {
         }
       }
 
-      // Create the order
+      // Create the order with secure token
       const order = await tx.orders.create({
         data: {
           user_id: parseInt(user_id),
           address_id: parseInt(address_id),
           order_number,
+          secure_token: secureToken,
           total_amount,
           status,
           payment_method,
@@ -291,16 +362,16 @@ const createOrder = async (orderData) => {
   }
 };
 
-// Update payment proof
-const updatePaymentProof = async (orderId, paymentProofPath) => {
+// Update payment proof (using secure token)
+const updatePaymentProof = async (secureToken, paymentProofPath) => {
   try {
     const updatedOrder = await prisma.orders.update({
       where: {
-        order_id: parseInt(orderId)
+        secure_token: secureToken
       },
       data: {
         payment_proof: paymentProofPath,
-        status: 'confirmed' // Move to confirmed when payment proof uploaded
+        status: 'confirmed'
       },
       include: {
         items: {
@@ -323,7 +394,7 @@ const updatePaymentProof = async (orderId, paymentProofPath) => {
   }
 };
 
-// Update order status
+// Update order status (admin only - uses order_id)
 const updateOrderStatus = async (orderId, status) => {
   try {
     const updatedOrder = await prisma.orders.update({
@@ -354,7 +425,7 @@ const updateOrderStatus = async (orderId, status) => {
   }
 };
 
-// Update payment status
+// Update payment status (admin only - uses order_id)
 const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null) => {
   try {
     const updateData = {
@@ -410,33 +481,63 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
           where: { order_id: parseInt(orderId) },
           data: {
             ...updateData,
-            status: 'processing' // Auto move to processing when paid
+            status: 'processing'
+          },
+          include: {
+            items: {
+              include: {
+                product: true
+              }
+            }
           }
         });
       });
 
-      return updatedOrder;
+      return {
+        ...updatedOrder,
+        items: updatedOrder.items.map(item => ({
+          ...item,
+          product: addFullImageUrls(item.product)
+        }))
+      };
     } else {
       const updatedOrder = await prisma.orders.update({
         where: {
           order_id: parseInt(orderId)
         },
-        data: updateData
+        data: updateData,
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          }
+        }
       });
 
-      return updatedOrder;
+      return {
+        ...updatedOrder,
+        items: updatedOrder.items.map(item => ({
+          ...item,
+          product: addFullImageUrls(item.product)
+        }))
+      };
     }
   } catch (error) {
     throw new Error(`Error updating payment status: ${error.message}`);
   }
 };
 
-// Cancel order
-const cancelOrder = async (orderId) => {
+// Cancel order (can use secure_token or order_id)
+const cancelOrder = async (identifier, useToken = true) => {
   try {
     const cancelledOrder = await prisma.$transaction(async (tx) => {
+      const whereClause = useToken 
+        ? { secure_token: identifier }
+        : { order_id: parseInt(identifier) };
+
       const order = await tx.orders.findUnique({
-        where: { order_id: parseInt(orderId) },
+        where: whereClause,
         include: { items: true }
       });
 
@@ -459,7 +560,7 @@ const cancelOrder = async (orderId) => {
       }
 
       return await tx.orders.update({
-        where: { order_id: parseInt(orderId) },
+        where: whereClause,
         data: {
           status: 'cancelled'
         },
@@ -496,11 +597,13 @@ module.exports = {
   getAllOrders,
   getOrdersByUser,
   getOrderById,
+  getOrderByToken,
   getOrderByOrderNumber,
   createOrder,
   updatePaymentProof,
   updateOrderStatus,
   updatePaymentStatus,
   cancelOrder,
-  generateOrderNumber
+  generateOrderNumber,
+  generateSecureToken
 };

@@ -2,12 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ShoppingCart, Minus, Plus, Star, ArrowLeft, Loader2 } from "lucide-react";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
-import ReviewCard from "../components/review/ReviewCard";
-import ReviewStats from "../components/review/ReviewStats";
-import ReviewFilters from "../components/review/ReviewFilters";
-import { useCart } from "../context/cartContext";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
+import ReviewCard from "../../components/review/ReviewCard";
+import ReviewStats from "../../components/review/ReviewStats";
+import ReviewFilters from "../../components/review/ReviewFilters";
+
+//
+import { useCart } from "../../context/cartContext";
+import { useReviews } from "../../hooks/reviewHook";
 
 const ProductDetails = () => {
   const { id } = useParams();

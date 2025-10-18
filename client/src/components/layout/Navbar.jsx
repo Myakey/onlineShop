@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
   Package,
@@ -21,16 +21,30 @@ import { useCart } from "../../context/cartContext";
 
 const Navbar = ({ currentPage = "home" }) => {
   const { user, loading, isAuthenticated, isAdmin } = useUser();
+  console.log("User in Navbar:", user);
   const { cartCount } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPageState, setCurrentPageState] = useState(currentPage);
+  const [currentPageState, setCurrentPageState] = useState({path:"", key: "" });
   const navigate = useNavigate();
+  const location = useLocation();
 
   const toggleMenu = () => setIsMenuOpen((prev) => !prev);
   const toggleProfile = () => setShowProfile((prev) => !prev);
   const clearSearch = () => setSearchQuery("");
+
+   useEffect(() => {
+    const currentPath = location.pathname;
+    let key = "home";
+
+    // optional: map paths to readable keys
+    if (currentPath === "/products") key = "products";
+    else if (currentPath === "/dashboard") key = "home";
+    else if (currentPath === "/cart") key = "cart";
+
+    setCurrentPageState({ path: currentPath, key });
+  }, [location.pathname]);
 
   const getIcon = (key) => {
     const icons = {
@@ -44,6 +58,11 @@ const Navbar = ({ currentPage = "home" }) => {
     };
     return icons[key] || <Home className="w-8 h-8" />;
   };
+
+  const goToHome = () => { 
+    navigate("/dashboard");
+  }
+
 
   const goToProfile = () => {
     navigate("/profile");
@@ -131,7 +150,8 @@ const Navbar = ({ currentPage = "home" }) => {
 
 
   const handleNavClick = (path, key) => {
-    setCurrentPageState(key);
+    setCurrentPageState({key, path});
+
     setIsMenuOpen(false);
     navigate(path);
     console.log("Navigate to:", path);
@@ -169,7 +189,7 @@ const Navbar = ({ currentPage = "home" }) => {
               ></div>
             </div>
           </button>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2" onClick={goToHome} style={{cursor: 'pointer'}}>
             <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center shadow-md">
               <svg
                 className="w-6 h-6 text-pink-500"
@@ -179,7 +199,7 @@ const Navbar = ({ currentPage = "home" }) => {
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
             </div>
-            <span className="text-pink-700 font-bold text-xl hidden md:block">
+            <span className="text-pink-700 font-bold text-xl hidden md:block select-none">
               Ambalabus
             </span>
           </div>
@@ -261,10 +281,10 @@ const Navbar = ({ currentPage = "home" }) => {
                         </div>
                         <div>
                           <h3 className="font-bold text-lg">
-                            {user?.name || "User"}
+                            {user?.firstName || "User"}
                           </h3>
                           <p className="text-sm text-pink-700/80">
-                            {user?.email || "user@example.com"}
+                            {(user?.firstName + " " + (user?.lastName ? user?.lastName : "")) || "Full Name"}
                           </p>
                         </div>
                       </div>
@@ -348,7 +368,7 @@ const Navbar = ({ currentPage = "home" }) => {
                 key={item.key}
                 onClick={() => handleNavClick(item.path, item.key)}
                 className={`group relative overflow-hidden rounded-3xl bg-white p-8 shadow-md hover:shadow-lg transition-all duration-500 transform hover:-translate-y-3 ${
-                  currentPageState === item.key
+                  currentPageState.key === item.key
                     ? "ring-4 ring-cyan-300 scale-105"
                     : ""
                 }`}
@@ -359,7 +379,7 @@ const Navbar = ({ currentPage = "home" }) => {
                 <div className="relative z-10">
                   <div
                     className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 shadow-md ${
-                      currentPageState === item.key
+                      currentPageState.key === item.key
                         ? "bg-gradient-to-br from-pink-400 to-cyan-300 text-white scale-110"
                         : "bg-gradient-to-br from-pink-50 to-cyan-50 text-pink-500 group-hover:from-pink-400 group-hover:to-cyan-300 group-hover:text-white group-hover:scale-110"
                     }`}
@@ -369,7 +389,7 @@ const Navbar = ({ currentPage = "home" }) => {
 
                   <h3
                     className={`font-bold text-2xl mb-3 transition-colors duration-300 ${
-                      currentPageState === item.key
+                      currentPageState.key === item.key
                         ? "text-pink-600"
                         : "text-gray-800 group-hover:text-cyan-500"
                     }`}
@@ -381,7 +401,7 @@ const Navbar = ({ currentPage = "home" }) => {
                     {item.description}
                   </p>
 
-                  {currentPageState === item.key ? (
+                  {currentPageState.key === item.key ? (
                     <div className="inline-flex items-center text-sm font-bold text-cyan-600 bg-cyan-100 px-4 py-2 rounded-full">
                       <span>✓ Halaman Aktif</span>
                     </div>

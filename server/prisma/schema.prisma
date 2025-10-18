@@ -117,6 +117,7 @@ model orders {
   user_id          Int
   address_id       Int
   order_number     String         @unique @db.VarChar(50)
+  secure_token     String         @unique @db.VarChar(100)  
   total_amount     Decimal        @db.Decimal(10, 2)
   shipping_cost    Decimal?       @db.Decimal(10, 2)
   voucher_discount Decimal?       @db.Decimal(10, 2)
@@ -135,6 +136,7 @@ model orders {
 
   @@index([address_id], map: "orders_address_id_fkey")
   @@index([user_id], map: "orders_user_id_fkey")
+  @@index([secure_token])  // ⭐ NEW INDEX for fast lookups
   @@map("orders")
 }
 

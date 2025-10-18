@@ -1,18 +1,18 @@
 import "./App.css";
-import HomePage from "./pages/Home";
+import HomePage from "./pages/public/Home";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
-import About from "./pages/About";
+import About from "./pages/public/About";
 import Login from "./pages/Login";
-import Profile from "./pages/Profile";
+import Profile from "./pages/user/Profile";
 
 // import AdminPage from "./pages/admin";
-import CartPage from "./pages/Cart";
+import CartPage from "./pages/user/Cart";
 import Register from "./pages/Register";
 
 // Admin pages
 import AdminPage from "./pages/AdminPage";
-import AddProduct from "./pages/AddProduct";
+import AddProduct from "./pages/admin/AddProduct";
 import AdminProduct from "./pages/AdminProduct";
 import AdminOrder from "./pages/AdminOrder";
 import AdminOrderDetail from "./pages/AdminOrderDetail";
@@ -20,17 +20,17 @@ import AdminProductDetail from "./pages/AdminProductDetail";
 import AdminProductEdit from "./pages/AdminProductEdit";
 
 // Product pages
-import Product from "./pages/Product";
-import ProductDetails from "./pages/ProductDetails";
+import Product from "./pages/public/Product";
+import ProductDetails from "./pages/public/ProductDetails";
 
 // Review & Order pages
 import Reviews from "./pages/AdminReviews";
-import Order from "./pages/Order";
-import MyOrders from "./pages/OrderList";
+import Order from "./pages/user/Order";
+import MyOrders from "./pages/user/OrderList";
 
 import { UserProvider } from "./context/userContext";
 import { CartProvider } from "./context/cartContext";
-import Payment from "./pages/Payment"
+import Payment from "./pages/user/Payment";
 
 //Some debugs temporary files:
 import DebugPage from "./pages/DebugPage";
@@ -51,27 +51,17 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/debug-page" element={<DebugPage />} />
               <Route path="/product/:id" element={<ProductDetails />} />
-
-              {/* Protected Routes */}
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/cart"
-                element={
-                  <ProtectedRoute>
-                    <CartPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/order" element={<Order />} />
               <Route path="/products" element={<Product />} />
-                <Route path="/payment" element={<Payment />} />
+
+              <Route element={<ProtectedRoute />}>
+                {/* Protected Routes */}
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/order" element={<Order />} />
+                <Route path="/order-list" element={<MyOrders />} />
+                <Route path="/payment/:token" element={<Payment />} />
+              </Route>
+
               {/* Admin Routes */}
               <Route
                 path="/admin-dashboard"
@@ -105,8 +95,6 @@ function App() {
                   </AdminRoute>
                 }
               />
-              <Route path="/order" element={<Order />} />
-              <Route path="/order-list" element={<MyOrders />} />
 
               {/* Admin Routes */}
               <Route

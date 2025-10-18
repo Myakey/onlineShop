@@ -20,14 +20,14 @@ const getAllOrders = async (req, res) => {
   }
 };
 
-// Get order by ID
-const getOrderById = async (req, res) => {
+// Get order by secure token (PRIMARY USER METHOD)
+const getOrderByToken = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { token } = req.params;
     const userId = req.user.id;
     const isAdmin = req.user.type === "admin";
 
-    const order = await orderModels.getOrderById(id);
+    const order = await orderModels.getOrderByToken(token);
 
     if (!order) {
       return res.status(404).json({
@@ -41,6 +41,41 @@ const getOrderById = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "You don't have permission to view this order",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: order,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+// Get order by ID (ADMIN ONLY - Keep for backward compatibility)
+const getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isAdmin = req.user.type === "admin";
+
+    // Only admin can access by ID
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Use secure token instead.",
+      });
+    }
+
+    const order = await orderModels.getOrderById(id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
       });
     }
 
@@ -167,7 +202,7 @@ const createOrder = async (req, res) => {
 
     const newOrder = await orderModels.createOrder(orderData);
 
-    console.log("New order created:", newOrder);
+    console.log("New order created:", newOrder.order_number);
 
     res.status(201).json({
       success: true,
@@ -182,10 +217,10 @@ const createOrder = async (req, res) => {
   }
 };
 
-// Upload payment proof
+// Upload payment proof (using secure token)
 const uploadPaymentProof = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { token } = req.params;
     const userId = req.user.id;
 
     // Check if file was uploaded
@@ -197,7 +232,7 @@ const uploadPaymentProof = async (req, res) => {
     }
 
     // Get order to check ownership
-    const order = await orderModels.getOrderById(id);
+    const order = await orderModels.getOrderByToken(token);
 
     if (!order) {
       return res.status(404).json({
@@ -226,7 +261,7 @@ const uploadPaymentProof = async (req, res) => {
     const paymentProofPath = `/uploads/payment_proofs/${req.file.filename}`;
 
     const updatedOrder = await orderModels.updatePaymentProof(
-      id,
+      token,
       paymentProofPath
     );
 
@@ -333,15 +368,15 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// Cancel order
+// Cancel order (using secure token for users)
 const cancelOrder = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { token } = req.params;
     const userId = req.user.id;
     const isAdmin = req.user.type === "admin";
 
     // Get order to check ownership
-    const order = await orderModels.getOrderById(id);
+    const order = await orderModels.getOrderByToken(token);
 
     if (!order) {
       return res.status(404).json({
@@ -367,7 +402,54 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    const cancelledOrder = await orderModels.cancelOrder(id);
+    const cancelledOrder = await orderModels.cancelOrder(token, true);
+
+    res.json({
+      success: true,
+      message: "Order cancelled successfully",
+      data: cancelledOrder,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+// Cancel order by ID (admin only)
+const cancelOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isAdmin = req.user.type === "admin";
+
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin access required",
+      });
+    }
+
+    // Get order first
+    const order = await orderModels.getOrderById(id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Check if order can be cancelled
+    const cancelableStatuses = ["pending", "confirmed"];
+    if (!cancelableStatuses.includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Order cannot be cancelled. Current status: ${order.status}`,
+      });
+    }
+
+    const cancelledOrder = await orderModels.cancelOrder(id, false);
 
     res.json({
       success: true,
@@ -385,6 +467,7 @@ const cancelOrder = async (req, res) => {
 module.exports = {
   getAllOrders,
   getOrderById,
+  getOrderByToken, // NEW - Primary method
   getOrderByOrderNumber,
   getOrdersByUser,
   createOrder,
@@ -392,4 +475,5 @@ module.exports = {
   updateOrderStatus,
   updatePaymentStatus,
   cancelOrder,
+  cancelOrderById, // NEW - Admin cancel by ID
 };

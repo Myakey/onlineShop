@@ -1,12 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
-import authService from '../services/authService';
+import authService from '../../services/authService';
 import { User, Phone, MapPin, Edit2, Trash2, Plus, X, Check, Camera } from 'lucide-react';
-import Navbar from '../components/layout/Navbar';
+import Navbar from '../../components/layout/Navbar';
+
+import { useUser } from '../../context/userContext';
 
 export default function Profile() {
-    const [user, setUser] = useState(null);
+    // ✅ SECURITY FIX: Separate state for sensitive data (NOT stored in localStorage)
+    const [user, setUser] = useState(null); // Full user data with email, phone, etc.
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
+    const { updateUserContext } = useUser();
 
     const [profileForm, setProfileForm] = useState({
         firstName: '',
@@ -48,11 +52,13 @@ export default function Profile() {
         loadProvinces();
     }, []);
 
+    // ✅ SECURITY FIX: Fetch data but DON'T store sensitive info in localStorage
     const loadProfileData = async () => {
         try {
             const response = await authService.getProfile();
             const userData = response.user;
 
+            // ✅ Keep full data in React state only (memory)
             setUser(userData);
             setProfileForm({
                 firstName: userData.firstName || '',
@@ -61,13 +67,23 @@ export default function Profile() {
             });
             
             const addrs = userData.addresses || [];
-            console.log(addrs);
             setAddresses(addrs.map((a) => ({
                 ...a,
                 id: a.address_id || a.id || Math.random().toString(36).slice(2, 9)
             })));
 
-            localStorage.setItem('user', JSON.stringify(userData));
+            // ✅ SECURITY FIX: Only store sanitized user data in localStorage
+            const safeUserData = {
+                id: userData.id,
+                username: userData.username,
+                type: userData.type,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                emailVerified: userData.emailVerified,
+                profileImageUrl: userData.profileImageUrl, // Safe to store URL
+                // ❌ DON'T store: email, phoneNumber, addresses
+            };
+            localStorage.setItem('user', JSON.stringify(safeUserData));
         } catch (error) {
             console.error('Failed to load profile:', error);
             setMessage('Failed to load profile data');
@@ -89,7 +105,6 @@ export default function Profile() {
         try {
             const response = await authService.getCities(provinceId);
             setCities(response.cities || []);
-            console.log(response);
         } catch (error) {
             console.error('Failed to load cities:', error);
         }
@@ -98,7 +113,6 @@ export default function Profile() {
     const loadDistricts = async (cityId) => {
         try {
             const response = await authService.getDistricts(cityId);
-            console.log("response", response.districts)
             setDistricts(response.districts || []);
         } catch (error) {
             console.error('Failed to load districts:', error);
@@ -113,7 +127,9 @@ export default function Profile() {
 
         try {
             await authService.updateProfile(profileForm);
+            // ✅ Reload data to get updated info (stored securely)
             await loadProfileData();
+            await updateUserContext();
             setMessage('Profile updated successfully!');
         } catch (error) {
             console.error('Failed to update profile:', error);
@@ -145,8 +161,22 @@ export default function Profile() {
             formData.append('profileImage', file);
 
             const response = await authService.uploadProfileImage(formData);
+            
+            // ✅ SECURITY FIX: Update React state with new data
             setUser(response.user);
-            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            // ✅ Update localStorage with sanitized data (includes profileImageUrl)
+            const safeUserData = {
+                id: response.user.id,
+                username: response.user.username,
+                type: response.user.type,
+                firstName: response.user.firstName,
+                lastName: response.user.lastName,
+                emailVerified: response.user.emailVerified,
+                profileImageUrl: response.user.profileImageUrl,
+            };
+            localStorage.setItem('user', JSON.stringify(safeUserData));
+            await updateUserContext();
             setMessage('Profile image updated successfully!');
         } catch (error) {
             console.error('Upload failed:', error);
@@ -165,9 +195,23 @@ export default function Profile() {
         setIsUploading(true);
         try {
             await authService.deleteProfileImage();
+            
+            // ✅ Update React state
             const updatedUser = { ...user, profileImageUrl: null };
             setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            
+            // ✅ Update localStorage with sanitized data
+            const safeUserData = {
+                id: updatedUser.id,
+                username: updatedUser.username,
+                type: updatedUser.type,
+                firstName: updatedUser.firstName,
+                lastName: updatedUser.lastName,
+                emailVerified: updatedUser.emailVerified,
+                profileImageUrl: null,
+            };
+            localStorage.setItem('user', JSON.stringify(safeUserData));
+            
             setMessage('Profile image deleted successfully!');
         } catch (error) {
             setMessage('Failed to delete profile image');
@@ -234,7 +278,6 @@ export default function Profile() {
         setAddressForm(prev => ({ ...prev, city: cityId, district: '' }));
         if (cityId) {
             await loadDistricts(cityId);
-            console.log(districts);
         } else {
             setDistricts([]);
         }
@@ -254,6 +297,7 @@ export default function Profile() {
             }
 
             closeAddressModal();
+            // ✅ Reload profile data (addresses stored in React state only)
             await loadProfileData();
         } catch (error) {
             console.error('Error saving address:', error);
@@ -269,6 +313,7 @@ export default function Profile() {
         try {
             await authService.deleteAddress(addressId);
             setMessage('Address deleted successfully!');
+            // ✅ Reload profile data
             await loadProfileData();
         } catch (error) {
             console.error('Error deleting address:', error);
@@ -285,7 +330,7 @@ export default function Profile() {
                 (a.label || '').toLowerCase().includes(q) ||
                 (a.recipient_name || '').toLowerCase().includes(q) ||
                 (a.street_address || '').toLowerCase().includes(q) ||
-                (a.city || '').toLowerCase().includes(q) ||
+                (a.city?.city_name || '').toLowerCase().includes(q) ||
                 (a.postal_code || '').toLowerCase().includes(q)
             );
         })
@@ -538,9 +583,9 @@ export default function Profile() {
                                         <td className="py-4 px-4 align-top text-gray-700">{address.phone_number}</td>
                                         <td className="py-4 px-4 align-top leading-relaxed text-gray-700">
                                             {address.street_address}
-                                            {address.district.district_name && <><br /><span className="text-sm text-gray-600">{address.district.district_name}</span></>}
+                                            {address.district?.district_name && <><br /><span className="text-sm text-gray-600">{address.district.district_name}</span></>}
                                         </td>
-                                        <td className="py-4 px-4 align-top text-gray-700">{address.city.city_name}, {address.province.province_name}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700">{address.city?.city_name}, {address.province?.province_name}</td>
                                         <td className="py-4 px-4 align-top text-gray-700">{address.postal_code}</td>
                                         <td className="py-4 px-4 align-top">
                                             <div className="flex gap-2">
@@ -729,7 +774,7 @@ export default function Profile() {
 
                                     <div className="grid md:grid-cols-2 gap-5">
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">District (Optional)</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">District</label>
                                             <select
                                                 className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
                                                 value={addressForm.district}
@@ -744,13 +789,6 @@ export default function Profile() {
                                                     </option>
                                                 ))}
                                             </select>
-                                            {/* <input
-                                                type="text"
-                                                placeholder="Kecamatan"
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
-                                                value={addressForm.district}
-                                                onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
-                                            /> */}
                                         </div>
                                         <div className="space-y-2">
                                             <label className="block text-sm font-bold text-gray-700 mb-2">Postal Code</label>
