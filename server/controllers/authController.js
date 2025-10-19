@@ -2,11 +2,10 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const user = require("../models/userModel");
-const fs = require("fs");
 const path = require("path");
-const sharp = require("sharp");
 const { generateOTP, sendOTPEmail, sendWelcomeEmail } = require("../services/emailService");
 const { deleteOldImage } = require("../middleware/profilePicUpload");
+const cloudinary = require("../config/cloudinary");
 
 // Refresh tokens in memory (in production use Redis or database)
 let refreshTokens = [];
@@ -505,39 +504,39 @@ async function validateToken(req, res) {
     });
 }
 
+//Profile Picture Images that needs 
+
+const deleteOldImageFromCloudinary = async (imageUrl) => {
+    if (imageUrl && imageUrl.includes('cloudinary.com')) {
+        try {
+            const parts = imageUrl.split('/');
+            const filename = parts[parts.length - 1];
+            const publicId = `uploads/profiles/${filename.split('.')[0]}`;
+            await cloudinary.uploader.destroy(publicId);
+        } catch (err) {
+            console.error('Error deleting old image from Cloudinary:', err);
+        }
+    }
+};
+
 async function uploadProfileImage(req, res){
     try{
         if(!req.file){
             return res.status(400).json({error: "No File Upload"});
         }
 
-        const imagePath = req.file.path;
-
-        const resizedFileName = `${path.parse(req.file.filename).name}_300x300.jpg`;
-        const resizedPath = path.join('./uploads/profiles', resizedFileName);
-
-        await sharp(imagePath).resize(300, 300, { 
-                fit: 'cover',
-                position: 'center'
-            })
-            .jpeg({ quality: 90 })
-            .toFile(resizedPath);
-        
-        // Delete original large image
-        fs.unlinkSync(imagePath);
-        
-        const imageUrl = `/uploads/profiles/${resizedFileName}`;
+        // req.file.path is now the Cloudinary URL
+        const imageUrl = req.file.path;
 
         // Get current user data to find old image
         const currentUser = await user.findById(req.user.id);
         
-        // Delete old profile image if it exists
+        // Delete old profile image from Cloudinary if it exists
         if (currentUser.profile_image_url) {
-            const oldImagePath = path.join('./uploads', currentUser.profile_image_url.replace('/uploads/', ''));
-            deleteOldImage(oldImagePath);
+            await deleteOldImageFromCloudinary(currentUser.profile_image_url);
         }
 
-        // Update user profile with new image URL
+        // Update user profile with new Cloudinary URL
         await user.updateUser(req.user.id, { 
             profileImageUrl: imageUrl 
         });
@@ -562,10 +561,6 @@ async function uploadProfileImage(req, res){
         });
     } catch (err){
         console.error('Upload error:', err);
-        // Clean up uploaded file on error
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
         res.status(500).json({ error: 'Failed to upload image' });
     }
 }
@@ -578,9 +573,8 @@ async function deleteProfileImage(req, res) {
             return res.status(400).json({ error: 'No profile image to delete' });
         }
 
-        // Delete image file
-        const imagePath = path.join('./uploads', currentUser.profile_image_url.replace('/uploads/', ''));
-        deleteOldImage(imagePath);
+        // Delete image from Cloudinary
+        await deleteOldImageFromCloudinary(currentUser.profile_image_url);
 
         // Update user profile
         await user.updateUser(req.user.id, { 

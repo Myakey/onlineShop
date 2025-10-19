@@ -1,18 +1,5 @@
 const productModels = require("../models/productsModel");
-const fs = require("fs");
-const path = require("path");
-
-// Helper function to delete image file
-const deleteImageFile = (imagePath) => {
-  if (imagePath) {
-    const relativePath = imagePath.replace(process.env.BASE_URL || "http://localhost:8080", "");
-    const fullPath = path.join(__dirname, "..", relativePath);
-
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
-  }
-};
+const { cleanupFile } = require("../middleware/uploadImage");
 
 const getAllProducts = async (req, res) => {
   try {
@@ -43,13 +30,15 @@ const createProduct = async (req, res) => {
     const { name, description, price, stock } = req.body;
 
     if (!name || !description || price === undefined || stock === undefined) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
+      // If validation fails and file was uploaded, delete it from Cloudinary
+      if (req.file && req.file.cloudinary_id) {
+        await cleanupFile(req.file.path);
       }
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const image_url = req.file ? `/uploads/products/${req.file.filename}` : null;
+    // Use Cloudinary URL instead of local path
+    const image_url = req.file ? req.file.path : null;
 
     const newProduct = await productModels.createProduct({
       name,
@@ -61,8 +50,9 @@ const createProduct = async (req, res) => {
 
     res.status(201).json(newProduct);
   } catch (err) {
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+    // Clean up Cloudinary image if product creation fails
+    if (req.file && req.file.cloudinary_id) {
+      await cleanupFile(req.file.path);
     }
     res.status(500).json({ message: err.message });
   }
@@ -75,8 +65,8 @@ const updateProduct = async (req, res) => {
 
     const existingProduct = await productModels.getProductById(id);
     if (!existingProduct) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
+      if (req.file && req.file.cloudinary_id) {
+        await cleanupFile(req.file.path);
       }
       return res.status(404).json({ message: "Product not found" });
     }
@@ -88,17 +78,19 @@ const updateProduct = async (req, res) => {
     if (stock !== undefined) updateData.stock = parseInt(stock);
 
     if (req.file) {
+      // Delete old image from Cloudinary
       if (existingProduct.image_url) {
-        deleteImageFile(existingProduct.image_url);
+        await cleanupFile(existingProduct.image_url);
       }
-      updateData.image_url = `/uploads/products/${req.file.filename}`;
+      // Use new Cloudinary URL
+      updateData.image_url = req.file.path;
     }
 
     const updatedProduct = await productModels.updateProduct(id, updateData);
     res.json(updatedProduct);
   } catch (err) {
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+    if (req.file && req.file.cloudinary_id) {
+      await cleanupFile(req.file.path);
     }
     res.status(500).json({ message: err.message });
   }
@@ -116,8 +108,9 @@ const deleteProduct = async (req, res) => {
     const deleted = await productModels.deleteProduct(id);
 
     if (deleted) {
+      // Delete image from Cloudinary
       if (product.image_url) {
-        deleteImageFile(product.image_url);
+        await cleanupFile(product.image_url);
       }
 
       res.status(200).json({
@@ -145,7 +138,8 @@ const deleteProductImage = async (req, res) => {
       return res.status(400).json({ message: "Product has no image to delete" });
     }
 
-    deleteImageFile(product.image_url);
+    // Delete from Cloudinary
+    await cleanupFile(product.image_url);
 
     const updatedProduct = await productModels.updateProduct(id, { image_url: null });
 
@@ -164,13 +158,13 @@ const searchProduct = async (req, res) => {
     const q = req.query.q?.trim() || "";
 
     if (!q) {
-      const all = await productModels.getAllProducts()
+      const all = await productModels.getAllProducts();
       return res.json(all);
     }
 
     const searchTerm = q;
 
-    const products = await productModels.searchProducts(searchTerm)
+    const products = await productModels.searchProducts(searchTerm);
 
     res.json(products);
   } catch (error) {
