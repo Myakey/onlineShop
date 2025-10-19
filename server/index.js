@@ -44,11 +44,11 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-// 💥 Error handler
-app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.stack);
-  res.status(500).json({ error: "Something went wrong!" });
-});
+// // 💥 Error handler
+// app.use((err, req, res, next) => {
+//   console.error("❌ Error:", err.stack);
+//   res.status(500).json({ error: "Something went wrong!" });
+// });
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
