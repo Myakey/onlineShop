@@ -1,8 +1,6 @@
 // models/orderModel.js
-
-const { PrismaClient } = require("@prisma/client");
 const crypto = require("crypto");
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma");
 
 const addFullImageUrls = (products) => {
   // Cloudinary URLs are already complete, just return as-is
@@ -246,6 +244,7 @@ const getOrderByOrderNumber = async (orderNumber) => {
 };
 
 // Create new order with items
+// Create new order with items
 const createOrder = async (orderData) => {
   try {
     const { 
@@ -261,27 +260,28 @@ const createOrder = async (orderData) => {
       decrementStock = false
     } = orderData;
 
-    // Generate unique secure token before transaction
+    // Generate unique secure token OUTSIDE transaction
     const secureToken = await generateSecureToken();
 
-    const newOrder = await prisma.$transaction(async (tx) => {
-      // Validate stock availability first
-      if (items.length > 0) {
-        for (const item of items) {
-          const product = await tx.products.findUnique({
-            where: { product_id: parseInt(item.product_id) }
-          });
+    // Validate stock availability OUTSIDE transaction
+    if (items.length > 0) {
+      for (const item of items) {
+        const product = await prisma.products.findUnique({
+          where: { product_id: parseInt(item.product_id) }
+        });
 
-          if (!product) {
-            throw new Error(`Product with ID ${item.product_id} not found`);
-          }
+        if (!product) {
+          throw new Error(`Product with ID ${item.product_id} not found`);
+        }
 
-          if (product.stock < parseInt(item.quantity)) {
-            throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
-          }
+        if (product.stock < parseInt(item.quantity)) {
+          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
         }
       }
+    }
 
+    // Now do the transaction with only writes
+    const newOrder = await prisma.$transaction(async (tx) => {
       // Create the order with secure token
       const order = await tx.orders.create({
         data: {
@@ -326,32 +326,37 @@ const createOrder = async (orderData) => {
         }
       }
 
-      // Fetch the complete order with relations
-      return await tx.orders.findUnique({
-        where: { order_id: order.order_id },
-        include: {
-          user: {
-            select: {
-              user_id: true,
-              username: true,
-              email: true,
-              first_name: true,
-              last_name: true
-            }
-          },
-          address: true,
-          items: {
-            include: {
-              product: true
-            }
+      return order; // Return just the order, not the full query
+    }, {
+      maxWait: 5000, // Wait max 5s to start transaction
+      timeout: 10000, // Transaction timeout 10s
+    });
+
+    // Fetch the complete order with relations OUTSIDE transaction
+    const completeOrder = await prisma.orders.findUnique({
+      where: { order_id: newOrder.order_id },
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+            email: true,
+            first_name: true,
+            last_name: true
+          }
+        },
+        address: true,
+        items: {
+          include: {
+            product: true
           }
         }
-      });
+      }
     });
 
     return {
-      ...newOrder,
-      items: newOrder.items.map(item => ({
+      ...completeOrder,
+      items: completeOrder.items.map(item => ({
         ...item,
         product: addFullImageUrls(item.product)
       }))
@@ -425,6 +430,7 @@ const updateOrderStatus = async (orderId, status) => {
 };
 
 // Update payment status (admin only - uses order_id)
+// Update payment status (admin only - uses order_id)
 const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null) => {
   try {
     const updateData = {
@@ -437,34 +443,39 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
 
     // If payment is confirmed, decrement stock
     if (paymentStatus === 'paid') {
-      const updatedOrder = await prisma.$transaction(async (tx) => {
-        const order = await tx.orders.findUnique({
-          where: { order_id: parseInt(orderId) },
-          include: { items: true }
+      // Get order OUTSIDE transaction
+      const order = await prisma.orders.findUnique({
+        where: { order_id: parseInt(orderId) },
+        include: { items: true }
+      });
+
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      if (order.payment_status === 'paid') {
+        throw new Error('Payment already confirmed, stock already adjusted');
+      }
+
+      // Validate stock OUTSIDE transaction
+      for (const item of order.items) {
+        const product = await prisma.products.findUnique({
+          where: { product_id: item.product_id }
         });
 
-        if (!order) {
-          throw new Error('Order not found');
+        if (!product) {
+          throw new Error(`Product ${item.product_id} not found`);
         }
 
-        if (order.payment_status === 'paid') {
-          throw new Error('Payment already confirmed, stock already adjusted');
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
         }
+      }
 
-        // Validate and decrement stock for each item
+      // Do the updates in transaction
+      await prisma.$transaction(async (tx) => {
+        // Decrement stock
         for (const item of order.items) {
-          const product = await tx.products.findUnique({
-            where: { product_id: item.product_id }
-          });
-
-          if (!product) {
-            throw new Error(`Product ${item.product_id} not found`);
-          }
-
-          if (product.stock < item.quantity) {
-            throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
-          }
-
           await tx.products.update({
             where: { product_id: item.product_id },
             data: {
@@ -475,21 +486,29 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
           });
         }
 
-        // Update payment status and move to processing
-        return await tx.orders.update({
+        // Update payment status
+        await tx.orders.update({
           where: { order_id: parseInt(orderId) },
           data: {
             ...updateData,
             status: 'processing'
-          },
-          include: {
-            items: {
-              include: {
-                product: true
-              }
-            }
           }
         });
+      }, {
+        maxWait: 5000,
+        timeout: 10000,
+      });
+
+      // Fetch updated order OUTSIDE transaction
+      const updatedOrder = await prisma.orders.findUnique({
+        where: { order_id: parseInt(orderId) },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          }
+        }
       });
 
       return {
@@ -528,22 +547,25 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
 };
 
 // Cancel order (can use secure_token or order_id)
+// Cancel order (can use secure_token or order_id)
 const cancelOrder = async (identifier, useToken = true) => {
   try {
-    const cancelledOrder = await prisma.$transaction(async (tx) => {
-      const whereClause = useToken 
-        ? { secure_token: identifier }
-        : { order_id: parseInt(identifier) };
+    const whereClause = useToken 
+      ? { secure_token: identifier }
+      : { order_id: parseInt(identifier) };
 
-      const order = await tx.orders.findUnique({
-        where: whereClause,
-        include: { items: true }
-      });
+    // Get order OUTSIDE transaction
+    const order = await prisma.orders.findUnique({
+      where: whereClause,
+      include: { items: true }
+    });
 
-      if (!order) {
-        throw new Error('Order not found');
-      }
+    if (!order) {
+      throw new Error('Order not found');
+    }
 
+    // Do updates in transaction
+    await prisma.$transaction(async (tx) => {
       // Only restore stock if payment was already confirmed
       if (order.payment_status === 'paid') {
         for (const item of order.items) {
@@ -558,19 +580,27 @@ const cancelOrder = async (identifier, useToken = true) => {
         }
       }
 
-      return await tx.orders.update({
+      await tx.orders.update({
         where: whereClause,
         data: {
           status: 'cancelled'
-        },
-        include: {
-          items: {
-            include: {
-              product: true
-            }
-          }
         }
       });
+    }, {
+      maxWait: 5000,
+      timeout: 10000,
+    });
+
+    // Fetch updated order OUTSIDE transaction
+    const cancelledOrder = await prisma.orders.findUnique({
+      where: whereClause,
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
     });
 
     return {

@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma")
 
 const addFullImageUrls = (products) => {
   // Cloudinary URLs are already complete, just return as-is

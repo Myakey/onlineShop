@@ -1,6 +1,5 @@
 // models/users.js
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma");
 
 // Find user by username
 async function findByUsername(username) {

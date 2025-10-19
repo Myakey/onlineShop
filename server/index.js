@@ -1,25 +1,26 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('./config/prisma'); // Use singleton
 
-const prisma = new PrismaClient();
-
-// Log environment info
 console.log('🚂 Railway Environment:', {
   PORT: process.env.PORT,
   NODE_ENV: process.env.NODE_ENV,
-  DB_HOST: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'not set'
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
 });
 
+// Don't exit on errors in production
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
-  process.exit(1);
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
 });
 
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled Rejection:", err);
-  process.exit(1);
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
 });
 
 // 🧩 Import routes
@@ -42,7 +43,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // 🧭 Routes
 app.use("/api/products", productsRoutes);
@@ -53,7 +53,11 @@ app.use("/api/shipping", shippingRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// 🩺 Health check
+// 🩺 Health check - MUST respond quickly
+app.get("/", (req, res) => {
+  res.json({ status: "OK", message: "API Running" });
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
@@ -61,25 +65,50 @@ app.get("/health", (req, res) => {
 const PORT = process.env.PORT || 8080;
 const HOST = '0.0.0.0';
 
-// Connect to database BEFORE starting server
+let server;
+let isShuttingDown = false;
+
+// Start server immediately - don't wait for DB
 async function startServer() {
   try {
-    await prisma.$connect();
-    console.log('✅ Database connected');
-    
-    const server = app.listen(PORT, HOST, () => {
+    // Start server FIRST
+    server = app.listen(PORT, HOST, () => {
       console.log(`✅ Server running on ${HOST}:${PORT}`);
     });
 
+    // Connect to DB in background (don't block server startup)
+    prisma.$connect()
+      .then(() => console.log('✅ Database connected'))
+      .catch(err => console.error('⚠️ Database connection failed (will retry):', err.message));
+
     // Graceful shutdown
-    process.on('SIGTERM', async () => {
-      console.log('📡 SIGTERM received, shutting down gracefully...');
-      await prisma.$disconnect();
-      server.close(() => {
-        console.log('✅ Server closed');
+    const shutdown = async (signal) => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+      
+      console.log(`📡 ${signal} received, shutting down...`);
+      
+      // Stop accepting new requests
+      server.close(async () => {
+        console.log('✅ HTTP server closed');
+        try {
+          await prisma.$disconnect();
+          console.log('✅ Database disconnected');
+        } catch (err) {
+          console.error('Error disconnecting DB:', err);
+        }
         process.exit(0);
       });
-    });
+
+      // Force shutdown after 5 seconds
+      setTimeout(() => {
+        console.error('⚠️ Forced shutdown');
+        process.exit(1);
+      }, 5000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
   } catch (err) {
     console.error('❌ Failed to start server:', err);
@@ -89,5 +118,4 @@ async function startServer() {
 
 startServer();
 
-// Export prisma for use in routes
 module.exports = { prisma };
