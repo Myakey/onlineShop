@@ -9,21 +9,11 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs"); 
 
-// Configure multer for payment proof uploads
-const uploadDirectory = "uploads/payment_proofs/";
-if (!fs.existsSync(uploadDirectory)) {
-    fs.mkdirSync(uploadDirectory, { recursive: true });
-}
+const cloudinary = require('../config/cloudinary');
+const { Readable } = require('stream');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/payment_proofs/");
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, "payment-" + uniqueSuffix + path.extname(file.originalname));
-  },
-});
+// Memory storage
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -34,11 +24,51 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const upload = multer({
+const uploadMulter = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
+
+// Helper to upload to Cloudinary
+const uploadToCloudinary = (buffer, folder) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: folder },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        Readable.from(buffer).pipe(uploadStream);
+    });
+};
+
+// Middleware wrapper
+const upload = {
+    single: (fieldName) => {
+        return async (req, res, next) => {
+            uploadMulter.single(fieldName)(req, res, async (err) => {
+                if (err) {
+                    return res.status(400).json({ error: err.message });
+                }
+
+                if (req.file) {
+                    try {
+                        const result = await uploadToCloudinary(req.file.buffer, 'uploads/payment_proofs');
+                        req.file.path = result.secure_url;
+                        req.file.cloudinary_id = result.public_id;
+                    } catch (uploadError) {
+                        return res.status(500).json({ error: 'Failed to upload payment proof' });
+                    }
+                }
+
+                next();
+            });
+        };
+    }
+};
+
 
 // ==================== USER ROUTES (using secure tokens) ====================
 

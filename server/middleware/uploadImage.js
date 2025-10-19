@@ -1,25 +1,10 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const cloudinary = require('../config/cloudinary');
+const { Readable } = require('stream');
 
-// Make the directory if it doesn't exist
-const uploadDirectory = "uploads/products";
-if (!fs.existsSync(uploadDirectory)) {
-  fs.mkdirSync(uploadDirectory, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDirectory);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, "product-" + uniqueSuffix + path.extname(file.originalname));
-  },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  // Only image files
   if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
@@ -35,19 +20,49 @@ const upload = multer({
   fileFilter: fileFilter,
 });
 
-// Helper function to clean up uploaded file on error
-const cleanupFile = (filePath) => {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+// Helper to upload to Cloudinary
+const uploadToCloudinary = (buffer, folder) => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: folder },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        Readable.from(buffer).pipe(uploadStream);
+    });
+};
+
+// Helper to delete from Cloudinary
+// Helper to delete from Cloudinary
+const cleanupFile = async (fileUrl) => {
+  if (fileUrl && fileUrl.includes('cloudinary.com')) {
+    try {
+      // Extract public_id properly
+      const urlParts = fileUrl.split('/upload/');
+      if (urlParts.length < 2) {
+        console.error('Invalid Cloudinary URL format');
+        return;
+      }
+      
+      const pathAfterUpload = urlParts[1];
+      const pathWithoutVersion = pathAfterUpload.replace(/^v\d+\//, '');
+      const publicId = pathWithoutVersion.replace(/\.[^/.]+$/, '');
+      
+      console.log('Deleting from Cloudinary, public_id:', publicId);
+      await cloudinary.uploader.destroy(publicId);
+      console.log('Successfully deleted:', publicId);
+    } catch (err) {
+      console.error('Error deleting file:', err);
+    }
   }
 };
 
-// Enhanced middleware that handles errors better
 const uploadWithErrorHandling = (fieldName) => {
-  return (req, res, next) => {
-    upload.single(fieldName)(req, res, (err) => {
+  return async (req, res, next) => {
+    upload.single(fieldName)(req, res, async (err) => {
       if (err instanceof multer.MulterError) {
-        // Handle Multer-specific errors
         if (err.code === "LIMIT_FILE_SIZE") {
           return res.status(400).json({
             message: "File too large. Maximum size is 5MB.",
@@ -60,9 +75,21 @@ const uploadWithErrorHandling = (fieldName) => {
         }
         return res.status(400).json({ message: err.message });
       } else if (err) {
-        // Handle other errors (like fileFilter errors)
         return res.status(400).json({ message: err.message });
       }
+
+      // Upload to Cloudinary if file exists
+      if (req.file) {
+        try {
+          const result = await uploadToCloudinary(req.file.buffer, 'uploads/products');
+          console.log(result);
+          req.file.path = result.secure_url;
+          req.file.cloudinary_id = result.public_id;
+        } catch (uploadError) {
+          return res.status(500).json({ message: 'Failed to upload to Cloudinary' });
+        }
+      }
+
       next();
     });
   };
@@ -72,5 +99,4 @@ module.exports = {
   upload,
   uploadWithErrorHandling,
   cleanupFile,
-  uploadDirectory,
 };

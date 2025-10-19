@@ -259,7 +259,7 @@ const Navbar = ({ currentPage = "home" }) => {
               >
                 {user?.profileImageUrl ? (
                   <img
-                    src={`http://localhost:8080${user.profileImageUrl}`}
+                    src={`${user.profileImageUrl}`}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -276,7 +276,7 @@ const Navbar = ({ currentPage = "home" }) => {
                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md overflow-hidden">
                           {user?.profileImageUrl ? (
                             <img
-                              src={`http://localhost:8080${user.profileImageUrl}`}
+                              src={`${user.profileImageUrl}`}
                               alt="Profile"
                               className="w-full h-full object-cover"
                             />

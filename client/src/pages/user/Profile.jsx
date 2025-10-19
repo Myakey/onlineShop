@@ -399,7 +399,7 @@ export default function Profile() {
                                 <div className="w-48 h-48 rounded-full overflow-hidden bg-white border-4 border-white shadow-2xl ring-4 ring-pink-200 mx-auto">
                                     {user?.profileImageUrl ? (
                                         <img
-                                            src={`http://localhost:8080${user.profileImageUrl}`}
+                                            src={`${user.profileImageUrl}`}
                                             alt="Profile"
                                             className="w-full h-full object-cover"
                                         />
