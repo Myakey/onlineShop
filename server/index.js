@@ -2,6 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (err) => console.error('Unhandled Rejection:', err));
+
 // 🧩 Import routes
 const productsRoutes = require("./routes/productRoutes");
 const authRoutes = require("./routes/authRoutes");
