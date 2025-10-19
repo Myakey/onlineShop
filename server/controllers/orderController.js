@@ -218,6 +218,7 @@ const createOrder = async (req, res) => {
 };
 
 // Upload payment proof (using secure token)
+// Upload payment proof (using secure token)
 const uploadPaymentProof = async (req, res) => {
   try {
     const { token } = req.params;
@@ -257,8 +258,8 @@ const uploadPaymentProof = async (req, res) => {
       });
     }
 
-    // Save payment proof path
-    const paymentProofPath = `/uploads/payment_proofs/${req.file.filename}`;
+    // Use Cloudinary URL instead of local path
+    const paymentProofPath = req.file.path; // This is now Cloudinary URL
 
     const updatedOrder = await orderModels.updatePaymentProof(
       token,
