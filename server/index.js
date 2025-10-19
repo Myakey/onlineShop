@@ -2,8 +2,12 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
-process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
-process.on('unhandledRejection', (err) => console.error('Unhandled Rejection:', err));
+process.on("uncaughtException", (err) =>
+  console.error("Uncaught Exception:", err)
+);
+process.on("unhandledRejection", (err) =>
+  console.error("Unhandled Rejection:", err)
+);
 
 // 🧩 Import routes
 const productsRoutes = require("./routes/productRoutes");
@@ -52,3 +56,16 @@ app.get("/health", (req, res) => {
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
+
+// Add this to test Prisma connection
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+// Test database connection on startup
+prisma.$connect()
+  .then(() => console.log('✅ Database connected'))
+  .catch(err => {
+    console.error('❌ Database connection failed:', err);
+    process.exit(1);
+  });
