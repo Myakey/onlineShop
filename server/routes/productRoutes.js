@@ -3,27 +3,26 @@ const router = express.Router();
 const productsController = require("../controllers/productController");
 const { upload, uploadWithErrorHandling } = require("../middleware/uploadImage");
 
-// Get all products
+//Ambil semua produk
 router.get('/', productsController.getAllProducts);
 
-// Search product
+//Function untuk search di produk
 router.get('/search', productsController.searchProduct);
 
-// Get product by ID
+//Ambil produk berdasarkan id
 router.get('/:id', productsController.getProductById);
 
-// Create new product (with optional image upload)
+//Buat produk baru (tambahan gambar opsional)
 router.post('/', uploadWithErrorHandling('image'), productsController.createProduct);
-//                                        ^^^^^^^^ ADD THIS!
 
-// Update product (with optional image upload)
+
+//Update produk (tambahan gambar opsional)
 router.put('/:id', uploadWithErrorHandling('image'), productsController.updateProduct);
-//                                         ^^^^^^^^ ADD THIS!
 
-// Delete product (and its image)
+//Hapus produk
 router.delete('/:id', productsController.deleteProduct);
 
-// Delete only product image (keep product)
+//Hapus gambar produk
 router.delete('/:id/image', productsController.deleteProductImage);
 
 module.exports = router;
