@@ -45,7 +45,7 @@ function Login() {
 
                 setMessage("Login successful! Redirecting...");
                 setTimeout(() => {
-                    window.location.href = "/dashboard";
+                    window.location.href = "/";
                 }, 1500);
 
             } else {
@@ -100,7 +100,7 @@ function Login() {
 
             setMessage("Email verified successfully! Redirecting...");
             setTimeout(() => {
-                window.location.href = "/dashboard";
+                window.location.href = "/";
             }, 1500);
 
         } catch (err) {

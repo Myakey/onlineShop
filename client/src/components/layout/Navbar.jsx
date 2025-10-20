@@ -45,7 +45,7 @@ const Navbar = ({ currentPage = "home" }) => {
 
     // optional: map paths to readable keys
     if (currentPath === "/products") key = "products";
-    else if (currentPath === "/dashboard") key = "home";
+    else if (currentPath === "/") key = "home";
     else if (currentPath === "/cart") key = "cart";
 
     setCurrentPageState({ path: currentPath, key });
@@ -65,7 +65,7 @@ const Navbar = ({ currentPage = "home" }) => {
   };
 
   const goToHome = () => { 
-    navigate("/dashboard");
+    navigate("/");
   }
 
 

@@ -45,8 +45,8 @@ function App() {
           <CartProvider>
             <Routes>
               {/* Public Routes */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<HomePage />} />
+              <Route path="/dashboard" element={<Navigate to="/" replace />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
