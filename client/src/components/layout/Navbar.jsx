@@ -238,8 +238,8 @@ const Navbar = ({ currentPage = "home" }) => {
         <div className="flex items-center space-x-4">
           {/* Cart - Only show when authenticated */}
           {!loading && isAuthenticated && (
-            <button className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110">
-              <ShoppingCart className="w-6 h-6 text-pink-600" />
+            <button className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110" onClick={goToCart}>
+              <ShoppingCart className="w-6 h-6 text-pink-600"/>
               <span className="absolute -top-1 -right-1 bg-cyan-400 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow animate-pulse">
                 {cartCount}
               </span>
