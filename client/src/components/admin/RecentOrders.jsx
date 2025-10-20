@@ -50,25 +50,3 @@ const OrderCard = ({ order }) => {
           </button>
         </div>
       </div>
-    </div>
-  );
-};
-
-  return (
-    <div className="bg-white rounded-2xl border-2 border-pink-100 p-6 shadow-lg">
-      <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-        <ShoppingCart className="text-pink-600" size={24} /> Pesanan Terbaru
-      </h3>
-
-      <div className="space-y-4 mt-4">
-        {orders.length === 0 ? (
-          <p className="text-gray-500 italic">Belum ada pesanan terbaru.</p>
-        ) : (
-          orders.map((order) => <OrderCard key={order.id} order={order} />)
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default RecentOrders;
