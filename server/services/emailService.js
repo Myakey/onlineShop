@@ -1,18 +1,11 @@
 // services/emailService.js
 const nodemailer = require("nodemailer");
+const { Resend } = require('resend');
 
-// ==============================
-// 🔧 Create reusable transporter
-// ==============================
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD, // Use Gmail App Password, not the main password
-    },
-  });
-};
+
+//initialize the transporter
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ==============================
 // 🔢 Generate 6-digit OTP
@@ -26,8 +19,6 @@ const generateOTP = () => {
 // ==============================
 const sendOTPEmail = async (email, otp, purpose = "email_verification") => {
   try {
-    const transporter = createTransporter();
-
     let subject, html;
 
     switch (purpose) {
@@ -188,19 +179,14 @@ const sendOTPEmail = async (email, otp, purpose = "email_verification") => {
         `;
     }
 
-    const mailOptions = {
-      from: {
-        name: "AmbatuGroup",
-        address: process.env.GMAIL_USER,
-      },
+    const result = await resend.emails.send({
+      from:"AmbatuGroup <onboarding@resend.dev>",
       to: email,
       subject,
-      html,
-    };
-
-    const result = await transporter.sendMail(mailOptions);
-    console.log("✅ OTP email sent:", result.messageId);
-    return { success: true, messageId: result.messageId };
+      html
+    })
+    console.log("Success!", result.id)
+    return { success: true, messageId: result.id };
   } catch (error) {
     console.error("❌ Error sending OTP email:", error);
     return { success: false, error: error.message };
@@ -212,17 +198,7 @@ const sendOTPEmail = async (email, otp, purpose = "email_verification") => {
 // ==============================
 const sendWelcomeEmail = async (email, firstName) => {
   try {
-    const transporter = createTransporter();
-
-    const mailOptions = {
-      from: {
-        name: "AmbatuGroup",
-        address: process.env.GMAIL_USER,
-      },
-      to: email,
-      subject: "Welcome to AmbatuGroup!",
-      html: `
-        <div style="margin: 0; padding: 0; background: linear-gradient(135deg, #fce7f3 0%, #e0f2fe 100%); font-family: 'Segoe UI', Arial, sans-serif;">
+    const html = `<div style="margin: 0; padding: 0; background: linear-gradient(135deg, #fce7f3 0%, #e0f2fe 100%); font-family: 'Segoe UI', Arial, sans-serif;">
               <div
           style="max-width: 600px; margin: 40px auto; background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 40px rgba(236, 72, 153, 0.15);">
 
@@ -293,13 +269,18 @@ const sendWelcomeEmail = async (email, firstName) => {
           </div>
 
         </div>
-        </div>
-      `,
-    };
+        </div>`
+    const subject = "Welcome to ambalabus!";
 
-    await transporter.sendMail(mailOptions);
-    console.log("✅ Welcome email sent to:", email);
-    return { success: true };
+    const result = await resend.emails.send({
+      from:"AmbatuGroup <onboarding@resend.dev>",
+      to: email,
+      subject,
+      html
+    })
+
+    console.log("✅ Welcome email sent to:", result);
+    return { success: true , messageId: result.id };
   } catch (error) {
     console.error("❌ Error sending welcome email:", error);
     return { success: false, error: error.message };
