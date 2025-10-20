@@ -7,7 +7,7 @@ import TimelineSection from "../../components/sections/TimelineSection";
 import ProductInfoSection from "../../components/sections/ProductInfoSection";
 import ProductGrid from "../../components/sections/ProductGrid";
 import NewsletterSection from "../../components/sections/NewsletterSection";
-import { getProducts } from "../../services/productService";
+import productService from "../../services/productService";
 
 
 function Home() {
@@ -24,7 +24,7 @@ function Home() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await getProducts();
+        const response = await productService.getProducts();
         setProducts(response.data);
       } catch (error) {
         console.error("Error fetching products:", error);
