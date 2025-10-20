@@ -14,49 +14,56 @@ export const UserProvider = ({ children }) => {
   const location = useLocation();
 
   // Load minimal user data on mount/location change
-  const loadMinimalUserData = async () => {
-    setLoading(true);
-    try {
-      // Validate token and get minimal user data
-      const { valid, user: userData } = await authService.validateToken();
-    console.log("Token validation result:", { valid, userData });
-
-      if (valid && userData) {
-        // ✅ SECURITY: Only store minimal, non-sensitive data
-        const safeUser = {
-          id: userData.id,
-          username: userData.username,
-          type: userData.type,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          emailVerified: userData.emailVerified,
-          profileImageUrl: userData.profileImageUrl, // ✅ Safe to store (just a URL)
-          // ❌ DON'T store: email, phoneNumber, addresses
-        };
-
-        setUser(safeUser);
-        setIsAuthenticated(true);
-        setIsAdmin(userData.type === "admin");
-
-        // ✅ Store only minimal data in localStorage
-        localStorage.setItem("user", JSON.stringify(safeUser));
-      } else {
-        // Invalid token or no user
-        setUser(null);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        localStorage.removeItem("user");
-      }
-    } catch (error) {
-      console.error("Failed to validate token:", error);
+const loadMinimalUserData = async () => {
+  setLoading(true);
+  try {
+    // ✅ Skip if no access token found
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      console.log("No access token found — skipping user validation.");
       setUser(null);
       setIsAuthenticated(false);
       setIsAdmin(false);
       localStorage.removeItem("user");
-    } finally {
       setLoading(false);
+      return; // 🚫 Stop here
     }
-  };
+
+    // ✅ Only run validation if token exists
+    const { valid, user: userData } = await authService.validateToken();
+    console.log("Token validation result:", { valid, userData });
+
+    if (valid && userData) {
+      const safeUser = {
+        id: userData.id,
+        username: userData.username,
+        type: userData.type,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        emailVerified: userData.emailVerified,
+        profileImageUrl: userData.profileImageUrl,
+      };
+
+      setUser(safeUser);
+      setIsAuthenticated(true);
+      setIsAdmin(userData.type === "admin");
+      localStorage.setItem("user", JSON.stringify(safeUser));
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsAdmin(false);
+      localStorage.removeItem("user");
+    }
+  } catch (error) {
+    console.error("Failed to validate token:", error);
+    setUser(null);
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    localStorage.removeItem("user");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ✅ NEW: Fetch full profile data (with email, phone, addresses) when needed
   const loadFullProfile = async () => {

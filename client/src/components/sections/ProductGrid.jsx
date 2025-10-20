@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Star, X, Loader2, AlertCircle } from "lucide-react";
 import reviewService from "../../services/reviewService";
+import { getProducts } from "../../services/productService";
+
 
 const ProductGridPage = () => {
   const [products, setProducts] = useState([]);
@@ -16,7 +18,7 @@ const ProductGridPage = () => {
 
   useEffect(() => {
   if (products.length > 0) {
-    fetchReviewSummaries();
+    // fetchReviewSummaries();
   }
 }, [products]);
 
@@ -43,23 +45,23 @@ const ProductGridPage = () => {
     }
   };
 
-  const fetchReviewSummaries = async () => {
-  try {
-    const productIds = products.map(p => p.product_id);
-    const response = await reviewService.getProductsReviewSummary(productIds);
+  // const fetchReviewSummaries = async () => {
+  // try {
+  //   const productIds = products.map(p => p.product_id);
+  //   const response = await reviewService.getProductsReviewSummary(productIds);
     
-    if (response.success) {
-      // Convert array to object for easy lookup
-      const summariesMap = {};
-      response.data.forEach(summary => {
-        summariesMap[summary.product_id] = summary;
-      });
-      setReviewSummaries(summariesMap);
-    }
-  } catch (err) {
-    console.error("Error fetching review summaries:", err);
-  }
-};
+  //   if (response.success) {
+  //     // Convert array to object for easy lookup
+  //     const summariesMap = {};
+  //     response.data.forEach(summary => {
+  //       summariesMap[summary.product_id] = summary;
+  //     });
+  //     setReviewSummaries(summariesMap);
+  //   }
+  // } catch (err) {
+  //   console.error("Error fetching review summaries:", err);
+  // }
+  // };
 
   const handleOpenModal = (product) => {
     setSelectedProduct(product);
@@ -249,7 +251,7 @@ const ProductGridPage = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

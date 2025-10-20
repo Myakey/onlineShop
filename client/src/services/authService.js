@@ -77,9 +77,24 @@ const authService = {
 
   /** GET PROFILE - Returns full profile data (use in React state only) */
   async getProfile() {
-    const { data } = await api.get("/profile");
-    // ⚠️ Don't store this in localStorage, use in React state/context
-    return data;
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      // 🚫 Skip API call if not logged in
+      console.warn("Skipping profile fetch — user not logged in.");
+      return null;
+    }
+
+    try {
+      const { data } = await api.get("/profile");
+      return data;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        console.warn("Access token invalid or expired.");
+      } else {
+        console.error("Error fetching profile:", error);
+      }
+      return null;
+    }
   },
 
   /** UPDATE PROFILE - SECURE VERSION */

@@ -57,11 +57,11 @@ const reviewService = {
     return response.data;
   },
 
-  // Get bulk review summaries - if you have this route
-  async getProductsReviewSummary(productIds) {
-    const response = await api.post("/reviews/summary", { productIds });
-    return response.data;
-  },
+  // Get bulk review summaries - if you have this route, you dont have this route
+  // async getProductsReviewSummary(productIds) {
+  //   const response = await api.post("/reviews/summary", { productIds });
+  //   return response.data;
+  // },
 };
 
 export default reviewService;
