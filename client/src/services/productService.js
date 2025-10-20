@@ -4,62 +4,44 @@ import api from "../services/api";
 const productService = {
   async getProducts() {
     const res = await api.get("/products");
-    return res;
+    return res.data; // return data langsung
   },
 
-  async getProductById(id){
+  async getProductById(id) {
     const res = await api.get(`/products/${id}`);
-    
+    return res.data; // wajib return data
   },
 
   async createProduct(productData) {
     const formData = new FormData();
-
-    // Append all form fields to FormData
     Object.keys(productData).forEach((key) => {
       formData.append(key, productData[key]);
     });
-
-    return await api.post("/products", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const res = await api.post("/products", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
+    return res.data;
+  },
+
+  async updateProduct(id, productData) {
+    // PUT request untuk update produk
+    const res = await api.put(`/products/${id}`, productData, {
+      headers: { "Content-Type": "application/json" },
+    });
+    return res.data;
   },
 
   async searchProduct(searchTerm) {
-    const res = await api.get(`/products/search?q=${encodeURIComponent(searchTerm)}`);
-    return res;
+    const res = await api.get(
+      `/products/search?q=${encodeURIComponent(searchTerm)}`
+    );
+    return res.data;
   },
 
   async deleteProduct(id) {
     const res = await api.delete(`/products/${id}`);
-    return res;
+    return res.data;
   },
 };
-
-export const getProducts = () => api.get("/products");
-
-export const createProduct = (productData) => {
-  const formData = new FormData();
-
-  // Append all form fields to FormData
-  Object.keys(productData).forEach((key) => {
-    formData.append(key, productData[key]);
-  });
-
-  return api.post("/products", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-};
-
-export const searchProduct = async (searchTerm) => {
-  const res = api.get(`/products/search?q=${encodeURIComponent(searchTerm)}`);
-  return res;
-};
-
-export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
 export default productService;

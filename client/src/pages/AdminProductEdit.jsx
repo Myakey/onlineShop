@@ -1,48 +1,85 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import NavbarAdmin from '../components/layout/NavbarAdmin';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import NavbarAdmin from "../components/layout/NavbarAdmin";
+import productService from "../services/productService";
 
 const AdminProductEdit = () => {
   const navigate = useNavigate();
-  const { productId } = useParams();
+  const { productId } = useParams(); // ambil ID dari URL
 
-  // Dummy data awal produk, biasanya ambil dari API
   const [product, setProduct] = useState({
-    id: productId,
-    name: '',
-    price: '',
-    stock: '',
-    description: '',
-    image: '',
+    id: "",
+    name: "",
+    price: "",
+    stock: "",
+    description: "",
+    image: "",
   });
+  const [loading, setLoading] = useState(true);
 
-  // Simulasi fetch data produk
+  // Fetch product asli dari API
   useEffect(() => {
-    // Misal fetch API: GET /products/:id
-    setProduct({
-      id: productId,
-      name: 'Boneka Teddy Bear',
-      price: 250000,
-      stock: 10,
-      description: 'Boneka teddy bear lucu ukuran sedang, cocok untuk hadiah.',
-      image: 'https://placekitten.com/400/400',
-    });
-  }, [productId]);
+    const fetchProduct = async () => {
+      try {
+        setLoading(true);
+        const data = await productService.getProductById(productId);
 
+        setProduct({
+          id: data.product_id,
+          name: data.name || "",
+          price: data.price || "",
+          stock: data.stock || "",
+          description: data.description || "",
+          image: data.image_url || "",
+        });
+      } catch (err) {
+        console.error("Fetch Product Error:", err);
+        alert("Gagal mengambil data produk.");
+        navigate("/admin/products");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId, navigate]);
+
+  // Handle perubahan input
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setProduct(prev => ({ ...prev, [name]: value }));
+    setProduct((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  // Submit update produk
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulasi update produk via API PUT /products/:id
-    alert('Produk berhasil diperbarui!');
-    navigate(`/admin/products/${product.id}`);
+    try {
+      await productService.updateProduct(product.id, {
+        name: product.name,
+        price: parseFloat(product.price),
+        stock: parseInt(product.stock),
+        description: product.description,
+        image_url: product.image,
+      });
+
+      alert("Produk berhasil diperbarui!");
+      navigate(`/admin/products/${product.id}`);
+    } catch (err) {
+      console.error("Update Product Error:", err);
+      alert("Gagal memperbarui produk.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="text-center text-gray-500 mt-16">
+        Memuat data produk...
+      </div>
+    );
+  }
 
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50">
       <NavbarAdmin />
       <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-2xl shadow-md">
         <h2 className="text-2xl font-bold text-pink-600 mb-6">Edit Produk</h2>
@@ -56,6 +93,7 @@ const AdminProductEdit = () => {
               value={product.name}
               onChange={handleChange}
               className="w-full border-2 border-pink-100 rounded-xl px-3 py-2"
+              required
             />
           </div>
 
@@ -67,6 +105,7 @@ const AdminProductEdit = () => {
               value={product.price}
               onChange={handleChange}
               className="w-full border-2 border-pink-100 rounded-xl px-3 py-2"
+              required
             />
           </div>
 
@@ -78,6 +117,7 @@ const AdminProductEdit = () => {
               value={product.stock}
               onChange={handleChange}
               className="w-full border-2 border-pink-100 rounded-xl px-3 py-2"
+              required
             />
           </div>
 
@@ -100,6 +140,13 @@ const AdminProductEdit = () => {
               onChange={handleChange}
               className="w-full border-2 border-pink-100 rounded-xl px-3 py-2"
             />
+            {product.image && (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-40 h-40 object-cover mt-2 rounded-xl shadow-md"
+              />
+            )}
           </div>
 
           <div className="flex gap-4 mt-4">

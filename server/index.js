@@ -43,6 +43,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 //routes layer 1, yang menerima route dari front end kemudian akan dikirim ke route yang sesuai
 app.use("/api/products", productsRoutes);
 app.use("/auth", authRoutes);
