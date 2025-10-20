@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Home,
@@ -12,7 +12,6 @@ import {
   Plus,
   Settings,
   FileText,
-  ChevronLeftSquare,
   LogIn,
 } from "lucide-react";
 import authService from "../../services/authService";
@@ -45,106 +44,48 @@ const Navbar = ({ currentPage = "home" }) => {
     return icons[key] || <Home className="w-8 h-8" />;
   };
 
-  const goToProfile = () => {
-    navigate("/profile");
-  };
-
-  const goToLogin = () => {
-    navigate("/login");
-  };
-
-  const goToCart = () => {
-    navigate("/cart");
-  };
-
+  const goToProfile = () => navigate("/profile");
+  const goToLogin = () => navigate("/login");
+  const goToCart = () => navigate("/cart");
 
   const navItems = (() => {
-  if (loading) return []; // Or you could return a loading skeleton later
-  if (isAdmin) {
+    if (loading) return [];
+    if (isAdmin) {
+      return [
+        { name: "Dashboard", key: "dashboard", path: "/admin-dashboard", description: "Kelola dashboard admin dan statistik" },
+        { name: "Home", key: "home", path: "/", description: "Kembali ke halaman utama toko" },
+        { name: "Products", key: "products", path: "/admin/products", description: "Lihat dan kelola semua produk" },
+        { name: "Orders", key: "orders", path: "/admin/orders", description: "Kelola pesanan pelanggan" },
+        { name: "Add Product", key: "add-product", path: "/admin/add-product", description: "Tambahkan produk baru" },
+      ];
+    }
     return [
-      {
-        name: "Dashboard",
-        key: "dashboard",
-        path: "/admin-dashboard",
-        description: "Kelola dashboard admin dan statistik",
-      },
-      {
-        name: "Products",
-        key: "products",
-        path: "/admin/products",
-        description: "Lihat dan kelola semua produk",
-      },
-      {
-        name: "Orders",
-        key: "orders",
-        path: "/admin/orders",
-        description: "Kelola pesanan pelanggan",
-      },
-      {
-        name: "Add Product",
-        key: "add-product",
-        path: "/admin/add-product",
-        description: "Tambahkan produk baru",
-      },
+      { name: "Home", key: "home", path: "/", description: "Halaman utama toko kami dengan penawaran terbaik" },
+      { name: "Products", key: "products", path: "/products", description: "Jelajahi koleksi produk lengkap" },
+      { name: "Reviews", key: "reviews", path: "/reviews", description: "Baca review dan testimoni pelanggan" },
+      { name: "Order", key: "order", path: "/order-list", description: "Pesan makanan favorit Anda sekarang" },
     ];
-  }
+  })();
 
-  return [
-    {
-      name: "Home",
-      key: "home",
-      path: "/",
-      description: "Halaman utama toko kami dengan penawaran terbaik",
-    },
-    {
-      name: "Products",
-      key: "products",
-      path: "/products",
-      description: "Jelajahi koleksi produk lengkap",
-    },
-    {
-      name: "Reviews",
-      key: "reviews",
-      path: "/reviews",
-      description: "Baca review dan testimoni pelanggan",
-    },
-    {
-      name: "Order",
-      key: "order",
-      path: "/order-list",
-      description: "Pesan makanan favorit Anda sekarang",
-    },
-  ];
-})();
-
-
-  
-  const handleLogOut = async () => { 
-    try{
+  const handleLogOut = async () => {
+    try {
       await authService.logout();
-      console.log("TRY")
       navigate("/");
-    }catch(error){
+    } catch (error) {
       console.error("Logout failed: ", error);
     }
-  }
-
+  };
 
   const handleNavClick = (path, key) => {
     setCurrentPageState(key);
     setIsMenuOpen(false);
     navigate(path);
-    console.log("Navigate to:", path);
   };
 
   return (
     <div className="relative">
       {/* Navbar */}
-      <nav
-        className="flex items-center justify-between px-6 py-4 
-        bg-gradient-to-r from-pink-200 via-cyan-100 to-white 
-        shadow-md relative z-50"
-      >
+      <nav className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-pink-200 via-cyan-100 to-white shadow-md relative z-50">
         {/* Hamburger + Logo */}
         <div className="flex items-center space-x-4">
           <button
@@ -211,9 +152,11 @@ const Navbar = ({ currentPage = "home" }) => {
 
         {/* Cart & Profile / Login */}
         <div className="flex items-center space-x-4">
-          {/* Cart - Only show when authenticated */}
           {!loading && isAuthenticated && (
-            <button className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110" onClick={goToCart}>
+            <button
+              className="relative p-2 hover:bg-cyan-100 rounded-lg transition-all duration-300 transform hover:scale-110"
+              onClick={goToCart}
+            >
               <ShoppingCart className="w-6 h-6 text-pink-600" />
               <span className="absolute -top-1 -right-1 bg-cyan-400 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow animate-pulse">
                 {cartCount}
@@ -221,7 +164,6 @@ const Navbar = ({ currentPage = "home" }) => {
             </button>
           )}
 
-          {/* Profile or Login Button */}
           {loading ? (
             <div className="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center animate-pulse">
               <User className="w-6 h-6 text-pink-400" />
@@ -279,19 +221,15 @@ const Navbar = ({ currentPage = "home" }) => {
                           Edit Profil
                         </span>
                       </button>
-                      <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
+                      <button
+                        onClick={() => navigate("/cart")}
+                        className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3"
+                      >
                         <FileText className="w-5 h-5 text-cyan-500" />
                         <span className="text-gray-700 font-medium">
                           Pesanan Saya
                         </span>
                       </button>
-                      <button className="w-full text-left px-4 py-3 hover:bg-cyan-50 rounded-xl transition-colors flex items-center space-x-3">
-                        <Settings className="w-5 h-5 text-cyan-500" />
-                        <span className="text-gray-700 font-medium">
-                          Pengaturan
-                        </span>
-                      </button>
-                      <hr className="my-2 border-gray-200" />
                       <button
                         onClick={handleLogOut}
                         className="w-full px-4 py-3 bg-gradient-to-r from-pink-400 to-cyan-400 text-white rounded-xl hover:from-pink-500 hover:to-cyan-500 transition-all duration-300 font-medium shadow-md transform hover:scale-105"
@@ -319,13 +257,9 @@ const Navbar = ({ currentPage = "home" }) => {
         </div>
       </nav>
 
-      {/* Hamburger Dropdown */}
+      {/* Dropdown Menu */}
       <div
-        className={`absolute top-full left-0 right-0 
-        bg-[#FFF5FA] 
-        shadow-xl border-t-4 border-pink-200 
-        transition-all duration-500 ease-in-out transform z-40 
-        ${
+        className={`absolute top-full left-0 right-0 bg-[#FFF5FA] shadow-xl border-t-4 border-pink-200 transition-all duration-500 ease-in-out transform z-40 ${
           isMenuOpen
             ? "opacity-100 translate-y-0 visible"
             : "opacity-0 -translate-y-8 invisible"
@@ -341,129 +275,80 @@ const Navbar = ({ currentPage = "home" }) => {
             </p>
           </div>
 
-          {/* Navigation Cards */}
+          {/* Grid untuk item selain Add Product */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-            {navItems.map((item) => (
+            {navItems
+              .filter((item) => item.key !== "add-product")
+              .map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => handleNavClick(item.path, item.key)}
+                  className={`group relative overflow-hidden rounded-3xl bg-white p-8 shadow-md hover:shadow-lg transition-all duration-500 transform hover:-translate-y-3 ${
+                    currentPageState === item.key
+                      ? "ring-4 ring-cyan-300 scale-105"
+                      : ""
+                  }`}
+                >
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-pink-100/40 to-cyan-100/30 rounded-full -mr-20 -mt-20"></div>
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-cyan-100/30 to-pink-50/20 rounded-full -ml-16 -mb-16"></div>
+
+                  <div className="relative z-10 text-center">
+                    <div
+                      className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-md ${
+                        currentPageState === item.key
+                          ? "bg-gradient-to-br from-pink-400 to-cyan-300 text-white scale-110"
+                          : "bg-gradient-to-br from-pink-50 to-cyan-50 text-pink-500 group-hover:from-pink-400 group-hover:to-cyan-300 group-hover:text-white"
+                      }`}
+                    >
+                      {getIcon(item.key)}
+                    </div>
+                    <h3 className="font-bold text-2xl mb-3">{item.name}</h3>
+                    <p className="text-gray-600 text-sm">{item.description}</p>
+                  </div>
+                </button>
+              ))}
+          </div>
+
+          {/* Add Product full width */}
+          {isAdmin && (
+            <div className="flex justify-center">
               <button
-                key={item.key}
-                onClick={() => handleNavClick(item.path, item.key)}
-                className={`group relative overflow-hidden rounded-3xl bg-white p-8 shadow-md hover:shadow-lg transition-all duration-500 transform hover:-translate-y-3 ${
-                  currentPageState === item.key
+                onClick={() => handleNavClick("/admin/add-product", "add-product")}
+                className={`group w-full md:w-3/4 lg:w-1/2 relative overflow-hidden rounded-3xl bg-white p-10 shadow-md hover:shadow-lg transition-all duration-500 transform hover:-translate-y-3 ${
+                  currentPageState === "add-product"
                     ? "ring-4 ring-cyan-300 scale-105"
                     : ""
                 }`}
               >
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-pink-100/40 to-cyan-100/30 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-700"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-cyan-100/30 to-pink-50/20 rounded-full -ml-16 -mb-16 group-hover:scale-150 transition-transform duration-700"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-pink-100/40 to-cyan-100/30 rounded-full -mr-32 -mt-32"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-cyan-100/30 to-pink-50/20 rounded-full -ml-24 -mb-24"></div>
 
-                <div className="relative z-10">
+                <div className="relative z-10 flex flex-col items-center text-center">
                   <div
-                    className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 shadow-md ${
-                      currentPageState === item.key
+                    className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-6 shadow-md ${
+                      currentPageState === "add-product"
                         ? "bg-gradient-to-br from-pink-400 to-cyan-300 text-white scale-110"
-                        : "bg-gradient-to-br from-pink-50 to-cyan-50 text-pink-500 group-hover:from-pink-400 group-hover:to-cyan-300 group-hover:text-white group-hover:scale-110"
+                        : "bg-gradient-to-br from-pink-50 to-cyan-50 text-pink-500 group-hover:from-pink-400 group-hover:to-cyan-300 group-hover:text-white"
                     }`}
                   >
-                    {getIcon(item.key)}
+                    <Plus className="w-10 h-10" />
                   </div>
-
                   <h3
-                    className={`font-bold text-2xl mb-3 transition-colors duration-300 ${
-                      currentPageState === item.key
+                    className={`font-bold text-3xl mb-3 ${
+                      currentPageState === "add-product"
                         ? "text-pink-600"
                         : "text-gray-800 group-hover:text-cyan-500"
                     }`}
                   >
-                    {item.name}
+                    Tambah Produk
                   </h3>
-
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4 min-h-[3rem]">
-                    {item.description}
+                  <p className="text-gray-600 text-base mb-4">
+                    Tambahkan produk baru ke toko Anda dengan mudah.
                   </p>
-
-                  {currentPageState === item.key ? (
-                    <div className="inline-flex items-center text-sm font-bold text-cyan-600 bg-cyan-100 px-4 py-2 rounded-full">
-                      <span>✓ Halaman Aktif</span>
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center text-sm font-semibold text-gray-400 group-hover:text-cyan-500 transition-colors">
-                      <span>Kunjungi</span>
-                      <svg
-                        className="w-4 h-4 ml-2 transform group-hover:translate-x-2 transition-transform"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  )}
                 </div>
               </button>
-            ))}
-          </div>
-
-          {/* Info Banners */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="p-6 bg-white rounded-2xl shadow-md border-l-4 border-pink-300">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-pink-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">🎉</span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800 mb-1">
-                    Promo Spesial!
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    Dapatkan diskon hingga 50% untuk produk pilihan hari ini
-                  </p>
-                </div>
-              </div>
             </div>
-
-            <div className="p-6 bg-white rounded-2xl shadow-md border-l-4 border-cyan-400">
-              <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-cyan-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">🚀</span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800 mb-1">
-                    Gratis Ongkir!
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    Untuk pembelian minimal Rp 100.000 ke seluruh Indonesia
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom CTA Section */}
-          <div className="p-8 bg-gradient-to-r from-pink-300 via-cyan-200 to-white rounded-3xl shadow-lg">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="text-pink-900 text-center md:text-left">
-                <h3 className="font-bold text-2xl mb-2">Butuh Bantuan?</h3>
-                <p className="text-pink-700/80">
-                  Customer service kami siap membantu Anda 24/7
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button className="px-8 py-4 bg-white text-cyan-600 rounded-xl font-bold hover:shadow-md transform hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2">
-                  <span>📞</span>
-                  <span>Hubungi Kami</span>
-                </button>
-                <button className="px-8 py-4 bg-white/50 backdrop-blur-sm text-pink-700 border-2 border-white rounded-xl font-bold hover:bg-white/70 transition-all duration-300 flex items-center justify-center space-x-2">
-                  <span>💬</span>
-                  <span>Live Chat</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

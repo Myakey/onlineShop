@@ -40,7 +40,7 @@ const Cart = () => {
       // Select all items by default
       setSelectedItems(cartItems.map((item) => item.cart_item_id));
     }
-  }, [cart]);
+  }, [cartItems]);
 
   // Update quantity with loading state
   const handleUpdateQuantity = async (cartItemId, newQuantity) => {
@@ -296,7 +296,7 @@ const Cart = () => {
               Yuk mulai belanja boneka lucu & imut favoritmu!
             </p>
             <button
-              onClick={() => navigate("/product")}
+              onClick={() => navigate("/products")}
               className="px-8 py-4 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-2xl font-bold text-lg hover:from-pink-600 hover:to-cyan-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center gap-2"
             >
               <ShoppingBag className="w-6 h-6" />
