@@ -180,7 +180,7 @@ const sendOTPEmail = async (email, otp, purpose = "email_verification") => {
     }
 
     const result = await resend.emails.send({
-      from:"AmbatuGroup <onboarding@resend.dev>",
+      from:"AmbatuGroup <noreply@send.ambalabus.my.id>",
       to: email,
       subject,
       html
@@ -273,7 +273,7 @@ const sendWelcomeEmail = async (email, firstName) => {
     const subject = "Welcome to ambalabus!";
 
     const result = await resend.emails.send({
-      from:"AmbatuGroup <onboarding@resend.dev>",
+      from:"AmbatuGroup <noreply@send.ambalabus.my.id>",
       to: email,
       subject,
       html
