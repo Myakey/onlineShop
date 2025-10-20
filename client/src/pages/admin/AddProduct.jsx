@@ -5,7 +5,7 @@ import Footer from "../../components/layout/Footer";
 import { Save, Upload, X } from "lucide-react";
 import productService from "../../services/productService";
 
-const API_URL = "http://localhost:8080/api/products";
+const API_URL =  `${import.meta.env.VITE_API_URL}/api/products` || "http://localhost:8080/api/products";
 
 export default function ProductForm() {
   const { id } = useParams(); // if id exists, it's edit mode
