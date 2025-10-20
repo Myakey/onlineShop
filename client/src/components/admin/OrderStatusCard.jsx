@@ -3,9 +3,9 @@ import { Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 const OrderStatusCard = ({ type = 'pending', count = 0 }) => {
   const config = {
-    pending: { color: 'yellow', icon: Clock, label: 'Pesanan Menunggu', note: 'Butuh perhatian' },
-    completed: { color: 'green', icon: CheckCircle, label: 'Pesanan Selesai', note: '+5 hari ini' },
-    cancelled: { color: 'red', icon: AlertCircle, label: 'Pesanan Dibatalkan', note: 'Review diperlukan' },
+    pending: { color: 'yellow', icon: Clock, label: 'Pesanan Menunggu'},
+    completed: { color: 'green', icon: CheckCircle, label: 'Pesanan Selesai'},
+    cancelled: { color: 'red', icon: AlertCircle, label: 'Pesanan Dibatalkan'},
   }[type];
 
   const Icon = config.icon;
