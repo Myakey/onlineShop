@@ -19,10 +19,12 @@ const AdminPage = () => {
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
         const [productRes, orderRes] = await Promise.all([
           fetch("http://localhost:8080/api/products"),
           fetch("http://localhost:8080/api/orders"),
@@ -46,6 +48,10 @@ const AdminPage = () => {
         });
       } catch (err) {
         console.error("Gagal memuat data:", err);
+        setProducts([]);
+        setOrders([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -54,6 +60,12 @@ const AdminPage = () => {
 
   // 🔹 Fungsi export ke PDF
   const handleExportPDF = () => {
+    // Pastikan data sudah dimuat
+    if (isLoading) {
+      alert("Data masih dimuat, mohon tunggu sebentar...");
+      return;
+    }
+
     const doc = new jsPDF("p", "mm", "a4");
     doc.setFontSize(16);
     doc.text("LAPORAN ADMIN", 105, 15, { align: "center" });
@@ -74,12 +86,14 @@ const AdminPage = () => {
     doc.setFontSize(12);
     doc.text("Daftar Produk", 15, 75);
 
-    const productTable = products.map((p, index) => [
-      index + 1,
-      p.name || "-",
-      `Rp ${Number(p.price || 0).toLocaleString("id-ID")}`,
-      p.stock ?? "-",
-    ]);
+    const productTable = Array.isArray(products) && products.length > 0
+      ? products.map((p, index) => [
+          index + 1,
+          p.name || "-",
+          `Rp ${Number(p.price || 0).toLocaleString("id-ID")}`,
+          p.stock ?? "-",
+        ])
+      : [["-", "Tidak ada data produk", "-", "-"]];
 
     doc.autoTable({
       startY: 80,
@@ -95,14 +109,16 @@ const AdminPage = () => {
     doc.setFontSize(12);
     doc.text("Daftar Pesanan", 15, finalY);
 
-    const orderTable = orders.map((o, index) => [
-      index + 1,
-      o.order_number || "-",
-      o.user?.first_name ? `${o.user.first_name} ${o.user.last_name || ""}` : "N/A",
-      o.payment_status || "-",
-      o.status || "-",
-      `Rp ${parseFloat(o.total_amount || 0).toLocaleString("id-ID")}`,
-    ]);
+    const orderTable = Array.isArray(orders) && orders.length > 0
+      ? orders.map((o, index) => [
+          index + 1,
+          o.order_number || "-",
+          o.user?.first_name ? `${o.user.first_name} ${o.user.last_name || ""}` : "N/A",
+          o.payment_status || "-",
+          o.status || "-",
+          `Rp ${parseFloat(o.total_amount || 0).toLocaleString("id-ID")}`,
+        ])
+      : [["-", "Tidak ada data pesanan", "-", "-", "-", "-"]];
 
     doc.autoTable({
       startY: finalY + 5,
@@ -125,10 +141,13 @@ const AdminPage = () => {
         <div className="flex justify-end mb-4">
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+            disabled={isLoading}
+            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-lg hover:shadow-lg transition-all duration-300 ${
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             <FileDown size={20} />
-            Export ke PDF
+            {isLoading ? "Memuat Data..." : "Export ke PDF"}
           </button>
         </div>
 
