@@ -131,6 +131,22 @@ function App() {
                   </AdminRoute>
                 }
               />
+              <Route
+              path="/admin/products/:productId"
+                element={
+                  <AdminRoute>
+                    <AdminProductDetail />
+                  </AdminRoute>
+                }
+              />
+              <Route
+              path="/admin/products/edit/:productId"
+                element={
+                  <AdminRoute>
+                    <AdminProductEdit />
+                  </AdminRoute>
+                }
+              />
             </Routes>
           </CartProvider>
         </UserProvider>
