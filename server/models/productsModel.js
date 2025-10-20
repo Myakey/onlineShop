@@ -1,7 +1,6 @@
 const prisma = require("../config/prisma")
 
 const addFullImageUrls = (products) => {
-  // Cloudinary URLs are already complete, just return as-is
   if (Array.isArray(products)) {
     return products.map((product) => ({
       ...product,
@@ -14,12 +13,13 @@ const addFullImageUrls = (products) => {
     };
   }
 };
-// Get all products
+
+//Fungsi model mengambil seluruh produk
 exports.getAllProducts = async () => {
   try {
     const products = await prisma.products.findMany({
       orderBy: {
-        product_id: "desc", // Order by newest first, adjust as needed
+        product_id: "desc", 
       },
     });
     return addFullImageUrls(products);
@@ -28,7 +28,7 @@ exports.getAllProducts = async () => {
   }
 };
 
-// Get product by ID
+//Ambil produk berdasarkan id
 exports.getProductById = async (productId) => {
   try {
     const product = await prisma.products.findUnique({
