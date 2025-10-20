@@ -5,10 +5,11 @@ import OrderStatusCard from "../components/admin/OrderStatusCard";
 import RecentOrders from "../components/admin/RecentOrders";
 import TopProducts from "../components/admin/TopProducts";
 import RevenueChart from "../components/admin/RevenueChart";
-import { Package, ShoppingCart, Users, DollarSign } from "lucide-react";
-
 import productService from "../services/productService";
 import orderService from "../services/orderService";
+import { Package, ShoppingCart, Users, DollarSign, FileDown } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable"; // 🔹 WAJIB ditambahkan agar doc.autoTable() berfungsi
 
 const AdminPage = () => {
   const [stats, setStats] = useState({
@@ -90,7 +91,18 @@ const AdminPage = () => {
       <NavbarAdmin />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats Cards */}
+        {/* Tombol Export PDF */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+          >
+            <FileDown size={20} />
+            Export ke PDF
+          </button>
+        </div>
+
+        {/* Statistik */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard label="Total Produk" value={stats.totalProducts} Icon={Package} color="pink" />
           <StatsCard label="Total Pesanan" value={stats.totalOrders} Icon={ShoppingCart} color="blue" />
@@ -98,21 +110,18 @@ const AdminPage = () => {
           <StatsCard label="Total Pendapatan" value={stats.totalRevenue} Icon={DollarSign} color="green" />
         </div>
 
-        {/* Order Status */}
+        {/* Status Pesanan */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <OrderStatusCard type="pending" count={orderStatusCount.pending} />
           <OrderStatusCard type="completed" count={orderStatusCount.completed} />
           <OrderStatusCard type="cancelled" count={orderStatusCount.cancelled} />
         </div>
 
-        {/* Main Content */}
+        {/* Daftar Pesanan & Produk */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Orders */}
           <div className="lg:col-span-2">
             <RecentOrders orders={recentOrders} />
           </div>
-
-          {/* Sidebar */}
           <div className="space-y-6">
             <TopProducts products={products.slice(0, 3)} />
             {/* <RevenueChart data={[25, 30, 28, 35, 40, 38, 45]} /> */}

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import authService from '../../services/authService';
 import { User, Phone, MapPin, Edit2, Trash2, Plus, X, Check, Camera } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
-
+import DefaultPFP from '../../assets/DefaultPFP.png'; 
 import { useUser } from '../../context/userContext';
 
 export default function Profile() {
@@ -189,36 +189,47 @@ export default function Profile() {
         }
     };
 
-    const handleDeleteImage = async () => {
-        if (!confirm('Are you sure you want to delete your profile picture?')) return;
+const handleDeleteImage = async () => {
+  if (!window.confirm('Are you sure you want to delete your profile picture?')) return;
 
-        setIsUploading(true);
-        try {
-            await authService.deleteProfileImage();
-            
-            // ✅ Update React state
-            const updatedUser = { ...user, profileImageUrl: null };
-            setUser(updatedUser);
-            
-            // ✅ Update localStorage with sanitized data
-            const safeUserData = {
-                id: updatedUser.id,
-                username: updatedUser.username,
-                type: updatedUser.type,
-                firstName: updatedUser.firstName,
-                lastName: updatedUser.lastName,
-                emailVerified: updatedUser.emailVerified,
-                profileImageUrl: null,
-            };
-            localStorage.setItem('user', JSON.stringify(safeUserData));
-            
-            setMessage('Profile image deleted successfully!');
-        } catch (error) {
-            setMessage('Failed to delete profile image');
-        } finally {
-            setIsUploading(false);
-        }
+  setIsUploading(true);
+  setMessage('');
+
+  try {
+    const response = await fetch(DefaultPFP);
+    const blob = await response.blob();
+
+    const defaultFile = new File([blob], 'DefaultPFP.png', { type: blob.type });
+
+    const formData = new FormData();
+    formData.append('profileImage', defaultFile);
+
+    const uploadResponse = await authService.uploadProfileImage(formData);
+
+    const updatedUser = uploadResponse.user;
+    setUser(updatedUser);
+
+    const safeUserData = {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      type: updatedUser.type,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      emailVerified: updatedUser.emailVerified,
+      profileImageUrl: updatedUser.profileImageUrl,
     };
+    localStorage.setItem('user', JSON.stringify(safeUserData));
+
+    await updateUserContext();
+
+    setMessage('Profile picture successfully deleted!');
+  } catch (error) {
+    console.error('Failed to delete profile picture:', error);
+    setMessage(error.response?.data?.error || 'Failed to delete profile picture');
+  } finally {
+    setIsUploading(false);
+  }
+};
 
     const openAddressModal = (address = null) => {
         setEditingAddress(address);
@@ -308,7 +319,7 @@ export default function Profile() {
     };
 
     const handleDeleteAddress = async (addressId) => {
-        if (!confirm('Are you sure you want to delete this address?')) return;
+        if (!window.confirm('Are you sure you want to delete this address?')) return;
 
         try {
             await authService.deleteAddress(addressId);
@@ -368,22 +379,22 @@ export default function Profile() {
     return (
         <> 
             <Navbar />
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 py-12 px-4">
+        <div className="bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 py-6 sm:py-12 px-3 sm:px-4 pb-8 sm:pb-12">
             
             <div className="max-w-7xl mx-auto">
                 {message && (
-                    <div className={`mb-6 p-5 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
+                    <div className={`mb-4 sm:mb-6 p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
                         message.includes('successfully') 
                             ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-2 border-green-300' 
                             : 'bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-2 border-red-300'
                     }`}>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
                             {message.includes('successfully') ? (
-                                <Check className="w-6 h-6 text-green-600" />
+                                <Check className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0" />
                             ) : (
-                                <X className="w-6 h-6 text-red-600" />
+                                <X className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
                             )}
-                            <span className="font-semibold">{message}</span>
+                            <span className="font-semibold text-sm sm:text-base">{message}</span>
                         </div>
                     </div>
                 )}
@@ -391,12 +402,12 @@ export default function Profile() {
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
 
                 {/* Top Section: Profile Picture + Edit Profile Side by Side */}
-                <div className="grid lg:grid-cols-3 gap-8 mb-8">
+                <div className="grid lg:grid-cols-3 gap-4 sm:gap-8 mb-4 sm:mb-8">
                     {/* Left Column - Profile Picture */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-3xl shadow-2xl p-5 text-center transform hover:shadow-3xl transition-all duration-300">
-                            <div className="relative inline-block mb-6">
-                                <div className="w-48 h-48 rounded-full overflow-hidden bg-white border-4 border-white shadow-2xl ring-4 ring-pink-200 mx-auto">
+                        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-5 text-center transform hover:shadow-3xl transition-all duration-300">
+                            <div className="relative inline-block mb-4 sm:mb-6">
+                                <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full overflow-hidden bg-white border-2 sm:border-4 border-white shadow-2xl ring-2 sm:ring-4 ring-pink-200 mx-auto">
                                     {user?.profileImageUrl ? (
                                         <img
                                             src={`${user.profileImageUrl}`}
@@ -404,52 +415,52 @@ export default function Profile() {
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-400 via-rose-400 to-pink-500 text-white text-6xl font-bold">
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-400 via-rose-400 to-pink-500 text-white text-4xl sm:text-6xl font-bold">
                                             {user?.firstName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase()}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                                <div className="absolute -bottom-1 sm:-bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={isUploading}
-                                        className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-3 rounded-full hover:from-pink-600 hover:to-rose-600 shadow-xl disabled:from-gray-400 disabled:to-gray-400 transition-all duration-300 hover:scale-110"
+                                        className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-2 sm:p-3 rounded-full hover:from-pink-600 hover:to-rose-600 shadow-xl disabled:from-gray-400 disabled:to-gray-400 transition-all duration-300 hover:scale-110"
                                     >
                                         {isUploading ? (
-                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                         ) : (
-                                            <Camera className="w-5 h-5" />
+                                            <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
                                         )}
                                     </button>
                                     {user?.profileImageUrl && (
                                         <button
                                             onClick={handleDeleteImage}
                                             disabled={isUploading}
-                                            className="bg-gradient-to-r from-red-500 to-rose-600 text-white p-3 rounded-full hover:from-red-600 hover:to-rose-700 shadow-xl disabled:from-gray-400 disabled:to-gray-400 transition-all duration-300 hover:scale-110"
+                                            className="bg-gradient-to-r from-red-500 to-rose-600 text-white p-2 sm:p-3 rounded-full hover:from-red-600 hover:to-rose-700 shadow-xl disabled:from-gray-400 disabled:to-gray-400 transition-all duration-300 hover:scale-110"
                                         >
-                                            <Trash2 className="w-5 h-5" />
+                                            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                                         </button>
                                     )}
                                 </div>
                             </div>
 
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
+                            <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent mb-2">
                                 {user?.firstName && user?.lastName 
                                     ? `${user.firstName} ${user.lastName}` 
                                     : user?.firstName || user?.username}
                             </h1>
 
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 justify-center bg-pink-50 px-4 py-2 rounded-full">
-                                    <User className="w-5 h-5 text-pink-600" />
-                                    <span className="font-medium text-sm">@{user?.username}</span>
+                            <div className="space-y-2 sm:space-y-3">
+                                <div className="flex items-center gap-2 justify-center bg-pink-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600 flex-shrink-0" />
+                                    <span className="font-medium text-xs sm:text-sm truncate">@{user?.username}</span>
                                 </div>
-                                <div className="flex items-center gap-2 justify-center bg-rose-50 px-4 py-2 rounded-full">
-                                    <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex items-center gap-2 justify-center bg-rose-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full">
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
-                                    <span className="font-medium text-sm">{user?.email}</span>
+                                    <span className="font-medium text-xs sm:text-sm truncate">{user?.email}</span>
                                 </div>
                             </div>
                         </div>
@@ -457,23 +468,23 @@ export default function Profile() {
 
                     {/* Right Column - Edit Profile Form */}
                     <div className="lg:col-span-2">
-                        <div className="bg-white rounded-3xl shadow-2xl p-8 transform hover:shadow-3xl transition-all duration-300">
-                            <div className="flex items-center gap-4 mb-8">
-                                <div className="p-3 bg-gradient-to-br from-pink-100 to-rose-100 rounded-2xl">
-                                    <Edit2 className="w-7 h-7 text-pink-600" />
+                        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-8 transform hover:shadow-3xl transition-all duration-300">
+                            <div className="flex items-center gap-3 sm:gap-4 mb-5 sm:mb-8">
+                                <div className="p-2 sm:p-3 bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl sm:rounded-2xl flex-shrink-0">
+                                    <Edit2 className="w-5 h-5 sm:w-7 sm:h-7 text-pink-600" />
                                 </div>
-                                <h2 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                                <h2 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
                                     Edit Profile Information
                                 </h2>
                             </div>
 
-                            <form onSubmit={handleProfileSubmit} className="space-y-6">
-                                <div className="grid md:grid-cols-2 gap-6">
+                            <form onSubmit={handleProfileSubmit} className="space-y-4 sm:space-y-6">
+                                <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                                     <div className="space-y-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">First Name</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">First Name</label>
                                         <input
                                             type="text"
-                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                            className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                             value={profileForm.firstName}
                                             onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
                                             required
@@ -481,10 +492,10 @@ export default function Profile() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Last Name</label>
                                         <input
                                             type="text"
-                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                            className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                             value={profileForm.lastName}
                                             onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
                                             disabled={isLoading}
@@ -493,13 +504,13 @@ export default function Profile() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <Phone className="w-5 h-5 text-pink-600" />
+                                    <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2 flex items-center gap-2">
+                                        <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600" />
                                         Phone Number
                                     </label>
                                     <input
                                         type="tel"
-                                        className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                        className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                         value={profileForm.phoneNumber}
                                         onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
                                         disabled={isLoading}
@@ -508,7 +519,7 @@ export default function Profile() {
 
                                 <button
                                     type="submit"
-                                    className={`w-full rounded-2xl py-4 text-white font-bold text-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg ${isLoading
+                                    className={`w-full rounded-xl sm:rounded-2xl py-3 sm:py-4 text-white font-bold text-base sm:text-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg ${isLoading
                                             ? 'bg-gray-400 cursor-not-allowed'
                                             : 'bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 hover:shadow-2xl'
                                         }`}
@@ -522,48 +533,113 @@ export default function Profile() {
                 </div>
 
                 {/* Bottom Section: Addresses Table (Full Width) */}
-                <div className="bg-white w-full rounded-3xl shadow-2xl p-8 transform hover:shadow-3xl transition-all duration-300">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-gradient-to-br from-rose-100 to-pink-100 rounded-2xl">
-                                <MapPin className="w-7 h-7 text-rose-600" />
+                <div className="bg-white w-full rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-8 transform hover:shadow-3xl transition-all duration-300">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="p-2 sm:p-3 bg-gradient-to-br from-rose-100 to-pink-100 rounded-xl sm:rounded-2xl flex-shrink-0">
+                                <MapPin className="w-5 h-5 sm:w-7 sm:h-7 text-rose-600" />
                             </div>
-                            <h2 className="text-3xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
+                            <h2 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent">
                                 My Addresses
                             </h2>
                         </div>
-                        <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
                             <div className="flex-1 md:flex-none">
                                 <input
                                     placeholder="Search addresses..."
                                     value={searchQuery}
                                     onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                    className="w-full md:w-80 rounded-2xl border-2 border-pink-100 px-4 py-3 focus:outline-none focus:ring-4 focus:ring-pink-50"
+                                    className="w-full md:w-60 lg:w-80 rounded-xl sm:rounded-2xl border-2 border-pink-100 px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:outline-none focus:ring-4 focus:ring-pink-50"
                                 />
                             </div>
                             <button
                                 onClick={() => openAddressModal()}
-                                className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white px-6 py-3 rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 font-semibold"
+                                className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl sm:rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-1.5 sm:gap-2 font-semibold text-sm sm:text-base flex-shrink-0"
                             >
-                                <Plus className="w-5 h-5" />
-                                Add
+                                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <span className="hidden sm:inline">Add</span>
                             </button>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    {/* Mobile Card View */}
+                    <div className="block md:hidden space-y-3">
+                        {currentPageItems.map((address) => (
+                            <div key={address.id || address.address_id} className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-4 border-2 border-pink-100">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-gray-800 text-sm">{address.label}</span>
+                                            {address.is_default && (
+                                                <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                                                    Default
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-sm font-semibold text-gray-700">{address.recipient_name}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2 text-xs text-gray-600 mb-3">
+                                    <div className="flex items-start gap-2">
+                                        <Phone className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                                        <span>{address.phone_number}</span>
+                                    </div>
+                                    <div className="flex items-start gap-2">
+                                        <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p>{address.street_address}</p>
+                                            {address.district?.district_name && <p className="text-gray-500">{address.district.district_name}</p>}
+                                            <p>{address.city?.city_name}, {address.province?.province_name}</p>
+                                            <p>{address.postal_code}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-2 border-t border-pink-200">
+                                    <button
+                                        onClick={() => openAddressModal(address)}
+                                        className="flex-1 text-pink-600 hover:text-white hover:bg-pink-600 px-3 py-1.5 text-xs font-semibold border-2 border-pink-600 rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5"
+                                    >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteAddress(address.address_id || address.id)}
+                                        className="flex-1 text-red-600 hover:text-white hover:bg-red-600 px-3 py-1.5 text-xs font-semibold border-2 border-red-600 rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {filteredAddresses.length === 0 && (
+                            <div className="text-center py-8">
+                                <div className="bg-gradient-to-br from-pink-100 to-rose-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <MapPin className="w-8 h-8 text-pink-400" />
+                                </div>
+                                <p className="text-base font-semibold text-gray-700 mb-1">No addresses found</p>
+                                <p className="text-gray-500 text-sm">Add your first address to get started</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gradient-to-r from-pink-50 to-rose-50 text-gray-700">
-                                    <th className="py-3 px-4 text-left cursor-pointer font-bold" onClick={() => changeSort('label')}>
+                                    <th className="py-3 px-4 text-left cursor-pointer font-bold text-sm" onClick={() => changeSort('label')}>
                                         Label {sortKey === 'label' ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                                     </th>
-                                    <th className="py-3 px-4 text-left font-bold">Recipient</th>
-                                    <th className="py-3 px-4 text-left font-bold">Phone</th>
-                                    <th className="py-3 px-4 text-left font-bold">Address</th>
-                                    <th className="py-3 px-4 text-left font-bold">City</th>
-                                    <th className="py-3 px-4 text-left font-bold">Postal</th>
-                                    <th className="py-3 px-4 text-left font-bold">Actions</th>
+                                    <th className="py-3 px-4 text-left font-bold text-sm">Recipient</th>
+                                    <th className="py-3 px-4 text-left font-bold text-sm">Phone</th>
+                                    <th className="py-3 px-4 text-left font-bold text-sm">Address</th>
+                                    <th className="py-3 px-4 text-left font-bold text-sm">City</th>
+                                    <th className="py-3 px-4 text-left font-bold text-sm">Postal</th>
+                                    <th className="py-3 px-4 text-left font-bold text-sm">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -571,7 +647,7 @@ export default function Profile() {
                                     <tr key={address.id || address.address_id} className="hover:bg-pink-50 transition border-b border-pink-100">
                                         <td className="py-4 px-4 align-top">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-gray-800">{address.label}</span>
+                                                <span className="font-semibold text-gray-800 text-sm">{address.label}</span>
                                                 {address.is_default && (
                                                     <span className="bg-gradient-to-r from-pink-500 to-rose-500 text-white text-xs px-2 py-1 rounded-full font-bold">
                                                         Default
@@ -579,28 +655,28 @@ export default function Profile() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="py-4 px-4 align-top text-gray-700">{address.recipient_name}</td>
-                                        <td className="py-4 px-4 align-top text-gray-700">{address.phone_number}</td>
-                                        <td className="py-4 px-4 align-top leading-relaxed text-gray-700">
+                                        <td className="py-4 px-4 align-top text-gray-700 text-sm">{address.recipient_name}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700 text-sm">{address.phone_number}</td>
+                                        <td className="py-4 px-4 align-top leading-relaxed text-gray-700 text-sm">
                                             {address.street_address}
-                                            {address.district?.district_name && <><br /><span className="text-sm text-gray-600">{address.district.district_name}</span></>}
+                                            {address.district?.district_name && <><br /><span className="text-xs text-gray-600">{address.district.district_name}</span></>}
                                         </td>
-                                        <td className="py-4 px-4 align-top text-gray-700">{address.city?.city_name}, {address.province?.province_name}</td>
-                                        <td className="py-4 px-4 align-top text-gray-700">{address.postal_code}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700 text-sm">{address.city?.city_name}, {address.province?.province_name}</td>
+                                        <td className="py-4 px-4 align-top text-gray-700 text-sm">{address.postal_code}</td>
                                         <td className="py-4 px-4 align-top">
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => openAddressModal(address)}
-                                                    className="text-pink-600 hover:text-white hover:bg-pink-600 px-4 py-2 text-sm font-semibold border-2 border-pink-600 rounded-xl transition-all duration-300 flex items-center gap-2"
+                                                    className="text-pink-600 hover:text-white hover:bg-pink-600 px-3 py-1.5 text-xs font-semibold border-2 border-pink-600 rounded-lg transition-all duration-300 flex items-center gap-1.5"
                                                 >
-                                                    <Edit2 className="w-4 h-4" />
+                                                    <Edit2 className="w-3.5 h-3.5" />
                                                     Edit
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteAddress(address.address_id || address.id)}
-                                                    className="text-red-600 hover:text-white hover:bg-red-600 px-4 py-2 text-sm font-semibold border-2 border-red-600 rounded-xl transition-all duration-300 flex items-center gap-2"
+                                                    className="text-red-600 hover:text-white hover:bg-red-600 px-3 py-1.5 text-xs font-semibold border-2 border-red-600 rounded-lg transition-all duration-300 flex items-center gap-1.5"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 className="w-3.5 h-3.5" />
                                                     Delete
                                                 </button>
                                             </div>
@@ -624,39 +700,39 @@ export default function Profile() {
                     </div>
 
                     {filteredAddresses.length > 0 && (
-                        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="text-sm text-gray-600">
+                        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+                            <div className="text-xs sm:text-sm text-gray-600">
                                 Showing {(currentPage - 1) * PAGE_SIZE + 1} - {Math.min(currentPage * PAGE_SIZE, filteredAddresses.length)} of {filteredAddresses.length}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
                                 <button
                                     onClick={() => setCurrentPage(1)}
                                     disabled={currentPage === 1}
-                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-xs sm:text-sm ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
                                 >
                                     First
                                 </button>
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
-                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-xs sm:text-sm ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
                                 >
                                     Prev
                                 </button>
-                                <div className="px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold">
+                                <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white font-semibold text-xs sm:text-sm">
                                     {currentPage} / {totalPages}
                                 </div>
                                 <button
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                     disabled={currentPage === totalPages}
-                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-xs sm:text-sm ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
                                 >
                                     Next
                                 </button>
                                 <button
                                     onClick={() => setCurrentPage(totalPages)}
                                     disabled={currentPage === totalPages}
-                                    className={`px-3 py-2 rounded-lg font-medium transition ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg font-medium transition text-xs sm:text-sm ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white border-2 border-pink-200 text-pink-600 hover:bg-pink-50'}`}
                                 >
                                     Last
                                 </button>
@@ -667,55 +743,55 @@ export default function Profile() {
 
                 {/* Address Modal */}
                 {isAddressModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-                            <div className="sticky top-0 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white p-8 rounded-t-3xl">
+                    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+                        <div className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                            <div className="sticky top-0 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white p-5 sm:p-8 rounded-t-2xl sm:rounded-t-3xl z-10">
                                 <div className="flex justify-between items-center">
-                                    <h2 className="text-3xl font-bold flex items-center gap-3">
-                                        <MapPin className="w-8 h-8" />
+                                    <h2 className="text-xl sm:text-3xl font-bold flex items-center gap-2 sm:gap-3">
+                                        <MapPin className="w-6 h-6 sm:w-8 sm:h-8" />
                                         {editingAddress ? 'Edit Address' : 'Add New Address'}
                                     </h2>
                                     <button
                                         onClick={closeAddressModal}
-                                        className="p-2.5 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-300"
+                                        className="p-2 sm:p-2.5 hover:bg-white hover:bg-opacity-20 rounded-full transition-all duration-300 flex-shrink-0"
                                     >
-                                        <X className="w-7 h-7" />
+                                        <X className="w-5 h-5 sm:w-7 sm:h-7" />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="p-8">
-                                <form onSubmit={handleAddressSubmit} className="space-y-6">
+                            <div className="p-5 sm:p-8">
+                                <form onSubmit={handleAddressSubmit} className="space-y-4 sm:space-y-6">
                                     <div className="space-y-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Address Label</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Address Label</label>
                                         <input
                                             type="text"
                                             placeholder="e.g., Home, Office, Parents House"
-                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                            className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                             value={addressForm.label}
                                             onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
                                             required
                                         />
                                     </div>
 
-                                    <div className="grid md:grid-cols-2 gap-5">
+                                    <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Recipient Name</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Recipient Name</label>
                                             <input
                                                 type="text"
                                                 placeholder="Full name"
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                                 value={addressForm.recipientName}
                                                 onChange={(e) => setAddressForm({ ...addressForm, recipientName: e.target.value })}
                                                 required
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Phone Number</label>
                                             <input
                                                 type="tel"
                                                 placeholder="08xxxxxxxxxx"
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                                 value={addressForm.phoneNumber}
                                                 onChange={(e) => setAddressForm({ ...addressForm, phoneNumber: e.target.value })}
                                                 required
@@ -724,22 +800,22 @@ export default function Profile() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Street Address</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Street Address</label>
                                         <textarea
                                             placeholder="House number, street name, building name, etc."
                                             rows="3"
-                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 resize-none"
+                                            className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 resize-none"
                                             value={addressForm.streetAddress}
                                             onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
                                             required
                                         />
                                     </div>
 
-                                    <div className="grid md:grid-cols-2 gap-5">
+                                    <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Province</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Province</label>
                                             <select
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                                 value={addressForm.province}
                                                 onChange={(e) => handleProvinceChange(e.target.value)}
                                                 required
@@ -754,9 +830,9 @@ export default function Profile() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">City</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">City</label>
                                             <select
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
                                                 value={addressForm.city}
                                                 onChange={(e) => handleCityChange(e.target.value)}
                                                 required
@@ -772,11 +848,11 @@ export default function Profile() {
                                         </div>
                                     </div>
 
-                                    <div className="grid md:grid-cols-2 gap-5">
+                                    <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">District</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">District</label>
                                             <select
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
                                                 value={addressForm.district}
                                                 onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
                                                 required
@@ -791,11 +867,11 @@ export default function Profile() {
                                             </select>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Postal Code</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Postal Code</label>
                                             <input
                                                 type="text"
                                                 placeholder="12345"
-                                                className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
                                                 value={addressForm.postalCode}
                                                 onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
                                                 required
@@ -804,30 +880,30 @@ export default function Profile() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Additional Notes (Optional)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Additional Notes (Optional)</label>
                                         <textarea
                                             placeholder="Delivery instructions, landmarks, etc."
                                             rows="2"
-                                            className="w-full rounded-2xl border-2 border-pink-200 px-5 py-3.5 focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 resize-none"
+                                            className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 resize-none"
                                             value={addressForm.notes}
                                             onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })}
                                         />
                                     </div>
 
-                                    <label className="flex items-center space-x-3 p-5 bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl cursor-pointer hover:from-pink-100 hover:to-rose-100 transition-all duration-300 border-2 border-pink-200">
+                                    <label className="flex items-center space-x-3 p-4 sm:p-5 bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl sm:rounded-2xl cursor-pointer hover:from-pink-100 hover:to-rose-100 transition-all duration-300 border-2 border-pink-200">
                                         <input
                                             type="checkbox"
-                                            className="w-5 h-5 rounded border-pink-300 text-pink-600 focus:ring-pink-500"
+                                            className="w-4 h-4 sm:w-5 sm:h-5 rounded border-pink-300 text-pink-600 focus:ring-pink-500"
                                             checked={addressForm.isDefault}
                                             onChange={(e) => setAddressForm({ ...addressForm, isDefault: e.target.checked })}
                                         />
-                                        <span className="text-sm font-bold text-gray-700">Set as default address</span>
+                                        <span className="text-xs sm:text-sm font-bold text-gray-700">Set as default address</span>
                                     </label>
 
-                                    <div className="flex gap-4 pt-4">
+                                    <div className="flex gap-3 sm:gap-4 pt-2 sm:pt-4">
                                         <button
                                             type="submit"
-                                            className="flex-1 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white py-4 rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                                            className="flex-1 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 text-white py-3 sm:py-4 rounded-xl sm:rounded-2xl hover:from-pink-600 hover:via-rose-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 font-bold text-sm sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                                             disabled={isLoading}
                                         >
                                             {isLoading ? 'Saving...' : (editingAddress ? 'Update Address' : 'Add Address')}
@@ -835,7 +911,7 @@ export default function Profile() {
                                         <button
                                             type="button"
                                             onClick={closeAddressModal}
-                                            className="flex-1 bg-gray-200 text-gray-700 py-4 rounded-2xl hover:bg-gray-300 font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                                            className="flex-1 bg-gray-200 text-gray-700 py-3 sm:py-4 rounded-xl sm:rounded-2xl hover:bg-gray-300 font-bold text-sm sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                                             disabled={isLoading}
                                         >
                                             Cancel

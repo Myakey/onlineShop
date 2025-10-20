@@ -1,14 +1,13 @@
 const express = require("express");
 const cors = require("cors");
-const prisma = require('./config/prisma'); // Use singleton
-
+const prisma = require('./config/prisma'); 
+//hosting di railway env variablenya
 console.log('🚂 Railway Environment:', {
   PORT: process.env.PORT,
   NODE_ENV: process.env.NODE_ENV,
   RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
 });
-
-// Don't exit on errors in production
+//handling error saat hosting
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
   if (process.env.NODE_ENV !== 'production') {
@@ -23,7 +22,7 @@ process.on("unhandledRejection", (err) => {
   }
 });
 
-// 🧩 Import routes
+//import berbagai routes
 const productsRoutes = require("./routes/productRoutes");
 const authRoutes = require("./routes/authRoutes");
 const cartRoutes = require("./routes/cartRoutes");
@@ -32,10 +31,10 @@ const orderRoutes = require("./routes/orderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 
 const { requireAdmin } = require("./middleware/authMiddleware");
-
+//core function dari express js
 const app = express();
 
-// 🌍 CORS setup
+//cors agar bisa connect dengan frontend
 const corsOptions = {
   origin: "*",
   credentials: true,
@@ -44,7 +43,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// 🧭 Routes
+//routes layer 1, yang menerima route dari front end kemudian akan dikirim ke route yang sesuai
 app.use("/api/products", productsRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
@@ -53,7 +52,7 @@ app.use("/api/shipping", shippingRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// 🩺 Health check - MUST respond quickly
+//cek health untuk memastikan berjalan dengan lancar
 app.get("/", (req, res) => {
   res.json({ status: "OK", message: "API Running" });
 });
@@ -68,41 +67,41 @@ const HOST = '0.0.0.0';
 let server;
 let isShuttingDown = false;
 
-// Start server immediately - don't wait for DB
+//shutdown
 async function startServer() {
   try {
-    // Start server FIRST
+    //jalankan server
     server = app.listen(PORT, HOST, () => {
-      console.log(`✅ Server running on ${HOST}:${PORT}`);
+      console.log(`Server running on ${HOST}:${PORT}`);
     });
 
-    // Connect to DB in background (don't block server startup)
+    //koneksi ke database
     prisma.$connect()
-      .then(() => console.log('✅ Database connected'))
-      .catch(err => console.error('⚠️ Database connection failed (will retry):', err.message));
+      .then(() => console.log('Database connected'))
+      .catch(err => console.error('Database connection failed (will retry):', err.message));
 
-    // Graceful shutdown
+    //shutdown server
     const shutdown = async (signal) => {
       if (isShuttingDown) return;
       isShuttingDown = true;
       
-      console.log(`📡 ${signal} received, shutting down...`);
+      console.log(` ${signal} received, shutting down...`);
       
-      // Stop accepting new requests
+      //close server untuk menutup request baru
       server.close(async () => {
-        console.log('✅ HTTP server closed');
+        console.log('HTTP server closed');
         try {
           await prisma.$disconnect();
-          console.log('✅ Database disconnected');
+          console.log('Database disconnected');
         } catch (err) {
           console.error('Error disconnecting DB:', err);
         }
         process.exit(0);
       });
 
-      // Force shutdown after 5 seconds
+      //paksa shutdown setelah 5 detik
       setTimeout(() => {
-        console.error('⚠️ Forced shutdown');
+        console.error(' Forced shutdown');
         process.exit(1);
       }, 5000);
     };
@@ -111,7 +110,7 @@ async function startServer() {
     process.on('SIGINT', () => shutdown('SIGINT'));
 
   } catch (err) {
-    console.error('❌ Failed to start server:', err);
+    console.error('Failed to start server:', err);
     process.exit(1);
   }
 }
