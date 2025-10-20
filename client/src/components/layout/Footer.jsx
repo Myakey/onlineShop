@@ -6,7 +6,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Logo & Description */}
         <div>
-          <h2 className="text-2xl font-bold text-white mb-4">DollStore</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Ambalabus</h2>
           <p className="text-gray-400 text-sm">
             Menyediakan berbagai boneka lucu dan berkualitas sejak 2010. 
             Cocok untuk hadiah, koleksi, dan teman setia Anda.
@@ -17,10 +17,9 @@ const Footer = () => {
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
           <ul className="space-y-2">
-            <li><a href="#" className="hover:text-white transition-colors">Home</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Katalog</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Testimoni</a></li>
-            <li><a href="#" className="hover:text-white transition-colors">Pesan Sekarang</a></li>
+            <li><a href="/" className="hover:text-white transition-colors">Home</a></li>
+            <li><a href="/products" className="hover:text-white transition-colors">Katalog</a></li>
+            <li><a href="/order" className="hover:text-white transition-colors">Pesan Sekarang</a></li>
           </ul>
         </div>
 
