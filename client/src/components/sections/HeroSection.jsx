@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 import plushiesImg from "../../assets/Plushies.png";
 import givingImg from "../../assets/GivingPlushies.png";
 import labubuImg from "../../assets/Labubus.png";
-
+//test
 const slides = [
   {
     id: 1,
