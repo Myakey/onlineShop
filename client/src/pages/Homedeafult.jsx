@@ -34,7 +34,6 @@ function HomePage() {
   //   }, []);
 
   const handleDelete = (id) => {
-    console.log("Deleting product with id:", id);
     deleteProduct(id)
     .then(() => {
       setProducts(products.filter(product => product.id !== id));
@@ -47,7 +46,6 @@ function HomePage() {
     getProducts()
       .then((res) => {
         setProducts(res.data);
-        console.log("Products with images:", res.data);
       })
       .catch((err) => console.error("Error fetching products:", err));
   }, []);

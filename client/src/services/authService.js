@@ -211,20 +211,27 @@ const authService = {
 
   /** TOKEN VALIDATION - SECURE VERSION */
   async validateToken() {
-    try {
-      const { data } = await api.get("/profile");
-      
-      // ✅ SECURITY FIX: Return sanitized user data
-      const safeUser = data.user ? sanitizeUserData(data.user) : null;
-      
-      return { valid: true, user: safeUser };
-    } catch (error) {
-      if ([401, 403].includes(error.response?.status)) {
-        return { valid: false, user: null };
-      }
-      throw error;
+  try {
+    const { data } = await api.get("/profile");
+    
+    // ✅ SECURITY FIX: Return sanitized user data
+    const safeUser = data.user ? sanitizeUserData(data.user) : null;
+    
+    return { valid: true, user: safeUser };
+  } catch (error) {
+    const status = error.response?.status;
+
+    // Don't log for 401 or 403 — just handle gracefully
+    if ([401, 403].includes(status)) {
+      return { valid: false, user: null };
     }
-  },
+
+    // Log or rethrow only for unexpected errors
+    console.error("Token validation error:", error);
+    throw error;
+  }
+}
+
 };
 
 export default authService;

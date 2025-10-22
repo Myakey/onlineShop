@@ -196,14 +196,12 @@ const Order = () => {
     const districtId =
       districtIdParam || selectedAddress?.fullAddress?.district_id || null;
     if (!districtId) {
-      console.log("No district ID to calculate shipping");
       return;
     }
 
     setIsLoadingShipping(true);
     try {
       const payload = { districtId, weight: 1000 }; // 1kg default
-      console.log("Calculating shipping for:", payload);
 
       const response = await kurirService.calculateShipping(payload);
       // response may be Axios response (with .data) or raw object

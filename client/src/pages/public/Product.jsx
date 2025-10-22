@@ -35,7 +35,7 @@ const Product = () => {
           data = await productService.searchProduct(searchTerm);
         }
 
-        const formattedData = data.data.map((p) => ({
+        const formattedData = data.map((p) => ({
           ...p,
           price: parseFloat(p.price),
         }));

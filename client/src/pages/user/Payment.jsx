@@ -43,7 +43,6 @@ const Payment = () => {
     try {
       setLoading(true);
       const data = await orderService.getOrderByToken(token);
-      console.log(data);
       setOrder(data?.data);
 
       if (data.payment_status === "paid") {

@@ -20,7 +20,6 @@ const loadMinimalUserData = async () => {
     // ✅ Skip if no access token found
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      console.log("No access token found — skipping user validation.");
       setUser(null);
       setIsAuthenticated(false);
       setIsAdmin(false);
@@ -31,7 +30,6 @@ const loadMinimalUserData = async () => {
 
     // ✅ Only run validation if token exists
     const { valid, user: userData } = await authService.validateToken();
-    console.log("Token validation result:", { valid, userData });
 
     if (valid && userData) {
       const safeUser = {

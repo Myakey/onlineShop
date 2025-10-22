@@ -13,7 +13,6 @@ const ProductCard = ({ product, viewMode = "grid" }) => {
   // Fetch review summary when component mounts
   useEffect(() => {
     fetchReviewSummary();
-    console.log("PRODUCTS", product)
   }, [product.product_id]);
 
   const fetchReviewSummary = async () => {

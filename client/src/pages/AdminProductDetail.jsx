@@ -17,7 +17,6 @@ const AdminProductDetail = () => {
       try {
         setLoading(true);
         const data = await productService.getProductById(productId);
-        console.log("Product data:", data);
         setProduct(data); // pastikan service return data lengkap termasuk image_url
       } catch (err) {
         console.error("Fetch Product Error:", err);

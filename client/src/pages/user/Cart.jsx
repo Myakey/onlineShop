@@ -143,8 +143,6 @@ const Cart = () => {
 
   const total = subtotal - discount;
 
-  console.log("Selected Items:", selectedItems);
-
   // Checkout - navigate to order page with selected items
   const handleCheckout = async () => {
     if (selectedItems.length === 0) {
@@ -176,7 +174,6 @@ const Cart = () => {
     setActionLoading("checkout"); // Use a generic loading state for the button/process
     try {
       // Call the backend endpoint (assuming it's a POST and accepts items)
-      console.log("Validating cart items with backend:", itemsForValidation);
       const validation = await cartService.validateCart(itemsForValidation);
 
       if (!validation.valid) {
@@ -343,9 +340,6 @@ const Cart = () => {
               {cartItems.map((item) => {
                 const product = item.product;
                 const isLoading = actionLoading === item.cart_item_id;
-
-                console.log("Rendering item:", item);
-                console.log("Product details:", product);
 
                 return (
                   <div

@@ -158,7 +158,6 @@ const ProductDetails = () => {
   };
 
   const handleReply = (rid) => {
-    console.log("Reply to review:", rid);
   };
 
   const handleFilterChange = (filters) => {

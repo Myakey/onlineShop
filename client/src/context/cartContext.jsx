@@ -162,7 +162,6 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     const token = localStorage.getItem("token"); // ✅ check for login
     if (!token) {
-      console.log("User not logged in — skipping cart fetch");
       setLoading(false);
       return;
     }
@@ -170,7 +169,6 @@ export const CartProvider = ({ children }) => {
     setLoading(true);
     try {
       const data = await cartService.getCart();
-      console.log("Cart API:", data);
       setCart(data.data);
       setCartCount(data.data?.totalItems || data.data?.items?.length || 0);
     } catch (error) {

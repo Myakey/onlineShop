@@ -7,8 +7,6 @@ const AdminAddProduct = () => {
   const [image, setImage] = useState(null);
 
   const handleSubmit = (formData) => {
-    console.log('Product Data:', formData);
-    console.log('Image:', image);
     alert('Product added successfully!');
   };
 
