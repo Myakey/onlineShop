@@ -35,7 +35,19 @@ const Product = () => {
           data = await productService.searchProduct(searchTerm);
         }
 
-        const formattedData = data.map((p) => ({
+        const normalizedData = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.data)
+          ? data.data
+          : null;
+
+        if (!normalizedData) {
+          console.error("Unexpected products payload:", data);
+          setProducts([]);
+          return;
+        }
+
+        const formattedData = normalizedData.map((p) => ({
           ...p,
           price: parseFloat(p.price),
         }));

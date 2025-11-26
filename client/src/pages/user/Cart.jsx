@@ -507,7 +507,7 @@ const Cart = () => {
 
               {/* Continue Shopping */}
               <button
-                onClick={() => navigate("/product")}
+                onClick={() => navigate("/products")}
                 className="w-full py-4 bg-white border-2 border-pink-200 text-pink-600 rounded-2xl font-bold hover:bg-gradient-to-r hover:from-pink-50 hover:to-cyan-50 hover:border-cyan-300 transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <Package className="w-5 h-5" />

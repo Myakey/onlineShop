@@ -53,6 +53,7 @@ function App() {
               <Route path="/debug-page" element={<DebugPage />} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/products" element={<Product />} />
+              <Route path="/reviews" element={<Reviews />} />
 
               <Route element={<ProtectedRoute />}>
                 {/* Protected Routes */}

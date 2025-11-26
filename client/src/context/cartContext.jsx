@@ -150,6 +150,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import cartService from "../services/cartService";
+import { useUser } from "./userContext";
 
 const CartContext = createContext();
 
@@ -157,11 +158,14 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(null);
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated, loading: userLoading } = useUser();
 
   // ==================== FETCH CART ====================
   const fetchCart = async () => {
-    const token = localStorage.getItem("token"); // ✅ check for login
-    if (!token) {
+    const token = localStorage.getItem("accessToken");
+    if (!token || !isAuthenticated) {
+      setCart(null);
+      setCartCount(0);
       setLoading(false);
       return;
     }
@@ -180,8 +184,11 @@ export const CartProvider = ({ children }) => {
 
   // ==================== FETCH CART COUNT ====================
   const fetchCartCount = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return; // ✅ skip if not logged in
+    const token = localStorage.getItem("accessToken");
+    if (!token || !isAuthenticated) {
+      setCartCount(0);
+      return;
+    }
 
     try {
       const count = await cartService.getCartCount();
@@ -193,6 +200,9 @@ export const CartProvider = ({ children }) => {
 
   // ==================== ADD ITEM ====================
   const addItem = async (productId, quantity = 1) => {
+    if (!isAuthenticated) {
+      throw new Error("LOGIN_REQUIRED");
+    }
     try {
       await cartService.addToCart(productId, quantity);
       await fetchCart();
@@ -204,6 +214,9 @@ export const CartProvider = ({ children }) => {
 
   // ==================== UPDATE ITEM ====================
   const updateItem = async (cartItemId, quantity) => {
+    if (!isAuthenticated) {
+      throw new Error("LOGIN_REQUIRED");
+    }
     try {
       await cartService.updateCartItem(cartItemId, quantity);
       await fetchCart();
@@ -215,6 +228,9 @@ export const CartProvider = ({ children }) => {
 
   // ==================== REMOVE ITEM ====================
   const removeItem = async (cartItemId) => {
+    if (!isAuthenticated) {
+      throw new Error("LOGIN_REQUIRED");
+    }
     try {
       await cartService.removeFromCart(cartItemId);
       await fetchCart();
@@ -226,6 +242,9 @@ export const CartProvider = ({ children }) => {
 
   // ==================== CLEAR CART ====================
   const clearCart = async () => {
+    if (!isAuthenticated) {
+      throw new Error("LOGIN_REQUIRED");
+    }
     try {
       await cartService.clearCart();
       setCart(null);
@@ -238,6 +257,9 @@ export const CartProvider = ({ children }) => {
 
   // ==================== REMOVE PRODUCT (for Order page) ====================
   const removeProduct = async (cartItemIds) => {
+    if (!isAuthenticated) {
+      throw new Error("LOGIN_REQUIRED");
+    }
     try {
       if (!cartItemIds || (Array.isArray(cartItemIds) && cartItemIds.length === 0)) {
         console.warn("removeProduct: No cart item IDs provided");
@@ -257,9 +279,15 @@ export const CartProvider = ({ children }) => {
   };
 
   // ==================== VALIDATE CART ====================
-  const validate = async () => {
+  const validate = async (items) => {
+    if (!isAuthenticated) {
+      throw new Error("LOGIN_REQUIRED");
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("NO_ITEMS_SELECTED");
+    }
     try {
-      return await cartService.validateCart();
+      return await cartService.validateCart(items);
     } catch (error) {
       console.error("Cart validation failed:", error);
       throw error;
@@ -268,8 +296,10 @@ export const CartProvider = ({ children }) => {
 
   // ==================== INITIAL LOAD ====================
   useEffect(() => {
-    fetchCart(); // ✅ now safe — will only run if token exists
-  }, []);
+    if (userLoading) return;
+    fetchCart();
+    fetchCartCount();
+  }, [isAuthenticated, userLoading]);
 
   return (
     <CartContext.Provider
