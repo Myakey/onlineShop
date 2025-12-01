@@ -8,8 +8,6 @@ import RevenueChart from "../components/admin/RevenueChart";
 import productService from "../services/productService";
 import orderService from "../services/orderService";
 import { Package, ShoppingCart, Users, DollarSign, FileDown } from "lucide-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable"; // 🔹 WAJIB ditambahkan agar doc.autoTable() berfungsi
 
 const AdminPage = () => {
   const [stats, setStats] = useState({

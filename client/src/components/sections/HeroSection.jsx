@@ -2,30 +2,30 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 
 // Import your image from assets folder
-import plushiesImg from "../../assets/Plushies.png";
-import givingImg from "../../assets/GivingPlushies.png";
-import labubuImg from "../../assets/Labubus.png";
+import herosection1 from "../../assets/herosection1.png";
+import herosection2 from "../../assets/herosection2.png";
+import herosection3 from "../../assets/herosection3.png";
 //test
 const slides = [
   {
     id: 1,
-    title: "Boneka Imut & Menggemaskan",
-    desc: "Temukan koleksi boneka lucu yang siap menemani hari-hari Anda.",
-    img: plushiesImg,
+    title: "Figure Imut & Menggemaskan",
+    desc: "Temukan koleksi figure-figure lucu yang siap menemani hari-hari Anda.",
+    img: herosection1,
     bg: "from-pink-200 via-pink-400 to-pink-600",
   },
   {
     id: 2,
     title: "Hadiah Spesial untuk Orang Tersayang",
-    desc: "Boneka lembut dan berkualitas, cocok jadi hadiah istimewa.",
-    img: givingImg,
+    desc: "Figure lembut dan berkualitas, cocok jadi hadiah istimewa.",
+    img: herosection2,
     bg: "from-purple-200 via-purple-400 to-purple-600",
   },
   {
     id: 3,
     title: "Koleksi Unik & Terbaru",
-    desc: "Lengkapi koleksi boneka Anda dengan desain yang selalu update.",
-    img: labubuImg,
+    desc: "Lengkapi koleksi figure Anda dengan desain yang selalu update.",
+    img: herosection3,
     bg: "from-rose-200 via-pink-300 to-rose-500",
   },
 ];
@@ -90,6 +90,7 @@ const HeroSection = () => {
           />
         ))}
       </div>
+          <div className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none bg-gradient-to-b from-transparent to-[#FFF5FA] z-20"></div>
     </section>
   );
 };

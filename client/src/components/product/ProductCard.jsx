@@ -33,7 +33,7 @@ const ProductCard = ({ product, viewMode = "grid" }) => {
     try {
       setAddingToCart(true);
       await addItem(product.product_id, 1);
-      alert(`${product.name} berhasil ditambahkan ke keranjang!`);
+      alert(`${product.name} berhasil ditambahlan ke keranjang!`);
     } catch (err) {
       console.error("Error adding to cart:", err);
       alert("Gagal menambahkan ke keranjang. Silakan coba lagi.");
