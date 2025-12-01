@@ -1,7 +1,8 @@
 import axios from "axios";
 import authService from "../services/authService";
 
-const rootURL = import.meta.env.VITE_API_URL;
+const FALLBACK_API_URL = "http://localhost:8080";
+const rootURL = import.meta.env.VITE_API_URL || FALLBACK_API_URL;
 
 // Main API client (for /api routes)
 const api = axios.create({

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Star, ShoppingCart } from "lucide-react";
 import { useCart } from "../../context/cartContext";
 import reviewService from "../../services/reviewService";
+import fallbackImage from "../../assets/DefaultPFP.png";
 
 const ProductCard = ({ product, viewMode = "grid" }) => {
   const navigate = useNavigate();
@@ -63,12 +64,13 @@ const ProductCard = ({ product, viewMode = "grid" }) => {
       {/* Product Image */}
       <div className="relative overflow-hidden">
         <img
-          src={product.image_url || "https://via.placeholder.com/400"}
+          src={product.image_url || fallbackImage}
           alt={product.name}
           className={`object-cover transition-transform duration-300 group-hover:scale-105 
           ${viewMode === "list" ? "w-48 h-48" : "w-full h-56"}`}
           onError={(e) => {
-            e.target.src = "https://via.placeholder.com/400?text=No+Image";
+            e.target.onerror = null;
+            e.target.src = fallbackImage;
           }}
         />
         
