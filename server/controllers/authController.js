@@ -339,7 +339,7 @@ async function addAddress(req, res) {
         isDefault = false,
         latitude,      // ADD THIS
         longitude      // ADD THIS
-    } = addressData;
+    } = req.body;
 
     console.log("ADDING!");
 

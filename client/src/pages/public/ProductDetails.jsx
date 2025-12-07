@@ -17,6 +17,7 @@ import ReviewStats from "../../components/review/ReviewStats";
 import ReviewFilters from "../../components/review/ReviewFilters";
 import reviewService from "../../services/reviewService";
 import { useCart } from "../../context/cartContext";
+import { getProductById } from "../../../../server/models/productsModel";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -45,8 +46,7 @@ const ProductDetails = () => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:8080/api/products/${id}`);
-        const data = await res.json();
+        const res = await getProductById(id);
         console.log("API Response:", data);
 
         const formattedProduct = {
