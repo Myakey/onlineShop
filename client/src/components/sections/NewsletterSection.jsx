@@ -32,6 +32,7 @@ const NewsletterSection = () => {
     <section
       ref={sectionRef}
       className="py-24 px-6 bg-gradient-to-br from-pink-300 via-pink-200 to-white relative overflow-hidden"
+      
     >
       {/* Background dekorasi */}
       <div className="absolute inset-0">
@@ -74,7 +75,7 @@ const NewsletterSection = () => {
         {/* Buttons - Slide in from sides */}
         <div className="flex flex-col sm:flex-row gap-6 max-w-2xl mx-auto justify-center">
           <button
-            className={`px-8 py-5 bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-2xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-500 hover:from-pink-500 hover:to-pink-600 flex items-center justify-center gap-3 ${
+            className={`px-8 py-5 bg-pink-500 text-white rounded-2xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-500 hover:from-pink-500 hover:to-pink-600 flex items-center justify-center gap-3 ${
               isVisible
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 -translate-x-20"
@@ -101,6 +102,8 @@ const NewsletterSection = () => {
           </button>
         </div>
       </div>
+      {/* Fade putih di bagian bawah */}
+      <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-b from-transparent to-white pointer-events-none"></div>
     </section>
   );
 };

@@ -1,15 +1,15 @@
-
 import { useState } from "react";
 import { User, Lock, Mail, Phone, UserCircle } from "lucide-react";
 import authService from "../services/authService";
 
 function Login() {
-    const [currentStep, setCurrentStep] = useState('auth'); // 'auth' | 'verify-email'
+    const [currentStep, setCurrentStep] = useState('auth');
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({
         username: "",
         email: "",
         password: "",
+        confirmPassword: "", // ⬅️ DITAMBAHKAN
         firstName: "",
         lastName: "",
         phoneNumber: ""
@@ -33,7 +33,13 @@ function Login() {
 
         try {
             if (isLogin) {
-                // Login logic
+                // Logic untuk Login
+                if (!formData.username || !formData.password) {
+                    setMessage("Please enter username and password.");
+                    setIsLoading(false);
+                    return;
+                }
+
                 const data = await authService.login({
                     username: formData.username,
                     password: formData.password
@@ -49,15 +55,26 @@ function Login() {
                 }, 1500);
 
             } else {
-                // Register logic
-                const data = await authService.register({
-                    username: formData.username,
-                    email: formData.email,
-                    password: formData.password,
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    phoneNumber: formData.phoneNumber
-                });
+                // Logic untuk Register
+                
+                // Validasi Wajib Register
+                if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword || !formData.firstName || !formData.lastName) {
+                    setMessage("Please fill in all required fields.");
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Validasi Konfirmasi Password
+                if (formData.password !== formData.confirmPassword) {
+                    setMessage("Password and Confirm Password must match!");
+                    setIsLoading(false);
+                    return;
+                }
+                
+                // Hapus confirmPassword sebelum mengirim ke backend
+                const { confirmPassword, ...dataToSend } = formData;
+                
+                const data = await authService.register(dataToSend);
 
                 setRegistrationEmail(formData.email);
                 setCurrentStep('verify-email');
@@ -137,6 +154,7 @@ function Login() {
             username: "",
             email: "",
             password: "",
+            confirmPassword: "", // ⬅️ RESET
             firstName: "",
             lastName: "",
             phoneNumber: ""
@@ -223,6 +241,7 @@ function Login() {
                 </h1>
 
                 <form onSubmit={handleAuthSubmit} className="space-y-6">
+                    {/* Username Input */}
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <User className="h-5 w-5 text-purple-400" />
@@ -240,6 +259,7 @@ function Login() {
 
                     {!isLogin && (
                         <>
+                            {/* Email Input */}
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <Mail className="h-5 w-5 text-purple-400" />
@@ -255,6 +275,7 @@ function Login() {
                                 />
                             </div>
                             
+                            {/* First Name / Last Name Inputs */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -276,10 +297,12 @@ function Login() {
                                     className="w-full px-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
                                     value={formData.lastName}
                                     onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                    required
                                     disabled={isLoading}
                                 />
                             </div>
                             
+                            {/* Phone Number Input */}
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                     <Phone className="h-5 w-5 text-purple-400" />
@@ -296,6 +319,7 @@ function Login() {
                         </>
                     )}
 
+                    {/* Password Input (Login & Register) */}
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Lock className="h-5 w-5 text-purple-400" />
@@ -311,7 +335,27 @@ function Login() {
                             minLength="6"
                         />
                     </div>
+                    
+                    {/* Confirm Password Input (Hanya Register) */}
+                    {!isLogin && (
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Lock className="h-5 w-5 text-purple-400" />
+                            </div>
+                            <input
+                                type="password"
+                                placeholder="Confirm Password"
+                                className="w-full pl-12 pr-4 py-4 bg-white/90 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300"
+                                value={formData.confirmPassword}
+                                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                                required
+                                disabled={isLoading}
+                                minLength="6"
+                            />
+                        </div>
+                    )}
 
+                    {/* Submit Button */}
                     <button
                         type="submit"
                         className={`w-full py-4 font-semibold rounded-xl text-white shadow-lg transform hover:scale-105 transition-all duration-300 ${
@@ -328,6 +372,7 @@ function Login() {
                     </button>
                 </form>
 
+                {/* Message Display */}
                 {message && (
                     <div className={`mt-6 p-3 rounded-xl text-center text-sm ${
                         message.includes('successful') 
@@ -338,6 +383,7 @@ function Login() {
                     </div>
                 )}
 
+                {/* Toggle Mode */}
                 <p className="mt-6 text-center text-sm text-gray-300">
                     {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
                     <button

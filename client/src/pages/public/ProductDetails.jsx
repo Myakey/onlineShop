@@ -9,6 +9,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Heart,
 } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
@@ -16,6 +17,7 @@ import ReviewCard from "../../components/review/ReviewCard";
 import ReviewStats from "../../components/review/ReviewStats";
 import ReviewFilters from "../../components/review/ReviewFilters";
 import reviewService from "../../services/reviewService";
+import wishlistService from "../../services/wishList";
 import { useCart } from "../../context/cartContext";
 
 const ProductDetails = () => {
@@ -29,7 +31,8 @@ const ProductDetails = () => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
-
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -40,14 +43,12 @@ const ProductDetails = () => {
     sort: "recent",
   });
 
-  // Fetch product details from API
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
         const res = await fetch(`http://localhost:8080/api/products/${id}`);
         const data = await res.json();
-        console.log("API Response:", data);
 
         const formattedProduct = {
           ...data,
@@ -58,9 +59,9 @@ const ProductDetails = () => {
             ? [{ image_url: data.image_url }] 
             : [],
         };
-        console.log("Formatted Product:", formattedProduct);
 
         setProduct(formattedProduct);
+        checkWishlistStatus(formattedProduct.product_id);
       } catch (err) {
         console.error("Error fetching product:", err);
       } finally {
@@ -71,7 +72,44 @@ const ProductDetails = () => {
     fetchProduct();
   }, [id]);
 
-  // Auto-play carousel
+  const checkWishlistStatus = async (productId) => {
+    try {
+      const response = await wishlistService.checkWishlist(productId);
+      if (response.success) {
+        setIsInWishlist(response.data.inWishlist);
+      }
+    } catch (err) {
+      console.error("Error checking wishlist:", err);
+    }
+  };
+
+  const toggleWishlist = async () => {
+    if (!product) return;
+
+    try {
+      setWishlistLoading(true);
+      
+      if (isInWishlist) {
+        const response = await wishlistService.removeFromWishlist(product.product_id);
+        if (response.success) {
+          setIsInWishlist(false);
+          alert("Produk dihapus dari wishlist!");
+        }
+      } else {
+        const response = await wishlistService.addToWishlist(product.product_id);
+        if (response.success) {
+          setIsInWishlist(true);
+          alert("Produk ditambahkan ke wishlist!");
+        }
+      }
+    } catch (err) {
+      console.error("Error toggling wishlist:", err);
+      alert("Gagal mengubah wishlist. Silakan coba lagi.");
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAutoPlaying || !product?.images?.length || product.images.length <= 1) return;
 
@@ -247,7 +285,6 @@ const ProductDetails = () => {
       <Navbar />
 
       <div className="flex-1 p-8">
-        {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
           className="mb-6 px-4 py-2 bg-gradient-to-r from-pink-400 to-sky-400 text-white rounded-lg shadow hover:from-pink-500 hover:to-sky-500 flex items-center gap-2 transition-all"
@@ -256,14 +293,10 @@ const ProductDetails = () => {
           Kembali
         </button>
 
-        {/* Product Details */}
         <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden mb-12">
           <div className="grid grid-cols-1 md:grid-cols-2">
-            {/* Image Gallery */}
             <div className="relative bg-gradient-to-br from-pink-50 to-sky-50 p-8">
-              {/* Main Image Container */}
               <div className="relative mb-6 rounded-2xl overflow-hidden bg-white">
-                {/* Single Image Display */}
                 <div className="relative h-96 flex items-center justify-center">
                   <img
                     src={getCurrentImage()}
@@ -273,7 +306,6 @@ const ProductDetails = () => {
                   />
                 </div>
 
-                {/* Navigation Arrows - Only show if multiple images */}
                 {hasMultipleImages && (
                   <>
                     <button
@@ -289,7 +321,6 @@ const ProductDetails = () => {
                       <ChevronRight size={24} className="text-gray-700" />
                     </button>
 
-                    {/* Auto-play Toggle */}
                     <button
                       onClick={() => setIsAutoPlaying(!isAutoPlaying)}
                       className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-semibold transition-all z-10 ${
@@ -301,30 +332,43 @@ const ProductDetails = () => {
                       {isAutoPlaying ? "⏸ Pause" : "▶ Auto"}
                     </button>
 
-                    {/* Image Counter */}
-                    <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
+                    <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
                       {selectedImageIndex + 1} / {product.images.length}
                     </div>
                   </>
                 )}
 
-                {/* Stock Badge */}
+                <button
+                  onClick={toggleWishlist}
+                  disabled={wishlistLoading}
+                  className={`absolute top-4 right-4 p-3 rounded-full shadow-lg transition-all hover:scale-110 z-20 ${
+                    isInWishlist
+                      ? "bg-pink-500 text-white"
+                      : "bg-white/90 hover:bg-white text-gray-700"
+                  } ${wishlistLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  title={isInWishlist ? "Hapus dari wishlist" : "Tambah ke wishlist"}
+                >
+                  <Heart
+                    size={24}
+                    fill={isInWishlist ? "currentColor" : "none"}
+                    className="transition-all"
+                  />
+                </button>
+
                 {product.stock < 10 && product.stock > 0 && (
-                  <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
+                  <div className="absolute top-16 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
                     Stok Terbatas!
                   </div>
                 )}
                 {product.stock === 0 && (
-                  <div className="absolute top-4 right-4 bg-gray-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
+                  <div className="absolute top-16 right-4 bg-gray-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
                     Habis
                   </div>
                 )}
               </div>
 
-              {/* Thumbnail Navigation - Only show if multiple images */}
               {hasMultipleImages && (
                 <div className="space-y-4">
-                  {/* Thumbnail Grid */}
                   <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     <div className="flex gap-3 px-4">
                       {product.images.map((image, index) => (
@@ -354,7 +398,6 @@ const ProductDetails = () => {
                             />
                           </div>
                           
-                          {/* Active Indicator */}
                           {selectedImageIndex === index && (
                             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
                           )}
@@ -363,7 +406,6 @@ const ProductDetails = () => {
                     </div>
                   </div>
 
-                  {/* Progress Dots */}
                   <div className="flex justify-center gap-2">
                     {product.images.map((_, index) => (
                       <button
@@ -384,14 +426,30 @@ const ProductDetails = () => {
               )}
             </div>
 
-            {/* Product Info */}
             <div className="p-8 flex flex-col justify-between">
               <div>
-                <h1 className="text-4xl font-bold text-gray-800 mb-4">
-                  {product.name}
-                </h1>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <h1 className="text-4xl font-bold text-gray-800 flex-1">
+                    {product.name}
+                  </h1>
+                  <button
+                    onClick={toggleWishlist}
+                    disabled={wishlistLoading}
+                    className={`p-2 rounded-full transition-all hover:scale-110 ${
+                      isInWishlist
+                        ? "bg-pink-100 text-pink-500"
+                        : "bg-gray-100 text-gray-400 hover:bg-pink-50 hover:text-pink-400"
+                    } ${wishlistLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={isInWishlist ? "Hapus dari wishlist" : "Tambah ke wishlist"}
+                  >
+                    <Heart
+                      size={24}
+                      fill={isInWishlist ? "currentColor" : "none"}
+                      className="transition-all"
+                    />
+                  </button>
+                </div>
 
-                {/* Rating */}
                 {reviewStats && (
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex text-yellow-400">
@@ -419,14 +477,12 @@ const ProductDetails = () => {
                     "Produk berkualitas tinggi dengan bahan lembut dan nyaman."}
                 </p>
 
-                {/* Price */}
                 <div className="mb-6">
                   <p className="text-4xl font-bold text-pink-600">
                     Rp {product.price.toLocaleString("id-ID")}
                   </p>
                 </div>
 
-                {/* Stock Info */}
                 <div className="mb-6">
                   <p className="text-sm text-gray-600">
                     Stok tersedia:{" "}
@@ -436,7 +492,6 @@ const ProductDetails = () => {
                   </p>
                 </div>
 
-                {/* Quantity Selector */}
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Jumlah
@@ -471,7 +526,6 @@ const ProductDetails = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="space-y-3">
                 <button
                   onClick={handleAddToCart}
@@ -503,7 +557,6 @@ const ProductDetails = () => {
           </div>
         </div>
 
-        {/* Reviews Section */}
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 text-gray-800">
             Customer Reviews
@@ -540,7 +593,6 @@ const ProductDetails = () => {
                 ))}
               </div>
 
-              {/* Pagination */}
               {reviews.length >= reviewFilters.limit && (
                 <div className="flex justify-center mt-8 gap-2">
                   <button

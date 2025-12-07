@@ -5,6 +5,7 @@ import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoutes";
 import About from "./pages/public/About";
 import Login from "./pages/Login";
 import Profile from "./pages/user/Profile";
+import Wishlist from "./pages/user/Wishlist"; 
 
 // import AdminPage from "./pages/admin";
 import CartPage from "./pages/user/Cart";
@@ -59,6 +60,7 @@ function App() {
               <Route element={<ProtectedRoute />}>
                 {/* Protected Routes */}
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/order" element={<Order />} />
                 <Route path="/order-list" element={<MyOrders />} />

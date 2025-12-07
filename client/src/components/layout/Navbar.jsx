@@ -12,6 +12,7 @@ import {
   Plus,
   FileText,
   LogIn,
+  Heart,
 } from "lucide-react";
 import authService from "../../services/authService";
 import { useUser } from "../../context/userContext";
@@ -50,6 +51,7 @@ const Navbar = () => {
     else if (path === "/reviews") key = "reviews";
     else if (path === "/order-list") key = "order";
     else if (path === "/cart") key = "cart";
+    else if (path === "/wishlist") key = "wishlist";
 
     setCurrentPageState({ path, key });
   }, [location.pathname]);
@@ -94,9 +96,9 @@ const Navbar = () => {
   const handleLogOut = async () => {
     try {
       await authService.logout();
-      setUser(null);            // Reset user context
-      setShowProfile(false);    // Tutup dropdown
-      navigate("/");            // Kembali ke home
+      setUser(null);
+      setShowProfile(false);
+      navigate("/");
     } catch (error) {
       console.error("Logout failed: ", error);
       setUser(null);
@@ -112,9 +114,7 @@ const Navbar = () => {
 
   return (
   <div className="sticky top-0 left-0 right-0 z-[100]">
-      {/* Navbar Utama */}
       <nav className="sticky flex items-center justify-between px-6 py-0 bg-gradient-to-r from-pink-300 via-pink-100 to-white shadow-md z-50">
-        {/* Logo */}
         <div className="flex items-center space-x-4">
           <button onClick={toggleMenu} className="p-2 hover:bg-pink-200 rounded-lg transition-all duration-300 transform hover:scale-110">
             <div className="w-6 h-6 flex flex-col justify-center space-y-1.5">
@@ -135,7 +135,6 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Search */}
         <div className="flex-1 max-w-2xl mx-8">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -157,7 +156,6 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Cart & Profile / Login */}
         <div className="flex items-center space-x-4">
           {!loading && isAuthenticated && !isAdmin && (
             <button className="relative p-2 hover:bg-pink-200 rounded-lg transition-all duration-300 transform hover:scale-110" onClick={goToCart}>
@@ -199,10 +197,17 @@ const Navbar = () => {
                       </button>
 
                       {!isAdmin && (
-                        <button onClick={() => navigate("/order-list")} className="w-full text-left px-4 py-3 hover:bg-pink-50 rounded-xl transition-colors flex items-center space-x-3">
-                          <FileText className="w-5 h-5 text-pink-500" />
-                          <span className="text-gray-700 font-medium">Pesanan Saya</span>
-                        </button>
+                        <>
+                          <button onClick={() => { setShowProfile(false); navigate("/wishlist"); }} className="w-full text-left px-4 py-3 hover:bg-pink-50 rounded-xl transition-colors flex items-center space-x-3">
+                            <Heart className="w-5 h-5 text-pink-500" />
+                            <span className="text-gray-700 font-medium">Wishlist Saya</span>
+                          </button>
+
+                          <button onClick={() => navigate("/order-list")} className="w-full text-left px-4 py-3 hover:bg-pink-50 rounded-xl transition-colors flex items-center space-x-3">
+                            <FileText className="w-5 h-5 text-pink-500" />
+                            <span className="text-gray-700 font-medium">Pesanan Saya</span>
+                          </button>
+                        </>
                       )}
 
                       <hr className="my-2 border-gray-200" />
@@ -224,7 +229,6 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Hamburger Dropdown */}
       <div className={`absolute top-full left-0 right-0 bg-[#FFF5FA] shadow-xl border-t-4 border-pink-200 transition-all duration-500 ease-in-out transform z-40 ${isMenuOpen ? "opacity-100 translate-y-0 visible" : "opacity-0 -translate-y-8 invisible"}`}>
         <div className="max-w-7xl mx-auto py-10 px-6">
           <div className="mb-8 text-center">
@@ -232,7 +236,6 @@ const Navbar = () => {
             <p className="text-gray-600 text-lg">Pilih kategori yang ingin Anda kunjungi</p>
           </div>
 
-          {/* Navigation Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
             {navItems.filter(item => item.key !== "add-product").map(item => (
               <button key={item.key} onClick={() => handleNavClick(item.path, item.key)} className={`group relative overflow-hidden rounded-3xl bg-white p-8 shadow-md hover:shadow-lg transition-all duration-500 transform hover:-translate-y-3 ${currentPageState.key === item.key ? "ring-4 ring-pink-300 scale-105" : ""}`}>
@@ -247,7 +250,6 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Add Product full width */}
           {isAdmin && (
             <div className="flex justify-center mb-8">
               <button onClick={() => handleNavClick("/admin/add-product", "add-product")} className={`group w-full md:w-3/4 lg:w-1/2 relative overflow-hidden rounded-3xl bg-white p-10 shadow-md hover:shadow-lg transition-all duration-500 transform hover:-translate-y-3 ${currentPageState.key === "add-product" ? "ring-4 ring-pink-300 scale-105" : ""}`}>

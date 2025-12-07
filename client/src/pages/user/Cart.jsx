@@ -276,7 +276,7 @@ const Cart = () => {
             Keranjang Belanja
           </h1>
           <p className="text-gray-600">
-            {cartItems.length} produk boneka lucu menunggumu! 🧸
+            {cartItems.length} item siap di checkout! 🧸
           </p>
         </div>
 
@@ -294,7 +294,7 @@ const Cart = () => {
             </p>
             <button
               onClick={() => navigate("/products")}
-              className="px-8 py-4 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-2xl font-bold text-lg hover:from-pink-600 hover:to-cyan-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center gap-2"
+              className="px-8 py-4 bg-pink-500 text-white rounded-2xl font-bold text-lg hover:from-pink-600 hover:to-cyan-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center gap-2"
             >
               <ShoppingBag className="w-6 h-6" />
               Mulai Belanja
