@@ -63,7 +63,9 @@ const ReviewStats = ({ stats }) => {
         </div>
       </div>
     </div>
+    
   );
 };
+
 
 export default ReviewStats;

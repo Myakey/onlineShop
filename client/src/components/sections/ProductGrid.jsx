@@ -144,7 +144,7 @@ const ProductGrid = () => {
                   </span>
                   <button
                     onClick={() => handleOpenModal(product)}
-                    className="px-8 py-4 bg-gradient-to-r from-pink-400 to-pink-500 rounded-xl text-white font-semibold text-base shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300 whitespace-nowrap"
+                    className="px-8 py-4 bg-pink-500 rounded-xl text-white font-semibold text-base shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300 whitespace-nowrap"
                   >
                     Lihat Detail
                   </button>

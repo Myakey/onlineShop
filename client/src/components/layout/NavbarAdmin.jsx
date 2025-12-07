@@ -104,7 +104,7 @@ const NavbarAdmin = () => {
   }
 
   return (
-    <div className="sticky top-0 left-0 right-0 [z-100] mb-10">
+    <div className="sticky top-0 left-0 right-0 z-50 mb-10">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-0 bg-gradient-to-r from-pink-300 via-pink-100 to-white shadow-md relative z-50">
         <div className="flex items-center space-x-4">

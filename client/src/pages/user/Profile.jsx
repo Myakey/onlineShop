@@ -9,7 +9,6 @@ import { OpenStreetMapProvider } from 'leaflet-geosearch';
 import 'leaflet-geosearch/dist/geosearch.css';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-
 import { Search } from 'lucide-react';
 
 delete L.Icon.Default.prototype._getIconUrl;

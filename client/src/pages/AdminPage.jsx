@@ -4,10 +4,11 @@ import StatsCard from "../components/admin/StatsCard";
 import OrderStatusCard from "../components/admin/OrderStatusCard";
 import RecentOrders from "../components/admin/RecentOrders";
 import TopProducts from "../components/admin/TopProducts";
+import Footer from "../components/layout/Footer";
 import RevenueChart from "../components/admin/RevenueChart";
 import productService from "../services/productService";
 import orderService from "../services/orderService";
-import { Package, ShoppingCart, Users, DollarSign, FileDown } from "lucide-react";
+import { Package, ShoppingCart, Users, DollarSign, FileDown, TrendingUp, Activity } from "lucide-react";
 
 const AdminPage = () => {
   const [stats, setStats] = useState({
@@ -24,7 +25,7 @@ const AdminPage = () => {
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
-  const [allOrders, setAllOrders] = useState([]); // 🔹 Tambahkan state untuk semua orders
+  const [allOrders, setAllOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -38,20 +39,18 @@ const AdminPage = () => {
           return;
         }
 
-        // Fetch both via services
         const [productsRes, ordersRes] = await Promise.all([
           productService.getProducts(),
           orderService.getAllOrders(),
         ]);
 
-        // Extract actual data
         const productsData = Array.isArray(productsRes.data)
         ? productsRes.data
         : productsRes.data?.data || [];
         const ordersData = ordersRes.data || [];
 
         setProducts(productsData);
-        setAllOrders(ordersData); // 🔹 Simpan semua orders
+        setAllOrders(ordersData);
 
         const pendingCount = ordersData.filter((o) => o.status === "pending").length;
         const completedCount = ordersData.filter((o) => o.status === "delivered").length;
@@ -91,7 +90,6 @@ const AdminPage = () => {
   }, []);
 
   const handleExportPDF = () => {
-    // 🔹 Cek apakah data sudah dimuat
     if (isLoading) {
       alert("Data masih dimuat, mohon tunggu sebentar...");
       return;
@@ -104,7 +102,6 @@ const AdminPage = () => {
     doc.setFontSize(10);
     doc.text(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`, 15, 25);
 
-    // 📊 Statistik
     doc.setFontSize(12);
     doc.text("Statistik Ringkas:", 15, 35);
     doc.setFontSize(10);
@@ -113,7 +110,6 @@ const AdminPage = () => {
     doc.text(`• Total Pelanggan: ${stats.totalCustomers}`, 20, 54);
     doc.text(`• Total Pendapatan: ${stats.totalRevenue}`, 20, 60);
 
-    // 🧾 Daftar Produk
     doc.setFontSize(12);
     doc.text("Daftar Produk", 15, 75);
 
@@ -132,15 +128,13 @@ const AdminPage = () => {
       body: productTable,
       theme: "striped",
       styles: { fontSize: 9 },
-      headStyles: { fillColor: [255, 182, 193] }, // pink
+      headStyles: { fillColor: [255, 182, 193] },
     });
 
-    // 📦 Daftar Pesanan
     let finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(12);
     doc.text("Daftar Pesanan", 15, finalY);
 
-    // 🔹 Gunakan allOrders (semua pesanan) bukan orders yang tidak terdefinisi
     const orderTable = Array.isArray(allOrders) && allOrders.length > 0
       ? allOrders.map((o, index) => [
           index + 1,
@@ -158,57 +152,181 @@ const AdminPage = () => {
       body: orderTable,
       theme: "striped",
       styles: { fontSize: 9 },
-      headStyles: { fillColor: [173, 216, 230] }, // light blue
+      headStyles: { fillColor: [173, 216, 230] },
     });
 
     doc.save(`Laporan-Admin-${new Date().toLocaleDateString("id-ID")}.pdf`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-cyan-50">
       <NavbarAdmin />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Tombol Export PDF */}
-        <div className="flex justify-end mb-4">
+        {/* Header Section */}
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+              Dashboard Admin
+            </h1>
+            <p className="text-gray-600 flex items-center gap-2">
+              <Activity size={16} />
+              Monitoring real-time system performance
+            </p>
+          </div>
+          
+          {/* Export Button */}
           <button
             onClick={handleExportPDF}
             disabled={isLoading}
-            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-lg hover:shadow-lg transition-all duration-300 ${
+            className={`group relative px-6 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 text-white rounded-xl font-medium overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-105 ${
               isLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            <FileDown size={20} />
-            {isLoading ? "Memuat Data..." : "Export ke PDF"}
+            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            <div className="relative flex items-center gap-2">
+              <FileDown size={20} className="group-hover:rotate-12 transition-transform duration-300" />
+              {isLoading ? "Memuat Data..." : "Export ke PDF"}
+            </div>
           </button>
         </div>
 
-        {/* Statistik */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatsCard label="Total Produk" value={stats.totalProducts} Icon={Package} color="pink" />
-          <StatsCard label="Total Pesanan" value={stats.totalOrders} Icon={ShoppingCart} color="blue" />
-          <StatsCard label="Total Pelanggan" value={stats.totalCustomers} Icon={Users} color="purple" />
-          <StatsCard label="Total Pendapatan" value={stats.totalRevenue} Icon={DollarSign} color="green" />
+        {/* Stats Cards Row - Kompak & Premium */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <Package className="text-white/80" size={32} />
+                <span className="text-xs font-semibold text-white/70 bg-white/20 px-3 py-1 rounded-full">Produk</span>
+              </div>
+              <div className="text-3xl font-bold text-white mb-1">{stats.totalProducts}</div>
+              <div className="text-sm text-white/80 font-medium">Total Produk</div>
+            </div>
+          </div>
+
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <ShoppingCart className="text-white/80" size={32} />
+                <span className="text-xs font-semibold text-white/70 bg-white/20 px-3 py-1 rounded-full">Pesanan</span>
+              </div>
+              <div className="text-3xl font-bold text-white mb-1">{stats.totalOrders}</div>
+              <div className="text-sm text-white/80 font-medium">Total Pesanan</div>
+            </div>
+          </div>
+
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <Users className="text-white/80" size={32} />
+                <span className="text-xs font-semibold text-white/70 bg-white/20 px-3 py-1 rounded-full">Pelanggan</span>
+              </div>
+              <div className="text-3xl font-bold text-white mb-1">{stats.totalCustomers}</div>
+              <div className="text-sm text-white/80 font-medium">Total Pelanggan</div>
+            </div>
+          </div>
+
+          <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-500 to-green-600 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <DollarSign className="text-white/80" size={32} />
+                <span className="text-xs font-semibold text-white/70 bg-white/20 px-3 py-1 rounded-full">Revenue</span>
+              </div>
+              <div className="text-2xl font-bold text-white mb-1">{stats.totalRevenue}</div>
+              <div className="text-sm text-white/80 font-medium">Total Pendapatan</div>
+            </div>
+          </div>
         </div>
 
-        {/* Status Pesanan */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <OrderStatusCard type="pending" count={orderStatusCount.pending} />
-          <OrderStatusCard type="completed" count={orderStatusCount.completed} />
-          <OrderStatusCard type="cancelled" count={orderStatusCount.cancelled} />
+        {/* Two Column Layout - Professional Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 mb-8">
+          
+          {/* Left Column - Orders Section */}
+          <div className="xl:col-span-3 space-y-6">
+            {/* Recent Orders */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Activity size={20} />
+                  Pesanan Terbaru
+                </h2>
+              </div>
+              <div className="p-6">
+                <RecentOrders orders={recentOrders} />
+              </div>
+            </div>
+
+            {/* Order Status Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-5 border-l-4 border-yellow-500 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-yellow-600 font-semibold text-sm">PENDING</span>
+                  <div className="bg-yellow-100 p-2 rounded-lg">
+                    <ShoppingCart className="text-yellow-600" size={20} />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-800">{orderStatusCount.pending}</div>
+                <div className="text-sm text-gray-500 mt-1">Menunggu Proses</div>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-5 border-l-4 border-green-500 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-green-600 font-semibold text-sm">SELESAI</span>
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <TrendingUp className="text-green-600" size={20} />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-800">{orderStatusCount.completed}</div>
+                <div className="text-sm text-gray-500 mt-1">Pesanan Selesai</div>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-5 border-l-4 border-red-500 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-red-600 font-semibold text-sm">DIBATALKAN</span>
+                  <div className="bg-red-100 p-2 rounded-lg">
+                    <Activity className="text-red-600" size={20} />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-800">{orderStatusCount.cancelled}</div>
+                <div className="text-sm text-gray-500 mt-1">Pesanan Dibatalkan</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Products */}
+          <div className="xl:col-span-2">
+            {/* Top Products */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300 h-full">
+              <div className="bg-gradient-to-r from-pink-600 to-purple-600 px-6 py-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Package size={20} />
+                  Produk Terlaris
+                </h2>
+              </div>
+              <div className="p-6">
+                <TopProducts products={products.slice(0, 3)} />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Daftar Pesanan & Produk */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <RecentOrders orders={recentOrders} />
+        {/* Loading State - Inline in content */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="bg-white rounded-2xl p-8 shadow-2xl border-2 border-pink-200">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin"></div>
+                <p className="text-gray-700 font-medium">Memuat data dashboard...</p>
+              </div>
+            </div>
           </div>
-          <div className="space-y-6">
-            <TopProducts products={products.slice(0, 3)} />
-            {/* <RevenueChart data={[25, 30, 28, 35, 40, 38, 45]} /> */}
-          </div>
-        </div>
+        )}
       </div>
+      <Footer />
     </div>
   );
 };

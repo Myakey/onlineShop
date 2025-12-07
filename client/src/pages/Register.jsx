@@ -6,25 +6,28 @@ const Register = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
+    username: "",
     firstName: "",
     lastName: "",
     email: "",
     password: "",
+    confirmPassword: "",
     phoneNumber: "",
   });
 
   const [loading, setLoading] = useState(false);
 
-  // 🔹 Handle Register Function
   const handleRegister = async () => {
     setLoading(true);
     try {
+      const { confirmPassword, ...dataToSend } = formData; 
+
       const response = await fetch("http://localhost:8080/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
       const data = await response.json();
@@ -43,14 +46,12 @@ const Register = () => {
     }
   };
 
-  // 🔹 Redirect to Login
   const handleLoginRedirect = () => {
     navigate("/login");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-purple-600">
         <div className="absolute inset-0 opacity-30">
           <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full mix-blend-overlay filter blur-xl animate-pulse"></div>
@@ -61,8 +62,13 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Register Form */}
-      <RegisterForm formData={formData} setFormData={setFormData} handleRegister={handleRegister} handleLoginRedirect={handleLoginRedirect} loading={loading} />
+      <RegisterForm
+        formData={formData}
+        setFormData={setFormData}
+        handleRegister={handleRegister}
+        handleLoginRedirect={handleLoginRedirect}
+        loading={loading}
+      />
     </div>
   );
 };
