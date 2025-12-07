@@ -2,11 +2,11 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="relative bg-gray-900 text-gray-300">
+    <footer className="relative bg-gray-900 text-gray-300 mt-20">
       {/* Slope/Wave Design */}
-      <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none -translate-y-full">
+      <div className="absolute top-0 left-0 right-0 overflow-hidden leading-none" style={{ transform: 'translateY(-99%)' }}>
         <svg
-          className="relative block w-full h-16 md:h-18 rotate-180"
+          className="relative block w-full h-16 md:h-20 rotate-180"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 1200 120"
           preserveAspectRatio="none"
@@ -18,7 +18,7 @@ const Footer = () => {
         </svg>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-5 grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Logo & Description */}
         <div>
           <h2 className="text-2xl font-bold text-white mb-4">Monmon's Hobbies</h2>

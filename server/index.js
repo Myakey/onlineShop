@@ -23,12 +23,17 @@ process.on("unhandledRejection", (err) => {
 });
 
 //import berbagai routes
-const productsRoutes = require("./routes/productRoutes");
 const authRoutes = require("./routes/authRoutes");
 const cartRoutes = require("./routes/cartRoutes");
-const shippingRoutes = require("./routes/shippingRoutes");
+const invoiceRoutes = require("./routes/invoiceRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const productsRoutes = require("./routes/productRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const shipmentRoutes = require("./routes/shipmentRoutes");
+const shippingMethodRoutes = require("./routes/shippingMethodRoutes");
+const wishlistRoutes = require("./routes/wishlistRoutes");
+
 
 const { requireAdmin } = require("./middleware/authMiddleware");
 //core function dari express js
@@ -47,13 +52,17 @@ const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 //routes layer 1, yang menerima route dari front end kemudian akan dikirim ke route yang sesuai
-app.use("/api/products", productsRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
-app.use("/api/admin/products", requireAdmin, productsRoutes);
-app.use("/api/shipping", shippingRoutes);
+app.use("/api/invoice", invoiceRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/admin/products", requireAdmin, productsRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/shipping", shipmentRoutes);
+app.use("/api/shippingMethods", shippingMethodRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 //cek health untuk memastikan berjalan dengan lancar
 app.get("/", (req, res) => {

@@ -7,226 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model users {
-  user_id           Int              @id @default(autoincrement())
-  username          String           @unique @db.VarChar(100)
-  email             String           @unique @db.VarChar(150)
-  password_hash     String           @db.VarChar(255)
-  first_name        String           @db.VarChar(100)
-  last_name         String?          @db.VarChar(100)
-  phone_number      String?          @db.VarChar(20)
-  type              users_type       @default(buyer)
-  profile_image_url String?          @db.VarChar(255)
-  email_verified    Boolean          @default(false)
-  created_at        DateTime         @default(now())
-  updated_at        DateTime         @updatedAt
-  orders            orders[]
-  otp_codes         otp_codes[]
-  reviews           reviews[]
-  shopping_cart     shopping_carts?
-  addresses         user_addresses[]
-}
-
-model products {
-  product_id  Int           @id @default(autoincrement())
-  name        String        @db.VarChar(150)
-  description String?       @db.Text
-  price       Decimal       @db.Decimal(10, 2)
-  stock       Int           @default(0)
-  image_url   String?       @db.VarChar(255)
-  cart_items  cart_items[]
-  order_items order_items[]
-  reviews     reviews[]
-
-  @@fulltext([name, description])
-}
-
-model reviews {
-  review_id   Int      @id @default(autoincrement())
-  user_id     Int
-  product_id  Int
-  order_id    Int?
-  rating      Int
-  title       String?  @db.VarChar(200)
-  comment     String?  @db.Text
-  images      String?  @db.Text
-  is_verified Boolean  @default(false)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  order       orders?  @relation(fields: [order_id], references: [order_id])
-  product     products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
-  user        users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  @@unique([user_id, product_id, order_id])
-  @@index([product_id])
-  @@index([user_id])
-  @@index([order_id], map: "reviews_order_id_fkey")
-}
-
-model user_addresses {
-  address_id     Int                   @id @default(autoincrement())
-  user_id        Int
-  label          String                @db.VarChar(100)
-  recipient_name String                @db.VarChar(200)
-  phone_number   String                @db.VarChar(20)
-  street_address String                @db.VarChar(500)
-  province_id    Int?
-  city_id        Int?
-  district_id    Int?
-  postal_code    String                @db.VarChar(10)
-  notes          String?               @db.Text
-  is_default     Boolean               @default(false)
-  created_at     DateTime              @default(now())
-  updated_at     DateTime              @updatedAt
-  orders         orders[]
-  city           indonesian_cities?    @relation(fields: [city_id], references: [city_id])
-  district       indonesian_districts? @relation(fields: [district_id], references: [district_id])
-  province       indonesian_provinces? @relation(fields: [province_id], references: [province_id])
-  user           users                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  @@index([city_id], map: "user_addresses_city_id_fkey")
-  @@index([district_id], map: "user_addresses_district_id_fkey")
-  @@index([province_id], map: "user_addresses_province_id_fkey")
-  @@index([user_id], map: "user_addresses_user_id_fkey")
-}
-
-model shopping_carts {
-  cart_id    Int          @id @default(autoincrement())
-  user_id    Int          @unique
-  created_at DateTime     @default(now())
-  updated_at DateTime     @updatedAt
-  items      cart_items[]
-  user       users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-}
-
-model cart_items {
-  cart_item_id Int            @id @default(autoincrement())
-  cart_id      Int
-  product_id   Int
-  quantity     Int            @default(1)
-  added_at     DateTime       @default(now())
-  cart         shopping_carts @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade)
-  product      products       @relation(fields: [product_id], references: [product_id])
-
-  @@unique([cart_id, product_id])
-  @@index([product_id], map: "cart_items_product_id_fkey")
-}
-
-model orders {
-  order_id         Int            @id @default(autoincrement())
-  user_id          Int
-  address_id       Int
-  order_number     String         @unique @db.VarChar(50)
-  secure_token     String         @unique @db.VarChar(100)  
-  total_amount     Decimal        @db.Decimal(10, 2)
-  shipping_cost    Decimal?       @db.Decimal(10, 2)
-  voucher_discount Decimal?       @db.Decimal(10, 2)
-  status           order_status   @default(pending)
-  payment_method   String?        @db.VarChar(50)
-  payment_status   payment_status @default(unpaid)
-  payment_proof    String?        @db.VarChar(255)
-  notes            String?        @db.Text
-  payment_due_at   DateTime?
-  created_at       DateTime       @default(now())
-  updated_at       DateTime       @updatedAt
-  items            order_items[]
-  address          user_addresses @relation(fields: [address_id], references: [address_id])
-  user             users          @relation(fields: [user_id], references: [user_id])
-  reviews          reviews[]
-
-  @@index([address_id], map: "orders_address_id_fkey")
-  @@index([user_id], map: "orders_user_id_fkey")
-  @@index([secure_token])  // ⭐ NEW INDEX for fast lookups
-  @@map("orders")
-}
-
-model order_items {
-  order_item_id Int      @id @default(autoincrement())
-  order_id      Int
-  product_id    Int
-  quantity      Int
-  price         Decimal  @db.Decimal(10, 2)
-  subtotal      Decimal  @db.Decimal(10, 2)
-  order         orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
-  product       products @relation(fields: [product_id], references: [product_id])
-
-  @@index([order_id], map: "order_items_order_id_fkey")
-  @@index([product_id], map: "order_items_product_id_fkey")
-}
-
-model otp_codes {
-  otp_id     Int         @id @default(autoincrement())
-  user_id    Int?
-  email      String      @db.VarChar(150)
-  code       String      @db.VarChar(6)
-  purpose    otp_purpose
-  expires_at DateTime
-  is_used    Boolean     @default(false)
-  created_at DateTime    @default(now())
-  user       users?      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  @@index([user_id], map: "otp_codes_user_id_fkey")
-}
-
-model indonesian_provinces {
-  province_id       Int                          @id @default(autoincrement())
-  province_name     String                       @unique @db.VarChar(100)
-  created_at        DateTime                     @default(now())
-  updated_at        DateTime                     @updatedAt
-  cities            indonesian_cities[]
-  shipping_mappings shipping_provider_mappings[]
-  user_addresses    user_addresses[]
-}
-
-model indonesian_cities {
-  city_id           Int                          @id @default(autoincrement())
-  province_id       Int
-  city_name         String                       @db.VarChar(100)
-  created_at        DateTime                     @default(now())
-  updated_at        DateTime                     @updatedAt
-  province          indonesian_provinces         @relation(fields: [province_id], references: [province_id], onDelete: Cascade)
-  districts         indonesian_districts[]
-  shipping_mappings shipping_provider_mappings[]
-  user_addresses    user_addresses[]
-
-  @@unique([province_id, city_name])
-}
-
-model indonesian_districts {
-  district_id       Int                          @id @default(autoincrement())
-  city_id           Int
-  district_name     String                       @db.VarChar(100)
-  zip_code          String?                      @db.VarChar(10)
-  created_at        DateTime                     @default(now())
-  updated_at        DateTime                     @updatedAt
-  city              indonesian_cities            @relation(fields: [city_id], references: [city_id], onDelete: Cascade)
-  shipping_mappings shipping_provider_mappings[]
-  user_addresses    user_addresses[]
-
-  @@unique([city_id, district_name])
-}
-
-model shipping_provider_mappings {
-  mapping_id    Int                   @id @default(autoincrement())
-  provider_name String                @db.VarChar(50)
-  entity_type   String                @db.VarChar(20)
-  entity_id     Int
-  provider_id   Int
-  province_id   Int?
-  city_id       Int?
-  district_id   Int?
-  created_at    DateTime              @default(now())
-  updated_at    DateTime              @updatedAt
-  city          indonesian_cities?    @relation(fields: [city_id], references: [city_id], onDelete: Cascade)
-  district      indonesian_districts? @relation(fields: [district_id], references: [district_id], onDelete: Cascade)
-  province      indonesian_provinces? @relation(fields: [province_id], references: [province_id], onDelete: Cascade)
-
-  @@unique([provider_name, entity_type, entity_id])
-  @@index([provider_name, entity_type, provider_id])
-  @@index([city_id], map: "shipping_provider_mappings_city_id_fkey")
-  @@index([district_id], map: "shipping_provider_mappings_district_id_fkey")
-  @@index([province_id], map: "shipping_provider_mappings_province_id_fkey")
-}
+///////////////////////////////////////////////////////////
+// ENUMS
+///////////////////////////////////////////////////////////
 
 enum users_type {
   admin
@@ -253,4 +36,436 @@ enum payment_status {
   paid
   refunded
   failed
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: users
+///////////////////////////////////////////////////////////
+
+model users {
+  user_id           Int              @id @default(autoincrement())
+  username          String           @unique @db.VarChar(100)
+  email             String           @unique @db.VarChar(150)
+  password_hash     String           @db.VarChar(255)
+  first_name        String           @db.VarChar(100)
+  last_name         String?          @db.VarChar(100)
+  phone_number      String?          @db.VarChar(20)
+  type              users_type       @default(buyer)
+  profile_image_url String?          @db.VarChar(255)
+  email_verified    Boolean          @default(false)
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+
+  // Relations
+  addresses         user_addresses[]
+  otp_codes         otp_codes[]
+  cart_items        cart_items[]
+  orders            orders[]
+  reviews           reviews[]
+  wishlists         wishlists[]
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: products
+///////////////////////////////////////////////////////////
+
+model products {
+  product_id            Int              @id @default(autoincrement())
+  name                  String           @db.VarChar(150)
+  description           String?          @db.Text
+  price                 Decimal          @db.Decimal(10, 2)
+  stock                 Int              @default(0)
+  
+  // NEW FIELDS FOR SHIPPING CALCULATION
+  weight                Int             // in grams
+  length                Int?             // in cm
+  width                 Int?             // in cm
+  height                Int?             // in cm
+
+  // Relations
+  images                productImage[]
+  cart_items            cart_items[]
+  order_items           order_items[]
+  invoice_items         invoice_items[]
+  reviews               reviews[]
+  wishlists             wishlists[]
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: productImage
+///////////////////////////////////////////////////////////
+
+model productImage {
+  product_img_id Int      @id @default(autoincrement())
+  product_id     Int
+  image_url      String   @db.VarChar(255)
+  is_primary     Boolean  @default(false)
+
+  product        products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@index([product_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: user_addresses
+///////////////////////////////////////////////////////////
+
+model user_addresses {
+  address_id     Int      @id @default(autoincrement())
+  user_id        Int
+  label          String?  @db.VarChar(100)
+  recipient_name String?  @db.VarChar(200)
+  phone_number   String?  @db.VarChar(20)
+  street_address String?  @db.VarChar(500)
+  city           String?  @db.VarChar(100)
+  province       String?  @db.VarChar(100)
+  district       String?  @db.VarChar(100)
+  postal_code    String?  @db.VarChar(10)
+  notes          String?  @db.Text
+  latitude       Decimal? @db.Decimal(10, 8)
+  longitude      Decimal? @db.Decimal(11, 8)
+  is_default     Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user           users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  orders         orders[]
+
+  @@index([user_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: cart_items
+///////////////////////////////////////////////////////////
+
+model cart_items {
+  user_id      Int
+  product_id   Int
+  quantity     Int      @default(1)
+  added_at     DateTime @default(now())
+
+  user         users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  product      products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@id([user_id, product_id])
+  @@index([product_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: promocodes
+///////////////////////////////////////////////////////////
+
+model promocodes {
+  promocode_id   Int       @id @default(autoincrement())
+  code           String    @unique @db.VarChar(50)
+  description    String?   @db.Text
+  discount_type  String    @db.VarChar(20)
+  discount_value Decimal   @db.Decimal(10, 2)
+  max_uses       Int       @default(0)
+  used_count     Int       @default(0)
+  valid_from     DateTime?
+  valid_until    DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  orders         orders[]
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: shipping_methods
+///////////////////////////////////////////////////////////
+
+model shipping_methods {
+  shipping_method_id Int      @id @default(autoincrement())
+  name               String   @db.VarChar(100)
+  courier            String   @db.VarChar(100)
+  base_cost          Decimal  @db.Decimal(10, 2)
+  estimated_days     Int
+
+  orders             orders[]
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: orders
+///////////////////////////////////////////////////////////
+
+model orders {
+  order_id           Int              @id @default(autoincrement())
+  user_id            Int
+  address_id         Int
+  order_number       String           @unique @db.VarChar(50)
+  status             order_status     @default(pending)
+  notes              String?          @db.Text
+  payment_due_at     DateTime?
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+  secure_token       String           @unique @db.VarChar(100)
+  promocode_id       Int?
+  shipping_method_id Int?
+
+  user               users            @relation(fields: [user_id], references: [user_id])
+  address            user_addresses   @relation(fields: [address_id], references: [address_id])
+  promocode          promocodes?      @relation(fields: [promocode_id], references: [promocode_id])
+  shipping_method    shipping_methods? @relation(fields: [shipping_method_id], references: [shipping_method_id])
+  
+  items              order_items[]
+  payments           payments[]
+  invoices           invoices[]
+  shipments          shipments[]
+
+  @@index([user_id])
+  @@index([address_id])
+  @@index([promocode_id])
+  @@index([shipping_method_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: order_items
+///////////////////////////////////////////////////////////
+
+model order_items {
+  order_id   Int
+  product_id Int
+  quantity   Int
+  price      Decimal @db.Decimal(10, 2)
+  subtotal   Decimal @db.Decimal(10, 2)
+
+  order      orders  @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  product    products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@id([order_id, product_id])
+  @@index([product_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: shipments
+///////////////////////////////////////////////////////////
+
+model shipments {
+  shipment_id     Int       @id @default(autoincrement())
+  order_id        Int
+  tracking_number String?   @db.VarChar(100)
+  courier         String?   @db.VarChar(100)
+  shipped_at      DateTime?
+  delivered_at    DateTime?
+  status          String?   @db.VarChar(50)
+
+  order           orders    @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+
+  @@index([order_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: invoices
+///////////////////////////////////////////////////////////
+
+model invoices {
+  invoice_id      Int       @id @default(autoincrement())
+  order_id        Int
+  invoice_number  String    @unique @db.VarChar(50)
+  issued_at       DateTime  @default(now())
+  due_at          DateTime?
+  subtotal        Decimal   @db.Decimal(10, 2)
+  shipping_cost   Decimal   @db.Decimal(10, 2)
+  discount_amount Decimal   @db.Decimal(10, 2)
+  tax_amount      Decimal   @db.Decimal(10, 2)
+  grand_total     Decimal   @db.Decimal(10, 2)
+  amount_paid     Decimal   @db.Decimal(10, 2)
+  balance_due     Decimal   @db.Decimal(10, 2)
+  status          String?   @db.VarChar(30)
+
+  order    orders   @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+
+  // FIXED
+  payments payments[] @relation("InvoicePayments")
+
+  items    invoice_items[]
+
+  @@index([order_id])
+}
+
+
+
+///////////////////////////////////////////////////////////
+// TABLE: invoice_items
+///////////////////////////////////////////////////////////
+
+model invoice_items {
+  invoice_item_id Int      @id @default(autoincrement())
+  invoice_id      Int
+  product_id      Int
+  quantity        Int
+  price           Decimal  @db.Decimal(10, 2)
+  subtotal        Decimal  @db.Decimal(10, 2)
+
+  invoice         invoices @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade)
+  product         products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@index([invoice_id])
+  @@index([product_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: payments
+///////////////////////////////////////////////////////////
+
+model payments {
+  payment_id     Int            @id @default(autoincrement())
+  invoice_id     Int?
+  order_id       Int
+  payment_status payment_status @default(unpaid)
+  payment_amount Decimal        @db.Decimal(10, 2)
+  payment_type   String?        @db.VarChar(50)
+  paid_at        DateTime?
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+
+  order    orders @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+
+  // FIXED
+  invoice  invoices? @relation("InvoicePayments", fields: [invoice_id], references: [invoice_id])
+
+  payment_methods              payment_methods[]
+  payment_marketplace_details  payment_marketplace_details[]
+  payment_refunds              payment_refunds[]
+  payment_proofs               payment_proofs[]
+
+  @@index([order_id])
+  @@index([invoice_id])
+}
+
+
+
+
+///////////////////////////////////////////////////////////
+// TABLE: payment_methods
+///////////////////////////////////////////////////////////
+
+model payment_methods {
+  method_id           Int      @id @default(autoincrement())
+  payment_id          Int
+  method_name         String?  @db.VarChar(50)
+  payment_channel     String?  @db.VarChar(50)
+  bank_account_name   String?  @db.VarChar(100)
+  bank_account_number String?  @db.VarChar(50)
+
+  payment             payments @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+
+  @@index([payment_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: payment_proofs
+///////////////////////////////////////////////////////////
+
+model payment_proofs {
+  proof_id    Int      @id @default(autoincrement())
+  payment_id  Int
+  file_url    String   @db.VarChar(255)
+  uploaded_at DateTime @default(now())
+
+  payment     payments @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+
+  @@index([payment_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: payment_marketplace_details
+///////////////////////////////////////////////////////////
+
+model payment_marketplace_details {
+  marketplace_detail_id  Int      @id @default(autoincrement())
+  payment_id             Int
+  marketplace_order_id   String?  @db.VarChar(100)
+  marketplace_item_id    String?  @db.VarChar(100)
+  marketplace_fee_amount Decimal? @db.Decimal(10, 2)
+
+  payment                payments @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+
+  @@index([payment_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: payment_refunds
+///////////////////////////////////////////////////////////
+
+model payment_refunds {
+  refund_id     Int       @id @default(autoincrement())
+  payment_id    Int
+  refund_amount Decimal   @db.Decimal(10, 2)
+  refund_reason String?   @db.Text
+  refunded_at   DateTime?
+
+  payment       payments  @relation(fields: [payment_id], references: [payment_id], onDelete: Cascade)
+
+  @@index([payment_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: reviews
+///////////////////////////////////////////////////////////
+
+model reviews {
+  review_id  Int       @id @default(autoincrement())
+  user_id    Int
+  product_id Int
+  rating     Int
+  comment    String?   @db.Text
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  user       users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  product    products  @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([product_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: wishlists
+///////////////////////////////////////////////////////////
+
+model wishlists {
+  user_id    Int
+  product_id Int
+  created_at DateTime @default(now())
+
+  user       users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  product    products @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+
+  @@id([user_id, product_id])
+  @@unique([user_id, product_id])
+  @@index([product_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: otp_codes
+///////////////////////////////////////////////////////////
+
+model otp_codes {
+  otp_id     Int         @id @default(autoincrement())
+  user_id    Int?
+  email      String      @db.VarChar(150)
+  code       String      @db.VarChar(6)
+  purpose    otp_purpose
+  expires_at DateTime
+  is_used    Boolean     @default(false)
+  created_at DateTime    @default(now())
+
+  user       users?      @relation(fields: [user_id], references: [user_id])
+
+  @@index([user_id])
+}
+
+///////////////////////////////////////////////////////////
+// TABLE: whatsapp_templates
+///////////////////////////////////////////////////////////
+
+model whatsapp_templates {
+  template_id   Int      @id @default(autoincrement())
+  template_name String   @unique @db.VarChar(100)
+  message       String   @db.Text
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 }

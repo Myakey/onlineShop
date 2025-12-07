@@ -2,6 +2,7 @@
 
 const orderModels = require("../models/orderModel");
 const { sendPaymentConfirmationEmail } = require("../services/emailService");
+const paymentModel = require("../models/payment");
 
 // Admin only - Get all orders
 const getAllOrders = async (req, res) => {
@@ -56,13 +57,12 @@ const getOrderByToken = async (req, res) => {
   }
 };
 
-// Get order by ID (ADMIN ONLY - Keep for backward compatibility)
+// Get order by ID (ADMIN ONLY)
 const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
     const isAdmin = req.user.type === "admin";
 
-    // Only admin can access by ID
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
@@ -107,7 +107,6 @@ const getOrderByOrderNumber = async (req, res) => {
       });
     }
 
-    // Check if user owns the order (unless admin)
     if (order.user_id !== userId && !isAdmin) {
       return res.status(403).json({
         success: false,
@@ -127,11 +126,10 @@ const getOrderByOrderNumber = async (req, res) => {
   }
 };
 
-// Get orders by user (authenticated user can view their own orders)
+// Get orders by user
 const getOrdersByUser = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const orders = await orderModels.getOrdersByUser(userId);
 
     res.json({
@@ -147,21 +145,23 @@ const getOrdersByUser = async (req, res) => {
   }
 };
 
-// Create new order (from cart checkout)
+// Create new order with payment channel support
 const createOrder = async (req, res) => {
   try {
     const {
       address_id,
-      payment_method,
       notes = "",
-      items, // Array of { product_id, quantity, price }
+      items,
+      promocode_id = null,
+      shipping_method_id = null,
       shipping_cost = 0,
       voucher_discount = 0,
+      payment_data, // NEW: Contains payment channel info
     } = req.body;
 
     const userId = req.user.id;
 
-    // Validation
+    // Validations
     if (!address_id || !items || items.length === 0) {
       return res.status(400).json({
         success: false,
@@ -169,110 +169,188 @@ const createOrder = async (req, res) => {
       });
     }
 
-    if (!payment_method) {
+    if (!payment_data || !payment_data.payment_channel) {
       return res.status(400).json({
         success: false,
-        message: "Payment method is required",
+        message: "Payment channel is required",
       });
     }
 
-    // Calculate total amount
-    const subtotal = items.reduce((sum, item) => {
-      return sum + parseFloat(item.price) * parseInt(item.quantity);
-    }, 0);
+    // Validate payment channel
+    const validChannels = ["full_transfer", "split_payment", "marketplace"];
+    if (!validChannels.includes(payment_data.payment_channel)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment channel",
+      });
+    }
 
-    const total_amount =
-      subtotal + parseFloat(shipping_cost) - parseFloat(voucher_discount);
+    // Calculate totals
+    const subtotal = items.reduce(
+      (sum, item) => sum + parseFloat(item.price) * parseInt(item.quantity),
+      0
+    );
 
-    // Generate unique order number
+    // Shipping cost is 0 for marketplace, otherwise use provided value
+    const finalShippingCost = payment_data.payment_channel === "marketplace" ? 0 : parseFloat(shipping_cost);
+    const discountAmount = parseFloat(voucher_discount);
+    const totalAmount = subtotal + finalShippingCost - discountAmount;
+
+    // Generate order number
     const order_number = orderModels.generateOrderNumber();
 
-    const orderData = {
+    // Create order
+    const newOrder = await orderModels.createOrder({
       user_id: userId,
       address_id,
       order_number,
-      total_amount,
       status: "pending",
-      payment_method,
-      payment_status: "unpaid",
       notes,
+      promocode_id,
+      shipping_method_id,
       items,
-      decrementStock: false, // Don't decrement stock until payment confirmed
+      decrementStock: false, // Stock will be decremented when payment is confirmed
+    });
+
+    // Prepare payment data based on channel
+    let paymentPayload = {
+      order_id: newOrder.order_id,
+      invoice_id: null,
+      payment_status: "unpaid",
     };
 
-    const newOrder = await orderModels.createOrder(orderData);
+    // Handle different payment channels
+    switch (payment_data.payment_channel) {
+      case "full_transfer":
+        paymentPayload = {
+          ...paymentPayload,
+          payment_type: "transfer",
+          payment_amount: totalAmount,
+          method_name: "BCA",
+          payment_channel: "bank_transfer",
+        };
+        break;
 
-    console.log("New order created:", newOrder.order_number);
+      case "split_payment":
+        // Validate split amounts
+        const transferAmount = parseFloat(payment_data.split_transfer_amount || 0);
+        const marketplaceAmount = parseFloat(payment_data.split_marketplace_amount || 0);
+
+        if (transferAmount + marketplaceAmount !== subtotal) {
+          return res.status(400).json({
+            success: false,
+            message: "Split payment amounts must equal product subtotal",
+          });
+        }
+
+        if (transferAmount <= 0 || marketplaceAmount <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Both payment amounts must be greater than 0",
+          });
+        }
+
+        // Create two payment records for split payment
+        // 1. Transfer payment
+        await paymentModel.createPayment({
+          order_id: newOrder.order_id,
+          invoice_id: null,
+          payment_status: "unpaid",
+          payment_type: "transfer",
+          payment_amount: transferAmount + finalShippingCost, // Include shipping in transfer
+          method_name: "BCA",
+          payment_channel: "bank_transfer",
+        });
+
+        // 2. Marketplace payment
+        paymentPayload = {
+          order_id: newOrder.order_id,
+          invoice_id: null,
+          payment_status: "unpaid",
+          payment_type: payment_data.marketplace_platform || "shopee",
+          payment_amount: marketplaceAmount,
+          method_name: payment_data.marketplace_platform === "shopee" ? "Shopee" : "TikTok Shop",
+          payment_channel: "marketplace",
+        };
+        break;
+
+      case "marketplace":
+        // Validate marketplace link
+        if (!payment_data.marketplace_link || !payment_data.marketplace_link.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: "Marketplace product link is required",
+          });
+        }
+
+        paymentPayload = {
+          ...paymentPayload,
+          payment_type: payment_data.marketplace_platform || "shopee",
+          payment_amount: subtotal, // No shipping cost for marketplace
+          method_name: payment_data.marketplace_platform === "shopee" ? "Shopee" : "TikTok Shop",
+          payment_channel: "marketplace",
+          marketplace_order_id: payment_data.marketplace_link,
+        };
+        break;
+    }
+
+    // Create payment record(s)
+    const payment = await paymentModel.createPayment(paymentPayload);
+
+    // Prepare response message based on payment channel
+    let responseMessage = "Order created successfully!";
+    let additionalInfo = {};
+
+    switch (payment_data.payment_channel) {
+      case "full_transfer":
+        responseMessage = "Order created! Please transfer to BCA account and upload payment proof.";
+        additionalInfo.bankAccount = {
+          bank: "BCA",
+          accountNumber: "1234567890", // Replace with actual account
+          accountName: "Monmon's Hobbies",
+          amount: totalAmount,
+        };
+        break;
+
+      case "split_payment":
+        responseMessage = "Order created! Please complete both payments.";
+        additionalInfo.splitPayment = {
+          transfer: {
+            bank: "BCA",
+            accountNumber: "1234567890",
+            accountName: "Monmon's Hobbies",
+            amount: parseFloat(payment_data.split_transfer_amount) + finalShippingCost,
+          },
+          marketplace: {
+            platform: payment_data.marketplace_platform,
+            amount: parseFloat(payment_data.split_marketplace_amount),
+          },
+        };
+        break;
+
+      case "marketplace":
+        responseMessage = `Order created! Please checkout at ${payment_data.marketplace_platform}.`;
+        additionalInfo.marketplaceLink = payment_data.marketplace_link;
+        break;
+    }
 
     res.status(201).json({
       success: true,
-      message: "Order created successfully. Please upload payment proof.",
-      data: newOrder,
+      message: responseMessage,
+      data: {
+        order: {
+          ...newOrder,
+          subtotal,
+          shipping_cost: finalShippingCost,
+          discount: discountAmount,
+          total_amount: totalAmount,
+        },
+        payment,
+        ...additionalInfo,
+      },
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
-
-// Upload payment proof (using secure token)
-// Upload payment proof (using secure token)
-const uploadPaymentProof = async (req, res) => {
-  try {
-    const { token } = req.params;
-    const userId = req.user.id;
-
-    // Check if file was uploaded
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment proof image is required",
-      });
-    }
-
-    // Get order to check ownership
-    const order = await orderModels.getOrderByToken(token);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // Check if user owns the order
-    if (order.user_id !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "You don't have permission to upload payment for this order",
-      });
-    }
-
-    // Check if payment is still unpaid
-    if (order.payment_status !== "unpaid") {
-      return res.status(400).json({
-        success: false,
-        message: `Payment already ${order.payment_status}. Cannot upload proof.`,
-      });
-    }
-
-    // Use Cloudinary URL instead of local path
-    const paymentProofPath = req.file.path; // This is now Cloudinary URL
-
-    const updatedOrder = await orderModels.updatePaymentProof(
-      token,
-      paymentProofPath
-    );
-
-    res.json({
-      success: true,
-      message:
-        "Payment proof uploaded successfully. Waiting for admin verification.",
-      data: updatedOrder,
-    });
-  } catch (err) {
+    console.error("Create order error:", err);
     res.status(500).json({
       success: false,
       message: err.message,
@@ -286,7 +364,6 @@ const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    // Valid statuses: pending, confirmed, processing, shipped, delivered, cancelled
     const validStatuses = [
       "pending",
       "confirmed",
@@ -318,65 +395,13 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// Update payment status (admin only) - with email notification
-const updatePaymentStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { payment_status, payment_method } = req.body;
-
-    // Valid payment statuses: unpaid, paid, refunded, failed
-    const validStatuses = ["unpaid", "paid", "refunded", "failed"];
-
-    if (!payment_status || !validStatuses.includes(payment_status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid payment status. Must be one of: ${validStatuses.join(
-          ", "
-        )}`,
-      });
-    }
-
-    const updatedOrder = await orderModels.updatePaymentStatus(
-      id,
-      payment_status,
-      payment_method
-    );
-
-    // Send email notification if payment is confirmed
-    if (payment_status === "paid") {
-      try {
-        // Get full order details with user email
-        const fullOrder = await orderModels.getOrderById(id);
-        if (fullOrder && fullOrder.user && fullOrder.user.email) {
-          await sendPaymentConfirmationEmail(fullOrder, fullOrder.user.email);
-        }
-      } catch (emailErr) {
-        console.error("Failed to send email:", emailErr);
-        // Continue even if email fails
-      }
-    }
-
-    res.json({
-      success: true,
-      message: "Payment status updated successfully",
-      data: updatedOrder,
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
-
-// Cancel order (using secure token for users)
+// Cancel order (using secure token)
 const cancelOrder = async (req, res) => {
   try {
     const { token } = req.params;
     const userId = req.user.id;
     const isAdmin = req.user.type === "admin";
 
-    // Get order to check ownership
     const order = await orderModels.getOrderByToken(token);
 
     if (!order) {
@@ -386,7 +411,6 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    // Check if user owns the order (unless admin)
     if (order.user_id !== userId && !isAdmin) {
       return res.status(403).json({
         success: false,
@@ -394,7 +418,6 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    // Check if order can be cancelled
     const cancelableStatuses = ["pending", "confirmed"];
     if (!cancelableStatuses.includes(order.status)) {
       return res.status(400).json({
@@ -431,7 +454,6 @@ const cancelOrderById = async (req, res) => {
       });
     }
 
-    // Get order first
     const order = await orderModels.getOrderById(id);
 
     if (!order) {
@@ -441,7 +463,6 @@ const cancelOrderById = async (req, res) => {
       });
     }
 
-    // Check if order can be cancelled
     const cancelableStatuses = ["pending", "confirmed"];
     if (!cancelableStatuses.includes(order.status)) {
       return res.status(400).json({
@@ -468,13 +489,11 @@ const cancelOrderById = async (req, res) => {
 module.exports = {
   getAllOrders,
   getOrderById,
-  getOrderByToken, // NEW - Primary method
+  getOrderByToken,
   getOrderByOrderNumber,
   getOrdersByUser,
   createOrder,
-  uploadPaymentProof,
   updateOrderStatus,
-  updatePaymentStatus,
   cancelOrder,
-  cancelOrderById, // NEW - Admin cancel by ID
+  cancelOrderById,
 };

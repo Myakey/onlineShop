@@ -1,55 +1,110 @@
-const shippingModel = require("../models/shippingModel");
-const { calculateShippingCost } = require("../services/shippingService");
+const shippingMethodsModel = require("../models/shippingMethods");
 
-const getDestinationDistrictId = async (districtId) => {
+// Get all shipping methods
+const getAllShippingMethods = async (req, res) => {
   try {
-    if (!districtId) {
-      return res.status(400).json({
-        success: false,
-        message: "districtId is required",
-      });
-    }
-
-    const providerDistrictId = await shippingModel.destinationDistrictId(
-      districtId
-    );
-    if (!providerDistrictId) {
-      return res.status(404).json({
-        success: false,
-        message: "Mapping not found for the given district ID",
-      });
-    }
-
-    return providerDistrictId;
+    const methods = await shippingMethodsModel.getAllShippingMethods();
+    
+    res.json({
+      success: true,
+      data: methods,
+    });
   } catch (err) {
-    throw new Error(`Failed to get destination district ID: ${err.message}`);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
-const calculateShipping = async (req, res) => {
+// Get shipping method by ID
+const getShippingMethodById = async (req, res) => {
   try {
-    const { districtId, weight } = req.body;
-    originDistrictId = 6193;
+    const { id } = req.params;
+    const method = await shippingMethodsModel.getShippingMethodById(id);
 
-    const destinationId = await getDestinationDistrictId(districtId);
-
-    if (!originDistrictId || !destinationId || !weight) {
-      return res.status(400).json({
+    if (!method) {
+      return res.status(404).json({
         success: false,
-        message:
-          "originDistrictId, destinationDistrictId, and weight are required",
+        message: "Shipping method not found",
       });
     }
 
-    const shippingOptions = await calculateShippingCost(
-      originDistrictId,
-      destinationId,
-      weight
-    );
+    res.json({
+      success: true,
+      data: method,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+// Create shipping method (admin only)
+const createShippingMethod = async (req, res) => {
+  try {
+    const { name, courier, base_cost, estimated_days } = req.body;
+
+    if (!name || !courier || !base_cost || !estimated_days) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const method = await shippingMethodsModel.createShippingMethod({
+      name,
+      courier,
+      base_cost,
+      estimated_days,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Shipping method created successfully",
+      data: method,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+// Update shipping method (admin only)
+const updateShippingMethod = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const method = await shippingMethodsModel.updateShippingMethod(id, updateData);
 
     res.json({
       success: true,
-      data: shippingOptions,
+      message: "Shipping method updated successfully",
+      data: method,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+// Delete shipping method (admin only)
+const deleteShippingMethod = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await shippingMethodsModel.deleteShippingMethod(id);
+
+    res.json({
+      success: true,
+      message: "Shipping method deleted successfully",
     });
   } catch (err) {
     res.status(500).json({
@@ -60,6 +115,9 @@ const calculateShipping = async (req, res) => {
 };
 
 module.exports = {
-  getDestinationDistrictId,
-  calculateShipping,
+  getAllShippingMethods,
+  getShippingMethodById,
+  createShippingMethod,
+  updateShippingMethod,
+  deleteShippingMethod,
 };

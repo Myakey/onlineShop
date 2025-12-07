@@ -64,7 +64,7 @@ const ProductCard = ({ product, viewMode = "grid" }) => {
       {/* Product Image */}
       <div className="relative overflow-hidden">
         <img
-          src={product.image_url || fallbackImage}
+          src={product.images[0].image_url || fallbackImage}
           alt={product.name}
           className={`object-cover transition-transform duration-300 group-hover:scale-105 
           ${viewMode === "list" ? "w-48 h-48" : "w-full h-56"}`}

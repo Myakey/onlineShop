@@ -251,16 +251,14 @@ const createOrder = async (orderData) => {
       user_id, 
       address_id, 
       order_number, 
-      total_amount, 
       status = 'pending', 
-      payment_method = null,
-      payment_status = 'unpaid', 
       notes = null,
+      promocode_id = null,
+      shipping_method_id = null,
       items = [],
       decrementStock = false
     } = orderData;
 
-    // Generate unique secure token OUTSIDE transaction
     const secureToken = await generateSecureToken();
 
     // Validate stock availability OUTSIDE transaction
@@ -280,20 +278,18 @@ const createOrder = async (orderData) => {
       }
     }
 
-    // Now do the transaction with only writes
+    // Transaction
     const newOrder = await prisma.$transaction(async (tx) => {
-      // Create the order with secure token
       const order = await tx.orders.create({
         data: {
           user_id: parseInt(user_id),
           address_id: parseInt(address_id),
           order_number,
           secure_token: secureToken,
-          total_amount,
           status,
-          payment_method,
-          payment_status,
-          notes
+          notes,
+          promocode_id: promocode_id ? parseInt(promocode_id) : null,
+          shipping_method_id: shipping_method_id ? parseInt(shipping_method_id) : null,
         }
       });
 
@@ -311,7 +307,6 @@ const createOrder = async (orderData) => {
           data: orderItems
         });
 
-        // Only decrement stock if explicitly requested
         if (decrementStock) {
           for (const item of items) {
             await tx.products.update({
@@ -326,13 +321,13 @@ const createOrder = async (orderData) => {
         }
       }
 
-      return order; // Return just the order, not the full query
+      return order;
     }, {
-      maxWait: 5000, // Wait max 5s to start transaction
-      timeout: 10000, // Transaction timeout 10s
+      maxWait: 5000,
+      timeout: 10000,
     });
 
-    // Fetch the complete order with relations OUTSIDE transaction
+    // Fetch complete order OUTSIDE transaction
     const completeOrder = await prisma.orders.findUnique({
       where: { order_id: newOrder.order_id },
       include: {
@@ -346,9 +341,18 @@ const createOrder = async (orderData) => {
           }
         },
         address: true,
+        promocode: true,
+        shipping_method: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: {
+                  where: { is_primary: true },
+                  take: 1,
+                },
+              },
+            },
           }
         }
       }

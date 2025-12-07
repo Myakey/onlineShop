@@ -7,49 +7,37 @@ import Footer from "../../components/layout/Footer";
 import OrderAddress from "../../components/order/OrderAddress";
 import OrderProducts from "../../components/order/OrderProducts";
 import OrderShipping from "../../components/order/OrderShipping";
-import OrderPayment from "../../components/order/OrderPayment";
+import OrderPaymentChannel from "../../components/order/OrderPaymentChannel";
 import OrderVoucher from "../../components/order/OrderVoucher";
 import OrderSummary from "../../components/order/OrderSummary";
 
 //API SERVICES
 import authService from "../../services/authService";
-import kurirService from "../../services/kurirService";
+import shippingMethodService from "../../services/shippingMethod";
 import orderService from "../../services/orderService";
 
 //ICONS
 import { Loader2 } from "lucide-react";
 import { useCart } from "../../context/cartContext";
 
-/**
- * Preferences and keywords (case-insensitive checks)
- */
-const PREFERRED_COURIER_CODES = [
-  "jne",
-  "jnt",
-  "sicepat",
-  "anteraja",
-  "pos",
-  "tiki",
-  "lion",
-  "ninja",
-  "ide",
-];
-
-const REGULAR_SERVICE_KEYWORDS = [
-  "REG",
-  "EZ",
-  "STANDARD",
-  "STD",
-  "EKONOMIS",
-  "REGULER",
-  "REGULAR SERVICE",
-];
-
-const PREMIUM_SERVICE_KEYWORDS = ["NEXTDAY", "ONS", "BEST", "BOSSPACK"];
+// ZONE-BASED PRICING (Fallback if API doesn't calculate)
+const ZONE_MULTIPLIERS = {
+  // Based on province or city patterns
+  'DKI JAKARTA': 1.0,
+  'JAWA BARAT': 1.0,
+  'JAWA TENGAH': 1.2,
+  'JAWA TIMUR': 1.3,
+  'BALI': 1.4,
+  'SUMATERA': 1.8,
+  'KALIMANTAN': 2.0,
+  'SULAWESI': 2.2,
+  'PAPUA': 3.0,
+  'MALUKU': 2.8,
+  'NUSA TENGGARA': 2.5,
+};
 
 const Order = () => {
   const navigate = useNavigate();
-
   const { removeProduct } = useCart();
 
   // Loading & error states
@@ -68,26 +56,21 @@ const Order = () => {
   const [shippingOptions, setShippingOptions] = useState([]);
   const [selectedShipping, setSelectedShipping] = useState(null);
 
-  // Payments
-  const [paymentMethods] = useState([
-    { id: 1, name: "Transfer Bank" },
-    { id: 2, name: "COD (Bayar di Tempat)" },
-    { id: 3, name: "E-Wallet (OVO, GoPay, DANA)" },
-  ]);
-  const [selectedPayment, setSelectedPayment] = useState(paymentMethods[0]);
+  // Payment Channel States
+  const [paymentChannel, setPaymentChannel] = useState("full_transfer");
+  const [splitAmount, setSplitAmount] = useState({ transfer: 0, marketplace: 0 });
+  const [marketplaceLink, setMarketplaceLink] = useState("");
+  const [selectedMarketplace, setSelectedMarketplace] = useState("shopee");
 
   // Voucher
   const [voucher, setVoucher] = useState("");
 
-  /**
-   * Load order data (cart + user profile)
-   */
+  // Load order data
   const loadOrderData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Read checkout data from sessionStorage
       const checkoutDataRaw = sessionStorage.getItem("checkoutData");
       if (!checkoutDataRaw) {
         setError("No items selected for checkout");
@@ -122,14 +105,13 @@ const Order = () => {
 
       setAddresses(formattedAddresses);
 
-      // Choose default address (if any)
       const defaultAddr =
         formattedAddresses.find((a) => a.isDefault) ||
         formattedAddresses[0] ||
         null;
       setSelectedAddress(defaultAddr);
 
-      // Products from checkoutData (safe parsing)
+      // Products from checkoutData
       const selectedItems = Array.isArray(checkoutData.selectedItems)
         ? checkoutData.selectedItems
         : [];
@@ -141,13 +123,13 @@ const Order = () => {
         description: item.product?.description || "",
         price: Number(item.product?.price) || 0,
         quantity: Number(item.quantity) || 1,
-        image: item.product?.image_url || "https://via.placeholder.com/100",
+        weight: Number(item.product?.weight) || 500, // Add weight field (in grams)
+        image: item.product?.images[0].image_url || "https://via.placeholder.com/100",
         stock: Number(item.product?.stock) || 0,
       }));
 
       setProducts(formattedProducts);
 
-      // Voucher if present
       if (checkoutData.appliedVoucher) {
         setVoucher(checkoutData.appliedVoucher.code || "");
       }
@@ -159,163 +141,156 @@ const Order = () => {
     }
   }, [navigate]);
 
+  // Run loadOrderData
   useEffect(() => {
     loadOrderData();
   }, [loadOrderData]);
 
   /**
-   * Calculate shipping whenever selectedAddress changes
+   * Calculate shipping whenever selectedAddress or paymentChannel changes
    */
   useEffect(() => {
+    if (paymentChannel === "marketplace") {
+      setShippingOptions([]);
+      setSelectedShipping(null);
+      return;
+    }
+
     if (!selectedAddress) {
-      // Reset shipping when no selected address
       setShippingOptions([]);
       setSelectedShipping(null);
       return;
     }
 
-    const districtId = selectedAddress?.fullAddress?.district_id;
-    if (!districtId) {
-      setShippingOptions([]);
-      setSelectedShipping(null);
-      return;
-    }
-
-    // Fire off calculation
-    calculateShippingCost(districtId).catch((err) =>
+    calculateShippingCost().catch((err) =>
       console.error("calculateShippingCost uncaught error:", err)
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAddress]);
+  }, [selectedAddress, paymentChannel, products]);
 
   /**
-   * Calculate shipping cost (safe, robust)
-   * Accepts districtId param for easier testing and decoupling from selectedAddress
+   * HELPER: Determine zone multiplier based on province
    */
-  const calculateShippingCost = async (districtIdParam) => {
-    const districtId =
-      districtIdParam || selectedAddress?.fullAddress?.district_id || null;
-    if (!districtId) {
+  const getZoneMultiplier = (provinceName) => {
+    if (!provinceName) return 1.5;
+    
+    const province = provinceName.toUpperCase();
+    
+    // Direct match
+    if (ZONE_MULTIPLIERS[province]) {
+      return ZONE_MULTIPLIERS[province];
+    }
+    
+    // Pattern matching
+    if (province.includes('JAKARTA')) return ZONE_MULTIPLIERS['DKI JAKARTA'];
+    if (province.includes('JAWA')) {
+      if (province.includes('BARAT')) return ZONE_MULTIPLIERS['JAWA BARAT'];
+      if (province.includes('TENGAH')) return ZONE_MULTIPLIERS['JAWA TENGAH'];
+      if (province.includes('TIMUR')) return ZONE_MULTIPLIERS['JAWA TIMUR'];
+    }
+    if (province.includes('BALI')) return ZONE_MULTIPLIERS['BALI'];
+    if (province.includes('SUMATERA') || province.includes('SUMATRA')) return ZONE_MULTIPLIERS['SUMATERA'];
+    if (province.includes('KALIMANTAN')) return ZONE_MULTIPLIERS['KALIMANTAN'];
+    if (province.includes('SULAWESI')) return ZONE_MULTIPLIERS['SULAWESI'];
+    if (province.includes('PAPUA')) return ZONE_MULTIPLIERS['PAPUA'];
+    if (province.includes('MALUKU')) return ZONE_MULTIPLIERS['MALUKU'];
+    if (province.includes('NUSA TENGGARA')) return ZONE_MULTIPLIERS['NUSA TENGGARA'];
+    
+    // Default for unknown regions
+    return 1.5;
+  };
+
+  /**
+   * Calculate total package weight
+   */
+  const calculateTotalWeight = () => {
+    const totalGrams = products.reduce((sum, p) => {
+      return sum + (p.weight || 500) * p.quantity;
+    }, 0);
+    
+    // Convert to kg, minimum 1kg
+    return Math.max(1, Math.ceil(totalGrams / 1000));
+  };
+
+  /**
+   * Calculate shipping cost from database shipping methods
+   */
+  const calculateShippingCost = async () => {
+    if (!selectedAddress || paymentChannel === "marketplace") {
       return;
     }
 
     setIsLoadingShipping(true);
     try {
-      const payload = { districtId, weight: 1000 }; // 1kg default
+      // Fetch shipping methods from your API
+      const response = await shippingMethodService.getAllShippingMethods();
+      const shippingMethods = response?.data || [];
 
-      const response = await kurirService.calculateShipping(payload);
-      // response may be Axios response (with .data) or raw object
-      const raw = response?.data ?? response;
-      const options = Array.isArray(raw?.data)
-        ? raw.data
-        : Array.isArray(raw)
-        ? raw
-        : [];
-
-      const meta = raw?.meta ?? {};
-      const successFlag =
-        raw?.success === true ||
-        String(meta?.status).toLowerCase() === "success";
-
-      if (!successFlag || !Array.isArray(options) || options.length === 0) {
-        console.warn(
-          "Shipping API returned no usable options:",
-          meta?.message || null
-        );
-        // fallback
-        const fallback = [
-          {
-            id: "jne-reg",
-            name: "JNE - REG",
-            duration: "2-4 hari",
-            price: 20000,
-            description: "Layanan Reguler",
-          },
-          {
-            id: "jnt-ez",
-            name: "J&T - EZ",
-            duration: "1-3 hari",
-            price: 25000,
-            description: "Reguler",
-          },
-        ];
-        setShippingOptions(fallback);
-        setSelectedShipping(fallback[0]);
-        return;
+      if (!Array.isArray(shippingMethods) || shippingMethods.length === 0) {
+        throw new Error("No shipping methods available");
       }
 
-      // Filter preferred couriers + service keywords
-      const filtered = options.filter((opt) => {
-        const code = (opt?.code || "").toString().toLowerCase();
-        const service = (opt?.service || "").toString().toUpperCase();
-        if (!PREFERRED_COURIER_CODES.includes(code)) return false;
+      // Get destination province for zone calculation
+      const provinceName = selectedAddress?.fullAddress?.province?.province_name || "";
+      const zoneMultiplier = getZoneMultiplier(provinceName);
+      
+      // Calculate total weight
+      const totalWeightKg = calculateTotalWeight();
+      const weightMultiplier = Math.max(1, totalWeightKg); // Per kg pricing
 
-        const isRegular = REGULAR_SERVICE_KEYWORDS.some((kw) =>
-          service.includes(kw)
-        );
-        const isPremium = PREMIUM_SERVICE_KEYWORDS.some((kw) =>
-          service.includes(kw)
-        );
-        return isRegular || isPremium;
-      });
-
-      const useList = filtered.length > 0 ? filtered : options.slice(0, 5);
-
-      // Format consistently
-      const mapped = useList.map((opt, idx) => {
-        // price may be at opt.cost or opt.costs etc.
-        const rawPrice =
-          Number(opt?.cost) ||
-          Number(opt?.cost?.value) ||
-          Number(opt?.price) ||
-          0;
-
-        const etd = opt?.etd ?? opt?.etd_range ?? "";
-        const duration = etd && etd !== "-" ? String(etd) : "1-3 hari";
-
-        const courierNameRaw =
-          opt?.name || opt?.courier || opt?.courier_name || "";
-        const serviceName = opt?.service || "";
+      // Format shipping options with dynamic pricing
+      const formattedOptions = shippingMethods.map((method) => {
+        const baseCost = Number(method.base_cost) || 20000;
+        
+        // Apply zone and weight multipliers
+        const adjustedCost = Math.round(baseCost * zoneMultiplier * weightMultiplier);
+        
+        // Add estimated days variation based on zone
+        const baseEstimatedDays = Number(method.estimated_days) || 3;
+        const additionalDays = zoneMultiplier > 1.5 ? Math.floor(zoneMultiplier) : 0;
+        const estimatedDays = baseEstimatedDays + additionalDays;
 
         return {
-          id: `${opt?.code || "courier"}-${serviceName}-${idx}`,
-          code: opt?.code || "",
-          name: `${String(courierNameRaw)
-            .split("(")[0]
-            .trim()} - ${serviceName}`.trim(),
-          description: opt?.description || "",
-          service: serviceName,
-          duration,
-          price: Number(rawPrice) || 0,
-          raw: opt,
+          id: `method-${method.shipping_method_id}`,
+          shipping_method_id: method.shipping_method_id,
+          name: method.name || `${method.courier} ${method.name}`,
+          courier: method.courier,
+          description: `${estimatedDays} hari kerja • ${totalWeightKg} kg`,
+          service: method.name,
+          duration: `${estimatedDays} hari`,
+          price: adjustedCost,
+          basePrice: baseCost,
+          estimatedDays: estimatedDays,
+          raw: method,
         };
       });
 
-      // Sort by price ascending
-      mapped.sort((a, b) => a.price - b.price);
+      // Sort by price (cheapest first)
+      formattedOptions.sort((a, b) => a.price - b.price);
 
-      setShippingOptions(mapped);
-      setSelectedShipping((prev) => prev ?? mapped[0] ?? null);
+      setShippingOptions(formattedOptions);
+      
+      // Auto-select cheapest option if none selected
+      if (!selectedShipping || !formattedOptions.find(opt => opt.id === selectedShipping.id)) {
+        setSelectedShipping(formattedOptions[0]);
+      }
+
     } catch (err) {
-      console.error("Error fetching shipping:", err);
-      const fallback = [
+      console.error("Error fetching shipping methods:", err);
+      
+      // Fallback options if API fails
+      const fallbackOptions = [
         {
-          id: "jne-reg",
-          name: "JNE - REG",
-          duration: "2-4 hari",
-          price: 20000,
-          description: "Layanan Reguler",
-        },
-        {
-          id: "jnt-ez",
-          name: "J&T - EZ",
-          duration: "1-3 hari",
+          id: "fallback-regular",
+          name: "Pengiriman Reguler",
+          courier: "Regular",
+          duration: "3-5 hari",
           price: 25000,
-          description: "Reguler",
+          description: "Layanan pengiriman standar",
         },
       ];
-      setShippingOptions(fallback);
-      setSelectedShipping(fallback[0]);
+      
+      setShippingOptions(fallbackOptions);
+      setSelectedShipping(fallbackOptions[0]);
     } finally {
       setIsLoadingShipping(false);
     }
@@ -378,81 +353,147 @@ const Order = () => {
   };
 
   /**
-   * Edit address (store pending order state then redirect)
+   * Edit address
    */
   const editAddress = (id) => {
     const pending = {
       products,
       selectedShipping,
-      selectedPayment,
+      paymentChannel,
+      splitAmount,
+      marketplaceLink,
+      selectedMarketplace,
       voucher,
     };
     sessionStorage.setItem("pendingOrderData", JSON.stringify(pending));
     navigate("/profile");
   };
 
+  /**
+   * Make Order
+   */
   const makeOrder = async () => {
-  if (products.length === 0) {
-    window.alert("No products in order");
-    return;
-  }
-  if (!selectedAddress) {
-    window.alert("Please select a delivery address");
-    return;
-  }
-  if (!selectedShipping) {
-    window.alert("Please select a shipping option");
-    return;
-  }
-  if (!selectedPayment) {
-    window.alert("Please select a payment method");
-    return;
-  }
-
-  try {
-    // Build request payload according to backend
-    const payload = {
-      address_id: selectedAddress.id,
-      payment_method: selectedPayment.name,
-      notes: "",
-      items: products.map((p) => ({
-        product_id: p.productId,
-        quantity: p.quantity,
-        price: p.price,
-      })),
-      shipping_cost: selectedShipping.price || 0,
-      voucher_discount: voucher ? 5000 : 0,
-    };
-
-    // Send to backend
-    const response = await orderService.createOrder(payload);
-    const resData = response;
-
-    if (resData?.success) {
-      window.alert(
-        "Order created successfully! Please upload payment proof."
-      );
-      
-      // ✅ Remove only the selected items from cart
-      const cartItemIds = products.map(p => p.id); // Get cart_item_ids
-      await removeProduct(cartItemIds);
-      
-      // Clear session storage
-      sessionStorage.removeItem("checkoutData");
-      
-      // Redirect to payment page with order ID
-      navigate(`/payment/${resData.data?.secure_token}`);
-    } else {
-      throw new Error(resData?.message || "Order creation failed");
+    if (products.length === 0) {
+      window.alert("No products in order");
+      return;
     }
-  } catch (err) {
-    console.error("Error creating order:", err);
-    window.alert(err?.message || "Failed to create order. Please try again.");
-  }
+    if (!selectedAddress) {
+      window.alert("Please select a delivery address");
+      return;
+    }
+
+    // Validation based on payment channel
+    if (paymentChannel === "full_transfer" || paymentChannel === "split_payment") {
+      if (!selectedShipping) {
+        window.alert("Please select a shipping option");
+        return;
+      }
+    }
+
+    if (paymentChannel === "split_payment") {
+      const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+      const totalSplit = splitAmount.transfer + splitAmount.marketplace;
+      
+      if (totalSplit !== subtotal) {
+        window.alert("Split payment amounts must equal product subtotal");
+        return;
+      }
+      
+      if (splitAmount.transfer <= 0 || splitAmount.marketplace <= 0) {
+        window.alert("Both transfer and marketplace amounts must be greater than 0");
+        return;
+      }
+    }
+
+    if (paymentChannel === "marketplace") {
+      if (!marketplaceLink.trim()) {
+        window.alert("Please enter the marketplace product link");
+        return;
+      }
+      if (!selectedMarketplace) {
+        window.alert("Please select marketplace (Shopee or TikTok)");
+        return;
+      }
+    }
+
+    try {
+      // Calculate amounts
+      const subtotal = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+      const shippingCost = (paymentChannel === "marketplace") ? 0 : (selectedShipping?.price || 0);
+      const voucherDiscount = voucher ? 5000 : 0;
+
+      // Build payment data based on channel
+      const paymentData = {
+        payment_channel: paymentChannel,
+      };
+
+      if (paymentChannel === "full_transfer") {
+        paymentData.payment_type = "transfer";
+        paymentData.method_name = "BCA";
+        paymentData.payment_amount = subtotal + shippingCost - voucherDiscount;
+      } else if (paymentChannel === "split_payment") {
+        paymentData.payment_type = "split";
+        paymentData.split_transfer_amount = splitAmount.transfer;
+        paymentData.split_marketplace_amount = splitAmount.marketplace;
+        paymentData.marketplace_platform = selectedMarketplace;
+        paymentData.payment_amount = subtotal + shippingCost - voucherDiscount;
+      } else if (paymentChannel === "marketplace") {
+        paymentData.payment_type = selectedMarketplace;
+        paymentData.method_name = selectedMarketplace === "shopee" ? "Shopee" : "TikTok Shop";
+        paymentData.marketplace_link = marketplaceLink;
+        paymentData.marketplace_platform = selectedMarketplace;
+        paymentData.payment_amount = subtotal;
+      }
+
+      // Build request payload
+      const payload = {
+        address_id: selectedAddress.id,
+        shipping_method_id: selectedShipping?.shipping_method_id || null,
+        notes: "",
+        items: products.map((p) => ({
+          product_id: p.productId,
+          quantity: p.quantity,
+          price: p.price,
+        })),
+        shipping_cost: shippingCost,
+        voucher_discount: voucherDiscount,
+        payment_data: paymentData,
+      };
+
+      // Send to backend
+      const response = await orderService.createOrder(payload);
+      const resData = response;
+
+      if (resData?.success) {
+        let message = "Order created successfully!";
+        
+        if (paymentChannel === "marketplace") {
+          message = `Order created! Please complete payment at: ${marketplaceLink}`;
+        } else {
+          message = "Order created successfully! Please upload payment proof.";
+        }
+        
+        window.alert(message);
+        
+        // Remove items from cart
+        const cartItemIds = products.map(p => p.id);
+        await removeProduct(cartItemIds);
+        
+        // Clear session storage
+        sessionStorage.removeItem("checkoutData");
+        
+        // Redirect to payment page
+        navigate(`/payment/${resData.data?.order?.secure_token}`);
+      } else {
+        throw new Error(resData?.message || "Order creation failed");
+      }
+    } catch (err) {
+      console.error("Error creating order:", err);
+      window.alert(err?.message || "Failed to create order. Please try again.");
+    }
   };
 
-  //=======================================================================================
-  // Derived UI states
+  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-sky-50">
@@ -470,6 +511,7 @@ const Order = () => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-sky-50">
@@ -493,6 +535,7 @@ const Order = () => {
     );
   }
 
+  // No addresses
   if (addresses.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-sky-50">
@@ -516,8 +559,8 @@ const Order = () => {
     );
   }
 
-  // While shipping is loading or there is no shipping selected, show a calculation state
-  if (isLoadingShipping || !selectedShipping) {
+  // Loading shipping (only for non-marketplace)
+  if ((paymentChannel !== "marketplace") && (isLoadingShipping || !selectedShipping)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-sky-50">
         <Navbar currentPage="order" />
@@ -538,7 +581,7 @@ const Order = () => {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-sky-50">
       <Navbar currentPage="order" />
 
-      <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="p-6 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 pt-28">
         <div className="space-y-6 lg:col-span-2">
           <OrderAddress
             addresses={addresses}
@@ -554,18 +597,26 @@ const Order = () => {
             removeProduct={removeProducts}
           />
 
-          <OrderShipping
-            shippingOptions={shippingOptions}
-            selectedShipping={selectedShipping}
-            setSelectedShipping={setSelectedShipping}
-            isLoading={isLoadingShipping}
+          <OrderPaymentChannel
+            paymentChannel={paymentChannel}
+            setPaymentChannel={setPaymentChannel}
+            splitAmount={splitAmount}
+            setSplitAmount={setSplitAmount}
+            marketplaceLink={marketplaceLink}
+            setMarketplaceLink={setMarketplaceLink}
+            selectedMarketplace={selectedMarketplace}
+            setSelectedMarketplace={setSelectedMarketplace}
+            productTotal={products.reduce((sum, p) => sum + p.price * p.quantity, 0)}
           />
 
-          <OrderPayment
-            paymentMethods={paymentMethods}
-            selectedPayment={selectedPayment}
-            setSelectedPayment={setSelectedPayment}
-          />
+          {paymentChannel !== "marketplace" && (
+            <OrderShipping
+              shippingOptions={shippingOptions}
+              selectedShipping={selectedShipping}
+              setSelectedShipping={setSelectedShipping}
+              isLoading={isLoadingShipping}
+            />
+          )}
 
           <OrderVoucher voucher={voucher} setVoucher={setVoucher} />
         </div>
@@ -573,9 +624,10 @@ const Order = () => {
         <div className="lg:col-span-1">
           <OrderSummary
             products={products}
-            selectedShipping={selectedShipping || { price: 0 }}
+            selectedShipping={paymentChannel === "marketplace" ? { price: 0 } : (selectedShipping || { price: 0 })}
             voucher={voucher}
             makeOrder={makeOrder}
+            paymentChannel={paymentChannel}
           />
         </div>
       </div>

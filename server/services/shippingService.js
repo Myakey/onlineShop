@@ -2,55 +2,57 @@
 const axios = require('axios');
 const path = require('path');
 const dotenv = require('dotenv');
-// Import querystring to safely encode form data, although Axios can often handle it
-const qs = require('querystring'); 
 
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-const RAJAONGKIR_API_KEY = process.env.RAJAONGKIR_API_KEY_COST;
-const API_URL = 'https://rajaongkir.komerce.id/api/v1/calculate/district/domestic-cost';
-const ALL_COURIERS = 'jne:sicepat:ide:sap:jnt:ninja:tiki:lion:anteraja:pos:ncs:rex:rpx:sentral:star:wahana:dse';
+const BITESHIP_API_KEY = process.env.ONGKIR_API;
 
-async function calculateShippingCost(originDistrictId, destinationDistrictId, weight) {
-  if (!RAJAONGKIR_API_KEY) {
-    throw new Error("RAJAONGKIR_API_KEY_COST is not set in environment variables.");
-  }
-  
+const requestData = {
+  origin_postal_code: 12440,
+  destination_latitude: -6.2441792,
+  destination_longitude: 106.783529,
+  couriers: "paxel,jne,sicepat",
+  items: [
+    {
+      name: "Shoes",
+      description: "Black colored size 45",
+      value: 199000,
+      length: 30,
+      width: 15,
+      height: 20,
+      weight: 200,
+      quantity: 2
+    }
+  ]
+};
+
+async function calculateShippingCost(req, res) {
   try {
-    // Data must be sent as application/x-www-form-urlencoded as per documentation
-    const requestData = {
-      origin: originDistrictId,
-      destination: destinationDistrictId,
-      weight: weight,
-      courier: ALL_COURIERS,
-      price: 'lowest' // Parameter to sort by lowest price
-    };
-
     const response = await axios.post(
-      API_URL,
-      // Use qs.stringify to convert the object to x-www-form-urlencoded string
-      qs.stringify(requestData),
+      "https://api.biteship.com/v1/rates/couriers",
+      requestData,
       {
         headers: {
-          'key': RAJAONGKIR_API_KEY,
-          // Crucial: Set the correct Content-Type for form-urlencoded data
-          'Content-Type': 'application/x-www-form-urlencoded' 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${BITESHIP_API_KEY}`
         }
       }
     );
-    
-    // The successful response data structure you provided is:
-    // {"meta":{...},"data":[...]}
-    // We return the whole response data object.
-    return response.data;
+
+    return res.json({
+      success: true,
+      data: response.data, // send actual data only
+    });
 
   } catch (error) {
-    // Axios error handling for bad responses
-    if (error.response) {
-      console.error("RajaOngkir API Error:", error.response.data);
-      throw new Error(`Shipping calculation failed with status ${error.response.status}: ${error.response.data.meta.message || error.response.statusText}`);
-    }
-    throw new Error(`Shipping calculation failed: ${error.message}`);
+    const errData = error.response?.data || { message: error.message };
+
+    console.error("Shipping cost API error:", errData);
+
+    return res.status(error.response?.status || 500).json({
+      success: false,
+      error: errData,
+    });
   }
 }
 

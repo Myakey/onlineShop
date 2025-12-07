@@ -85,12 +85,6 @@ router.get("/track/:orderNumber", authenticateToken, orderController.getOrderByO
 router.post("/", authenticateToken, orderController.createOrder);
 
 // Upload payment proof (using secure token)
-router.post(
-  "/secure/:token/payment-proof",
-  authenticateToken,
-  upload.single("paymentProof"),
-  orderController.uploadPaymentProof
-);
 
 // Cancel order (user can cancel their own pending orders using token)
 router.put("/secure/:token/cancel", authenticateToken, orderController.cancelOrder);
@@ -106,8 +100,6 @@ router.get("/admin/:id", authenticateToken, requireAdmin, orderController.getOrd
 // Update order status (admin only)
 router.put("/:id/status", authenticateToken, requireAdmin, orderController.updateOrderStatus);
 
-// Update payment status (admin only)
-router.put("/:id/payment-status", authenticateToken, requireAdmin, orderController.updatePaymentStatus);
 
 // Cancel order by ID (admin only)
 router.put("/admin/:id/cancel", authenticateToken, requireAdmin, orderController.cancelOrderById);

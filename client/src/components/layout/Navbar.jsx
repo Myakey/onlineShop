@@ -111,9 +111,9 @@ const Navbar = () => {
   };
 
   return (
-  <div className="fixed top-0 left-0 right-0 z-[100]">
+  <div className="sticky top-0 left-0 right-0 z-[100]">
       {/* Navbar Utama */}
-      <nav className="sticky flex items-center justify-between px-6 py-0 bg-gradient-to-r from-pink-300 via-pink-100 to-white shadow-md relative z-50">
+      <nav className="sticky flex items-center justify-between px-6 py-0 bg-gradient-to-r from-pink-300 via-pink-100 to-white shadow-md z-50">
         {/* Logo */}
         <div className="flex items-center space-x-4">
           <button onClick={toggleMenu} className="p-2 hover:bg-pink-200 rounded-lg transition-all duration-300 transform hover:scale-110">

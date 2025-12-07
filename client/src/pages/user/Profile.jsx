@@ -4,6 +4,20 @@ import { User, Phone, MapPin, Edit2, Trash2, Plus, X, Check, Camera } from 'luci
 import Navbar from '../../components/layout/Navbar';
 import DefaultPFP from '../../assets/DefaultPFP.png'; 
 import { useUser } from '../../context/userContext';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { OpenStreetMapProvider } from 'leaflet-geosearch';
+import 'leaflet-geosearch/dist/geosearch.css';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+import { Search } from 'lucide-react';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 export default function Profile() {
     // ✅ SECURITY FIX: Separate state for sensitive data (NOT stored in localStorage)
@@ -34,7 +48,9 @@ export default function Profile() {
         district: '',
         postalCode: '',
         notes: '',
-        isDefault: false
+        isDefault: false,
+        latitude: null,
+        longitude: null
     });
 
     const [isUploading, setIsUploading] = useState(false);
@@ -276,23 +292,134 @@ const handleDeleteImage = async () => {
         setCities([]);
     };
 
-    const handleProvinceChange = (provinceId) => {
-        setAddressForm(prev => ({ ...prev, province: provinceId, city: '' }));
-        if (provinceId) {
-            loadCities(provinceId);
-        } else {
-            setCities([]);
-        }
-    };
+    function LocationMarker({ position, setPosition }) {
+        const map = useMapEvents({
+            click(e) {
+            setPosition({
+                lat: e.latlng.lat,
+                lng: e.latlng.lng
+            });
+            },
+        });
 
-    const handleCityChange = async (cityId) => {
-        setAddressForm(prev => ({ ...prev, city: cityId, district: '' }));
-        if (cityId) {
-            await loadDistricts(cityId);
-        } else {
-            setDistricts([]);
-        }
-    };
+        return position ? <Marker position={[position.lat, position.lng]} /> : null;
+    }
+
+    // Location search component
+function LocationSearch({ onLocationSelect }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const provider = React.useMemo(() => new OpenStreetMapProvider(), []);
+
+  const handleSearch = async (query) => {
+    if (!query || query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await provider.search({ query });
+      setSearchResults(results.slice(0, 5)); // Limit to 5 results
+      setShowResults(true);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectLocation = (result) => {
+    onLocationSelect({
+      lat: result.y,
+      lng: result.x,
+      address: result.label
+    });
+    setSearchQuery(result.label);
+    setShowResults(false);
+    setSearchResults([]);
+  };
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearch(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search location (e.g., Jakarta, Indonesia)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => searchResults.length > 0 && setShowResults(true)}
+          className="w-full rounded-xl border-2 border-pink-200 pl-10 pr-4 py-2.5 text-sm focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+        />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        {isSearching && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+      </div>
+
+      {showResults && searchResults.length > 0 && (
+        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-pink-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+          {searchResults.map((result, index) => (
+            <button
+              key={index}
+              onClick={() => handleSelectLocation(result)}
+              className="w-full text-left px-4 py-3 hover:bg-pink-50 transition-colors border-b border-pink-100 last:border-b-0"
+            >
+              <p className="text-sm font-medium text-gray-800 truncate">
+                {result.label}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showResults && searchResults.length === 0 && searchQuery.length >= 3 && !isSearching && (
+        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-pink-200 rounded-xl shadow-lg">
+          <p className="px-4 py-3 text-sm text-gray-500">No results found</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Component to handle map clicks
+function MapClickHandler({ setPosition }) {
+  useMap().on('click', (e) => {
+    setPosition({
+      lat: e.latlng.lat,
+      lng: e.latlng.lng
+    });
+  });
+  return null;
+}
+
+// Component to fly to location when coordinates change
+function FlyToLocation({ position }) {
+  const map = useMap();
+  
+  React.useEffect(() => {
+    if (position) {
+      map.flyTo([position.lat, position.lng], 15, {
+        duration: 1.5
+      });
+    }
+  }, [position, map]);
+  
+  return null;
+}
 
     const handleAddressSubmit = async (e) => {
         e.preventDefault();
@@ -811,61 +938,137 @@ const handleDeleteImage = async () => {
                                         />
                                     </div>
 
-                                    <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Province</label>
-                                            <select
-                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
-                                                value={addressForm.province}
-                                                onChange={(e) => handleProvinceChange(e.target.value)}
-                                                required
-                                            >
-                                                <option value="">Select Province</option>
-                                                {provinces.map((province) => (
-                                                    <option key={province.province_id} value={province.province_id}>
-                                                        {province.province_name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                    {/* Map Location */}
+                                    {/* ADD THIS SECTION AFTER STREET ADDRESS */}
+                                    <div className="space-y-3">
+                                    <label className="block text-sm font-bold text-gray-700">
+                                        Pin Location on Map (Optional)
+                                    </label>
+                                    
+                                    {/* Search box - needs higher z-index */}
+                                    <div className="relative z-[1000]">
+                                        <LocationSearch
+                                        onLocationSelect={(location) => {
+                                            setAddressForm({
+                                            ...addressForm,
+                                            latitude: location.lat,
+                                            longitude: location.lng
+                                            });
+                                        }}
+                                        />
+                                    </div>
 
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">City</label>
-                                            <select
-                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
-                                                value={addressForm.city}
-                                                onChange={(e) => handleCityChange(e.target.value)}
-                                                required
-                                                disabled={!addressForm.province}
+                                    {/* Map */}
+                                    <div className="rounded-xl sm:rounded-2xl overflow-hidden border-2 border-pink-200 relative z-0" style={{ height: '350px' }}>
+                                        <MapContainer
+                                        center={[
+                                            addressForm.latitude ? parseFloat(addressForm.latitude) : -6.2088,
+                                            addressForm.longitude ? parseFloat(addressForm.longitude) : 106.8456
+                                        ]}
+                                        zoom={13}
+                                        style={{ height: '100%', width: '100%' }}
+                                        scrollWheelZoom={true}
+                                        zoomControl={true}
+                                        >
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            maxZoom={19}
+                                        />
+                                        <MapClickHandler
+                                            setPosition={(pos) => {
+                                            setAddressForm({
+                                                ...addressForm,
+                                                latitude: pos.lat,
+                                                longitude: pos.lng
+                                            });
+                                            }}
+                                        />
+                                        {addressForm.latitude && addressForm.longitude && (
+                                            <>
+                                            <Marker position={[parseFloat(addressForm.latitude), parseFloat(addressForm.longitude)]} />
+                                            <FlyToLocation position={{ lat: parseFloat(addressForm.latitude), lng: parseFloat(addressForm.longitude) }} />
+                                            </>
+                                        )}
+                                        </MapContainer>
+                                    </div>
+
+                                    {/* Coordinates display and clear button */}
+                                    <div className="flex items-center justify-between">
+                                        {addressForm.latitude && addressForm.longitude ? (
+                                        <>
+                                            <p className="text-xs text-gray-600">
+                                            📍 {parseFloat(addressForm.latitude).toFixed(6)}, {parseFloat(addressForm.longitude).toFixed(6)}
+                                            </p>
+                                            <button
+                                            type="button"
+                                            onClick={() => setAddressForm({ ...addressForm, latitude: null, longitude: null })}
+                                            className="text-xs text-red-600 hover:text-red-700 font-semibold"
                                             >
-                                                <option value="">Select City</option>
-                                                {cities.map((city) => (
-                                                    <option key={city.city_id} value={city.city_id}>
-                                                        {city.city_name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                            Clear Pin
+                                            </button>
+                                        </>
+                                        ) : (
+                                        <p className="text-xs text-gray-500 italic">
+                                            Click on the map or search for a location to set coordinates
+                                        </p>
+                                        )}
+                                    </div>
                                     </div>
 
                                     <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
                                         <div className="space-y-2">
-                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">District</label>
-                                            <select
-                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300 disabled:bg-pink-50 disabled:cursor-not-allowed"
-                                                value={addressForm.district}
-                                                onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">
+                                                Province
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="Enter province"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.province}
+                                                onChange={(e) =>
+                                                    setAddressForm({ ...addressForm, province: e.target.value })
+                                                }
                                                 required
-                                                disabled={!addressForm.city}
-                                            >
-                                                <option value="">Select District</option>
-                                                {districts.map((district) => (
-                                                    <option key={district.district_id} value={district.district_id}>
-                                                        {district.district_name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                         </div>
+
+
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">
+                                                City
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="Enter city"
+                                                className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                value={addressForm.city}
+                                                onChange={(e) =>
+                                                    setAddressForm({ ...addressForm, city: e.target.value })
+                                                }
+                                                required
+                                            />
+                                        </div>
+
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
+                                        <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">
+                                                    District / Barangay
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter district or barangay"
+                                                    className="w-full rounded-xl sm:rounded-2xl border-2 border-pink-200 px-4 sm:px-5 py-2.5 sm:py-3.5 text-sm sm:text-base focus:border-pink-500 focus:outline-none focus:ring-4 focus:ring-pink-100 transition-all duration-300"
+                                                    value={addressForm.district}
+                                                    onChange={(e) =>
+                                                        setAddressForm({ ...addressForm, district: e.target.value })
+                                                    }
+                                                    required
+                                                />
+                                            </div>
+
                                         <div className="space-y-2">
                                             <label className="block text-sm font-bold text-gray-700 mb-1 sm:mb-2">Postal Code</label>
                                             <input

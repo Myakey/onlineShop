@@ -3,7 +3,6 @@ import api from "./api";
 const calculateShipping = async (data) => {
   try {
     const response = await api.post('/shipping/calculate-shipping', data);
-    console.log(response);
     return response.data;
   } catch (error) {
     console.error("Error calculating shipping:", error);

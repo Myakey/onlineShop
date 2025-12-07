@@ -5,7 +5,7 @@ class ReviewController {
   async createReview(req, res) {
     try {
       const user_id = req.user.id;
-      const { product_id, order_id, rating, title, comment, images } = req.body;
+      const { product_id, rating, comment } = req.body; // REMOVE: order_id, title, images
 
       // Validation
       if (!product_id || !rating) {
@@ -25,20 +25,14 @@ class ReviewController {
       const review = await ReviewModels.createReview({
         user_id,
         product_id: parseInt(product_id),
-        order_id: order_id ? parseInt(order_id) : null,
         rating: parseInt(rating),
-        title,
-        comment,
-        images,
+        comment, // No title or images
       });
 
       return res.status(201).json({
         success: true,
         message: 'Review created successfully',
-        data: {
-          ...review,
-          images: review.images ? JSON.parse(review.images) : [],
-        },
+        data: review, // No need to parse images
       });
     } catch (error) {
       console.error('Create review error:', error);
@@ -122,12 +116,12 @@ class ReviewController {
     }
   }
 
-  // Update a review
+ // REPLACE updateReview function (line ~120):
   async updateReview(req, res) {
     try {
       const user_id = req.user.id;
       const { reviewId } = req.params;
-      const { rating, title, comment, images } = req.body;
+      const { rating, comment } = req.body;  // REMOVE: title, images
 
       // Validation
       if (rating && (rating < 1 || rating > 5)) {
@@ -140,7 +134,7 @@ class ReviewController {
       const review = await ReviewModels.updateReview(
         parseInt(reviewId),
         user_id,
-        { rating: rating ? parseInt(rating) : undefined, title, comment, images }
+        { rating: rating ? parseInt(rating) : undefined, comment }  // REMOVE: title, images
       );
 
       return res.status(200).json({
@@ -158,13 +152,14 @@ class ReviewController {
     }
   }
 
-  // Delete a review
+  // ADD isAdmin parameter to deleteReview (line ~165):
   async deleteReview(req, res) {
     try {
       const user_id = req.user.id;
       const { reviewId } = req.params;
+      const isAdmin = req.user.type === 'admin';  // ADD THIS
 
-      const result = await ReviewModels.deleteReview(parseInt(reviewId), user_id);
+      const result = await ReviewModels.deleteReview(parseInt(reviewId), user_id, isAdmin);  // ADD isAdmin
 
       return res.status(200).json({
         success: true,
@@ -180,17 +175,17 @@ class ReviewController {
     }
   }
 
-  // Check if user can review a product
+  // REMOVE canUserReview query parameter (line ~185):
   async canUserReview(req, res) {
     try {
       const user_id = req.user.id;
       const { productId } = req.params;
-      const { orderId } = req.query;
+      // REMOVE: orderId query param
 
       const result = await ReviewModels.canUserReview(
         user_id,
-        parseInt(productId),
-        orderId ? parseInt(orderId) : null
+        parseInt(productId)
+        // REMOVE: orderId parameter
       );
 
       return res.status(200).json({

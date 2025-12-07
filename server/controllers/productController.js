@@ -1,8 +1,9 @@
 const productModels = require("../models/productsModel");
+const reviewModels = require("../models/reviewModel");
 const { cleanupFile } = require("../middleware/uploadImage");
 
 const getAllProducts = async (req, res) => {
-  try {
+  try { 
     const products = await productModels.getAllProducts();
     res.json(products);
   } catch (err) {
@@ -27,36 +28,53 @@ const getProductById = async (req, res) => {
 
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, stock } = req.body;
+    const { name, description, price, stock, weight, length, width, height } = req.body;
 
     if (!name || !description || price === undefined || stock === undefined) {
-      // If validation fails and file was uploaded, delete it from Cloudinary
-      if (req.file && req.file.cloudinary_id) {
-        await cleanupFile(req.file.path);
+      // Cleanup uploaded files if validation fails
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          await cleanupFile(file.cloudinary_id);
+        }
       }
+
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Use Cloudinary URL instead of local path
-    const image_url = req.file ? req.file.path : null;
+    // Prepare image array for model
+    const images = req.files
+      ? req.files.map(file => ({
+          url: file.path,
+          cloudinary_id: file.cloudinary_id
+        }))
+      : [];
 
     const newProduct = await productModels.createProduct({
       name,
       description,
       price: parseFloat(price),
       stock: parseInt(stock),
-      image_url,
+      weight: parseInt(weight),
+      length : parseInt(length),
+      width: parseInt(width),
+      height: parseInt(height),
+      images
     });
 
     res.status(201).json(newProduct);
+
   } catch (err) {
-    // Clean up Cloudinary image if product creation fails
-    if (req.file && req.file.cloudinary_id) {
-      await cleanupFile(req.file.path);
+    // Cleanup Cloudinary if product creation fails
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        await cleanupFile(file.cloudinary_id);
+      }
     }
+
     res.status(500).json({ message: err.message });
   }
 };
+
 
 const updateProduct = async (req, res) => {
   try {
@@ -69,6 +87,38 @@ const updateProduct = async (req, res) => {
         await cleanupFile(req.file.path);
       }
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Check if product has reviews
+    const hasReviews = (await reviewModels.getProductReviewStats(id)).total_reviews;
+    
+    if (hasReviews) {
+      // Clean up uploaded file if any
+      if (req.file && req.file.cloudinary_id) {
+        await cleanupFile(req.file.path);
+      }
+      
+      // Option 1: Completely prevent updates
+      return res.status(403).json({ 
+        message: "Cannot update product that has reviews. This prevents fraudulent changes to reviewed products." 
+      });
+      
+      // Option 2: Allow only specific fields (stock and price)
+      // Uncomment this section if you want to allow limited updates
+      /*
+      const allowedFields = ['stock', 'price'];
+      const requestedFields = Object.keys(req.body);
+      const restrictedFields = requestedFields.filter(
+        field => !allowedFields.includes(field) && req.body[field] !== undefined
+      );
+      
+      if (restrictedFields.length > 0 || req.file) {
+        return res.status(403).json({ 
+          message: `Cannot update ${restrictedFields.join(', ')} or image for products with reviews. Only stock and price updates are allowed.`,
+          restrictedFields
+        });
+      }
+      */
     }
 
     const updateData = {};

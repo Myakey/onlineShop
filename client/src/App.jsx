@@ -18,6 +18,7 @@ import AdminOrder from "./pages/AdminOrder";
 import AdminOrderDetail from "./pages/AdminOrderDetail";
 import AdminProductDetail from "./pages/AdminProductDetail";
 import AdminProductEdit from "./pages/AdminProductEdit";
+import AdminShippingMethods from "./pages/admin/AdminShippingMethods";
 
 // Product pages
 import Product from "./pages/public/Product";
@@ -145,6 +146,14 @@ function App() {
                 element={
                   <AdminRoute>
                     <AdminProductEdit />
+                  </AdminRoute>
+                }
+              />
+              <Route 
+              path="/admin/shipping-methods"
+                element={
+                  <AdminRoute>
+                    <AdminShippingMethods />
                   </AdminRoute>
                 }
               />

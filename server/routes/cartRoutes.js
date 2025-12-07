@@ -20,11 +20,9 @@ router.post('/validate', cartController.validateCart);
 // Add item to cart
 router.post('/items', cartController.addItemToCart);
 
-// Update cart item quantity
-router.put('/items/:cartItemId', cartController.updateCartItem);
+router.put('/items/:productId', cartController.updateCartItem);
 
-// Remove single item from cart
-router.delete('/items/:cartItemId', cartController.removeItemFromCart);
+router.delete('/items/:productId', cartController.removeItemFromCart);
 
 // Clear entire cart
 router.delete('/clear', cartController.clearCart);

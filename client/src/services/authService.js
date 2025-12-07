@@ -164,8 +164,9 @@ const authService = {
   },
 
   async addAddress(addressData) {
-    const { data } = await api.post("/addresses", addressData);
-    return data;
+    const data = await api.post("/addresses", addressData);
+    console.log(data);
+    return data.data;
   },
 
   async updateAddress(addressId, addressData) {

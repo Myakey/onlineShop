@@ -71,27 +71,12 @@ async function findById(userId) {
             recipient_name: true,
             phone_number: true,
             street_address: true,
-            province_id: true,
-            city_id: true,
-            district_id: true,
+            city: true,        // TEXT FIELD
+            province: true,    // TEXT FIELD
+            district: true,    // TEXT FIELD
             postal_code: true,
             notes: true,
             is_default: true,
-            province: {
-              select: {
-                province_name: true
-              }
-            },
-            city: {
-              select: {
-                city_name: true
-              }
-            },
-            district: {
-              select: {
-                district_name: true
-              }
-            }
           },
           orderBy: [
             { is_default: 'desc' },
@@ -258,11 +243,13 @@ async function addUserAddress(userId, addressData) {
       recipientName,
       phoneNumber,
       streetAddress,
-      provinceId,
-      cityId,
-      districtId,
+      city,
+      province,
+      district,
       postalCode,
       notes,
+      latitude,
+      longitude,
       isDefault = false
     } = addressData;
     
@@ -280,10 +267,12 @@ async function addUserAddress(userId, addressData) {
         recipient_name: recipientName,
         phone_number: phoneNumber,
         street_address: streetAddress,
-        province_id: provinceId,
-        city_id: cityId,
-        district_id: districtId,
+        city,
+        province,
+        district,
         postal_code: postalCode,
+        latitude,
+        longitude,
         notes,
         is_default: isDefault
       }
@@ -302,12 +291,14 @@ async function updateUserAddress(addressId, userId, addressData) {
       recipientName,
       phoneNumber,
       streetAddress,
-      provinceId,
-      cityId,
-      districtId,
+      city,
+      province,
+      district,
       postalCode,
       notes,
-      isDefault
+      isDefault,
+      latitude,
+      longitude
     } = addressData;
     
     if (isDefault) {
@@ -330,12 +321,14 @@ async function updateUserAddress(addressId, userId, addressData) {
         recipient_name: recipientName,
         phone_number: phoneNumber,
         street_address: streetAddress,
-        province_id: provinceId,
-        city_id: cityId,
-        district_id: districtId,
+        city,
+        province,
+        district,
         postal_code: postalCode,
         notes,
-        is_default: isDefault
+        is_default: isDefault,
+        latitude,
+        longitude
       }
     });
     
@@ -369,11 +362,6 @@ async function getUserAddresses(userId) {
   try {
     const addresses = await prisma.user_addresses.findMany({
       where: { user_id: userId },
-      include: {
-        province: true,
-        city: true,
-        district: true
-      },
       orderBy: [
         { is_default: 'desc' },
         { created_at: 'asc' }
@@ -382,43 +370,6 @@ async function getUserAddresses(userId) {
     return addresses;
   } catch (error) {
     throw new Error(`Error fetching addresses: ${error.message}`);
-  }
-}
-
-// Indonesian location data functions
-async function getProvinces() {
-  try {
-    const provinces = await prisma.indonesian_provinces.findMany({
-      orderBy: { province_name: 'asc' }
-    });
-    return provinces;
-  } catch (error) {
-    throw new Error(`Error fetching provinces: ${error.message}`);
-  }
-}
-
-async function getCitiesByProvince(province) {
-  
-  try {
-    const cities = await prisma.indonesian_cities.findMany({
-      where: { province_id: parseInt(province) },
-      orderBy: { city_name: 'asc' }
-    });
-    return cities;
-  } catch (error) {
-    throw new Error(`Error fetching cities: ${error.message}`);
-  }
-}
-
-async function getDistrictsByCity(city) {
-  try {
-    const districts = await prisma.indonesian_districts.findMany({
-      where: { city_id: parseInt(city) },
-      orderBy: { district_name: 'asc' }
-    });
-    return districts;
-  } catch (error) {
-    throw new Error(`Error fetching districts: ${error.message}`);
   }
 }
 
@@ -434,7 +385,4 @@ module.exports = {
   updateUserAddress,
   deleteUserAddress,
   getUserAddresses,
-  getProvinces,
-  getCitiesByProvince,
-  getDistrictsByCity
 };

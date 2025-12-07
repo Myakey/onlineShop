@@ -1,15 +1,18 @@
+//product model
 const prisma = require("../config/prisma")
 
 const addFullImageUrls = (products) => {
   if (Array.isArray(products)) {
     return products.map((product) => ({
       ...product,
-      image_url: product.image_url || null,
+      images: product.images || [],
+      primary_image: product.images?.find(img => img.is_primary)?.image_url || null,
     }));
   } else {
     return {
       ...products,
-      image_url: products.image_url || null,
+      images: products.images || [],
+      primary_image: products.images?.find(img => img.is_primary)?.image_url || null,
     };
   }
 };
@@ -18,6 +21,12 @@ const addFullImageUrls = (products) => {
 exports.getAllProducts = async () => {
   try {
     const products = await prisma.products.findMany({
+      include: {
+        images: {
+          where: { is_primary: true },
+          take: 1,
+        },
+      },
       orderBy: {
         product_id: "desc", 
       },
@@ -28,11 +37,13 @@ exports.getAllProducts = async () => {
   }
 };
 
-//Ambil produk berdasarkan id
 exports.getProductById = async (productId) => {
   try {
     const product = await prisma.products.findUnique({
       where: { product_id: parseInt(productId) },
+      include: {
+        images: true, // Get all images
+      },
     });
 
     if (!product) {
@@ -45,22 +56,42 @@ exports.getProductById = async (productId) => {
   }
 };
 
-// Create new product
+//Create new product
 exports.createProduct = async (productData) => {
   try {
-    const { name, description, price, stock, image_url = null } = productData;
+    const { name, description, price, stock, images = [], weight, length, width, height } = productData;
 
     const newProduct = await prisma.products.create({
       data: {
         name,
         description,
-        price: parseFloat(price), // Ensure price is a number
-        stock: parseInt(stock), // Ensure stock is an integer
-        image_url,
+        price: parseFloat(price),
+        stock: parseInt(stock),
+        weight,
+        length,
+        width,
+        height
       },
     });
 
-    return addFullImageUrls(newProduct);
+    // Add images if provided
+    if (images.length > 0) {
+      await prisma.productImage.createMany({
+        data: images.map((img, index) => ({
+          product_id: newProduct.product_id,
+          image_url: img.url,
+          is_primary: index === 0, // First image is primary
+        })),
+      });
+    }
+
+    // Fetch product with images
+    const productWithImages = await prisma.products.findUnique({
+      where: { product_id: newProduct.product_id },
+      include: { images: true },
+    });
+
+    return addFullImageUrls(productWithImages);
   } catch (error) {
     if (error.code === "P2002") {
       throw new Error("Product with this name already exists");
@@ -69,46 +100,86 @@ exports.createProduct = async (productData) => {
   }
 };
 
-// Update existing product
+// Update product with partial image update
 exports.updateProduct = async (productId, updateData) => {
   try {
-    // Build the data object for Prisma
+    const { name, description, price, stock, images } = updateData;
+
     const prismaUpdateData = {};
 
-    if (updateData.name !== undefined) prismaUpdateData.name = updateData.name;
-    if (updateData.description !== undefined)
-      prismaUpdateData.description = updateData.description;
-    if (updateData.price !== undefined)
-      prismaUpdateData.price = parseFloat(updateData.price);
-    if (updateData.stock !== undefined)
-      prismaUpdateData.stock = parseInt(updateData.stock);
-    if (updateData.image_url !== undefined)
-      prismaUpdateData.image_url = updateData.image_url;
+    if (name !== undefined) prismaUpdateData.name = name;
+    if (description !== undefined) prismaUpdateData.description = description;
+    if (price !== undefined) prismaUpdateData.price = parseFloat(price);
+    if (stock !== undefined) prismaUpdateData.stock = parseInt(stock);
 
-    if (Object.keys(prismaUpdateData).length === 0) {
-      throw new Error("No fields to update");
-    }
-
+    // Update only product fields first
     const updatedProduct = await prisma.products.update({
       where: { product_id: parseInt(productId) },
       data: prismaUpdateData,
     });
 
-    return addFullImageUrls(updatedProduct);
+    // -----------------------------------
+    // PARTIAL IMAGE UPDATE LOGIC
+    // -----------------------------------
+    if (images) {
+      // 1. Delete specific images
+      if (images.delete && images.delete.length > 0) {
+        await prisma.productImage.deleteMany({
+          where: {
+            image_id: { in: images.delete.map(id => parseInt(id)) },
+            product_id: updatedProduct.product_id,
+          },
+        });
+      }
+
+      // 2. Add new images
+      if (images.add && images.add.length > 0) {
+        await prisma.productImage.createMany({
+          data: images.add.map((img) => ({
+            product_id: updatedProduct.product_id,
+            image_url: img.url,
+            is_primary: false, // added images are not primary by default
+          })),
+        });
+      }
+
+      // 3. Set a new primary image
+      if (images.setPrimary !== undefined) {
+        const primaryId = parseInt(images.setPrimary);
+
+        // Clear previous primary
+        await prisma.productImage.updateMany({
+          where: { product_id: updatedProduct.product_id },
+          data: { is_primary: false },
+        });
+
+        // Set new primary
+        await prisma.productImage.update({
+          where: { image_id: primaryId },
+          data: { is_primary: true },
+        });
+      }
+    }
+
+    // Fetch updated product data + images
+    const productWithImages = await prisma.products.findUnique({
+      where: { product_id: updatedProduct.product_id },
+      include: { images: true },
+    });
+
+    return addFullImageUrls(productWithImages);
   } catch (error) {
     if (error.code === "P2025") {
-      // Record not found
       throw new Error("Product not found");
     }
     if (error.code === "P2002") {
-      // Unique constraint violation
       throw new Error("Product name already exists");
     }
     throw new Error(`Error updating product: ${error.message}`);
   }
 };
 
-// Delete product
+//Delete product
 exports.deleteProduct = async (productId) => {
   try {
     await prisma.products.delete({

@@ -4,14 +4,14 @@ import api from "../services/api";
 const productService = {
   async getProducts() {
     const res = await api.get("/products");
-    return res.data; // return data langsung
+    return res.data;
   },
-
+  
   async getProductById(id) {
     const res = await api.get(`/products/${id}`);
-    return res.data; // wajib return data
+    return res.data;
   },
-
+  
   async createProduct(productData) {
     const formData = new FormData();
     Object.keys(productData).forEach((key) => {
@@ -22,22 +22,21 @@ const productService = {
     });
     return res.data;
   },
-
+  
   async updateProduct(id, productData) {
-    // PUT request untuk update produk
     const res = await api.put(`/products/${id}`, productData, {
       headers: { "Content-Type": "application/json" },
     });
     return res.data;
   },
-
+  
   async searchProduct(searchTerm) {
     const res = await api.get(
       `/products/search?q=${encodeURIComponent(searchTerm)}`
     );
     return res.data;
   },
-
+  
   async deleteProduct(id) {
     const res = await api.delete(`/products/${id}`);
     return res.data;

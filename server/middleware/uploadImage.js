@@ -95,8 +95,58 @@ const uploadWithErrorHandling = (fieldName) => {
   };
 };
 
+const uploadMultipleWithErrorHandling = (fieldName, maxCount = 5) => {
+  return async (req, res, next) => {
+    upload.array(fieldName, maxCount)(req, res, async (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            message: "File too large. Maximum size is 5MB per file.",
+          });
+        }
+        if (err.code === "LIMIT_UNEXPECTED_FILE") {
+          return res.status(400).json({
+            message: `Unexpected field name. Use "${fieldName}" as field name.`,
+          });
+        }
+        if (err.code === "LIMIT_FILE_COUNT") {
+          return res.status(400).json({
+            message: `Too many files. Maximum is ${maxCount} files.`,
+          });
+        }
+        return res.status(400).json({ message: err.message });
+      } else if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+
+      // Upload all files to Cloudinary
+      if (req.files && req.files.length > 0) {
+        try {
+          req.files = await Promise.all(
+            req.files.map(async (file) => {
+              const result = await uploadToCloudinary(file.buffer, 'uploads/products');
+              return {
+                ...file,
+                path: result.secure_url,
+                cloudinary_id: result.public_id,
+              };
+            })
+          );
+        } catch (uploadError) {
+          return res.status(500).json({ 
+            message: 'Failed to upload images to Cloudinary',
+            error: uploadError.message 
+          });
+        }
+      }
+
+      next();
+    });
+  };
+};
+
 module.exports = {
-  upload,
   uploadWithErrorHandling,
   cleanupFile,
+  uploadMultipleWithErrorHandling
 };

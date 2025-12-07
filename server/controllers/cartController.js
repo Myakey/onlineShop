@@ -3,8 +3,8 @@ const cartModels = require("../models/cartModel");
 // Get user's cart
 const getCart = async (req, res) => {
   try {
-    const userId = req.user.id; // From authenticated user
-    const cart = await cartModels.getOrCreateCart(userId);
+    const userId = req.user.id;
+    const cart = await cartModels.getCartByUserId(userId);
 
     res.json({
       success: true,
@@ -65,10 +65,11 @@ const addItemToCart = async (req, res) => {
   }
 };
 
-// Update cart item quantity
+// REPLACE updateCartItem function (line ~70):
 const updateCartItem = async (req, res) => {
   try {
-    const { cartItemId } = req.params;
+    const userId = req.user.id;  // ADD THIS
+    const { productId } = req.params;  // CHANGE from cartItemId
     const { quantity } = req.body;
 
     if (!quantity || quantity < 1) {
@@ -79,7 +80,8 @@ const updateCartItem = async (req, res) => {
     }
 
     const updatedItem = await cartModels.updateCartItemQuantity(
-      cartItemId,
+      userId,      // ADD userId
+      productId,   // CHANGE to productId
       quantity
     );
 
@@ -103,12 +105,13 @@ const updateCartItem = async (req, res) => {
   }
 };
 
-// Remove item from cart
+// REPLACE removeItemFromCart function (line ~105):
 const removeItemFromCart = async (req, res) => {
   try {
-    const { cartItemId } = req.params;
+    const userId = req.user.id;  // ADD THIS
+    const { productId } = req.params;  // CHANGE from cartItemId
 
-    const result = await cartModels.removeItemFromCart(cartItemId);
+    const result = await cartModels.removeItemFromCart(userId, productId);
 
     res.json({
       success: true,

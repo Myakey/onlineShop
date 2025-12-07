@@ -1,25 +1,16 @@
+//review model
 const prisma = require("../config/prisma")
 
 class ReviewModels {
-  // Create a new review
+  // Create a new review (with purchase verification)
   async createReview(data) {
-    const { user_id, product_id, order_id, rating, title, comment, images } = data;
+    const { user_id, product_id, rating, comment } = data;
 
-    // Check if user has already reviewed this product for this order
-    if (order_id) {
-      const existingReview = await prisma.reviews.findUnique({
-        where: {
-          user_id_product_id_order_id: {
-            user_id,
-            product_id,
-            order_id,
-          },
-        },
-      });
-
-      if (existingReview) {
-        throw new Error('You have already reviewed this product for this order');
-      }
+    // SECURITY CHECK: Verify user can review
+    const eligibility = await this.canUserReview(user_id, product_id);
+    
+    if (!eligibility.canReview) {
+      throw new Error(eligibility.reason);
     }
 
     // Verify product exists
@@ -31,44 +22,13 @@ class ReviewModels {
       throw new Error('Product not found');
     }
 
-    // If order_id provided, verify order belongs to user and contains the product
-    let is_verified = false;
-    if (order_id) {
-      const order = await prisma.orders.findFirst({
-        where: {
-          order_id,
-          user_id,
-          status: 'delivered', // Only allow reviews for delivered orders
-        },
-        include: {
-          items: {
-            where: { product_id },
-          },
-        },
-      });
-
-      if (!order) {
-        throw new Error('Order not found or not eligible for review');
-      }
-
-      if (order.items.length === 0) {
-        throw new Error('Product not found in this order');
-      }
-
-      is_verified = true; // Verified purchase
-    }
-
     // Create review
     const review = await prisma.reviews.create({
       data: {
         user_id,
         product_id,
-        order_id: order_id || null,
         rating,
-        title: title || null,
         comment: comment || null,
-        images: images ? JSON.stringify(images) : null,
-        is_verified,
       },
       include: {
         user: {
@@ -102,9 +62,7 @@ class ReviewModels {
       ...(rating && { rating: parseInt(rating) }),
     };
 
-    const orderBy = sort === 'helpful' 
-      ? { created_at: 'desc' } // Can add helpful_count field later
-      : sort === 'rating_high'
+    const orderBy = sort === 'rating_high'
       ? { rating: 'desc' }
       : sort === 'rating_low'
       ? { rating: 'asc' }
@@ -131,14 +89,8 @@ class ReviewModels {
       prisma.reviews.count({ where }),
     ]);
 
-    // Parse images JSON
-    const parsedReviews = reviews.map(review => ({
-      ...review,
-      images: review.images ? JSON.parse(review.images) : [],
-    }));
-
     return {
-      reviews: parsedReviews,
+      reviews,
       pagination: {
         total,
         page,
@@ -150,6 +102,7 @@ class ReviewModels {
 
   // Get review statistics for a product
   async getProductReviewStats(product_id) {
+    product_id = parseInt(product_id)
     const reviews = await prisma.reviews.findMany({
       where: { product_id },
       select: { rating: true },
@@ -195,7 +148,12 @@ class ReviewModels {
             select: {
               product_id: true,
               name: true,
-              image_url: true,
+            },
+            include: {
+              images: {
+                where: { is_primary: true },
+                take: 1,
+              },
             },
           },
         },
@@ -203,13 +161,8 @@ class ReviewModels {
       prisma.reviews.count({ where: { user_id } }),
     ]);
 
-    const parsedReviews = reviews.map(review => ({
-      ...review,
-      images: review.images ? JSON.parse(review.images) : [],
-    }));
-
     return {
-      reviews: parsedReviews,
+      reviews,
       pagination: {
         total,
         page,
@@ -221,7 +174,7 @@ class ReviewModels {
 
   // Update a review
   async updateReview(review_id, user_id, data) {
-    const { rating, title, comment, images } = data;
+    const { rating, comment } = data;
 
     const existingReview = await prisma.reviews.findUnique({
       where: { review_id },
@@ -239,9 +192,7 @@ class ReviewModels {
       where: { review_id },
       data: {
         ...(rating && { rating }),
-        ...(title !== undefined && { title }),
         ...(comment !== undefined && { comment }),
-        ...(images !== undefined && { images: images ? JSON.stringify(images) : null }),
       },
       include: {
         user: {
@@ -262,14 +213,11 @@ class ReviewModels {
       },
     });
 
-    return {
-      ...updatedReview,
-      images: updatedReview.images ? JSON.parse(updatedReview.images) : [],
-    };
+    return updatedReview;
   }
 
-  // Delete a review
-  async deleteReview(review_id, user_id) {
+  // Delete a review (user can delete their own, admin can delete any)
+  async deleteReview(review_id, user_id, isAdmin = false) {
     const review = await prisma.reviews.findUnique({
       where: { review_id },
     });
@@ -278,7 +226,8 @@ class ReviewModels {
       throw new Error('Review not found');
     }
 
-    if (review.user_id !== user_id) {
+    // Check authorization: owner or admin
+    if (!isAdmin && review.user_id !== user_id) {
       throw new Error('Unauthorized to delete this review');
     }
 
@@ -289,14 +238,68 @@ class ReviewModels {
     return { message: 'Review deleted successfully' };
   }
 
-  // Check if user can review a product
-  async canUserReview(user_id, product_id, order_id = null) {
-    if (order_id) {
+  // Get all reviews (admin only - for moderation)
+  async getAllReviews(options = {}) {
+    const { page = 1, limit = 20, product_id = null, user_id = null, rating = null } = options;
+    const skip = (page - 1) * limit;
+
+    const where = {};
+    if (product_id) where.product_id = parseInt(product_id);
+    if (user_id) where.user_id = parseInt(user_id);
+    if (rating) where.rating = parseInt(rating);
+
+    const [reviews, total] = await Promise.all([
+      prisma.reviews.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              username: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              profile_image_url: true,
+            },
+          },
+          product: {
+            select: {
+              product_id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      prisma.reviews.count({ where }),
+    ]);
+
+    return {
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // Check if user can review a product (must have purchased and received it)
+  async canUserReview(user_id, product_id) {
+    try {
+      // Check if user has a delivered order containing this product
       const order = await prisma.orders.findFirst({
         where: {
-          order_id,
           user_id,
           status: 'delivered',
+          items: {
+            some: {
+              product_id,
+            },
+          },
         },
         include: {
           items: {
@@ -305,28 +308,35 @@ class ReviewModels {
         },
       });
 
-      if (!order || order.items.length === 0) {
-        return { canReview: false, reason: 'Order not eligible for review' };
+      if (!order) {
+        return { 
+          canReview: false, 
+          reason: 'You must purchase and receive this product before reviewing' 
+        };
       }
 
-      const existingReview = await prisma.reviews.findUnique({
+      // Check if user has already reviewed this product
+      const existingReview = await prisma.reviews.findFirst({
         where: {
-          user_id_product_id_order_id: {
-            user_id,
-            product_id,
-            order_id,
-          },
+          user_id,
+          product_id,
         },
       });
 
       if (existingReview) {
-        return { canReview: false, reason: 'Already reviewed' };
+        return { 
+          canReview: false, 
+          reason: 'You have already reviewed this product' 
+        };
       }
 
-      return { canReview: true };
+      return { 
+        canReview: true,
+        order_id: order.order_id 
+      };
+    } catch (error) {
+      throw new Error(`Error checking review eligibility: ${error.message}`);
     }
-
-    return { canReview: true };
   }
 }
 

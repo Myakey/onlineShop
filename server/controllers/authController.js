@@ -325,104 +325,104 @@ async function updateProfile(req, res) {
 
 // Add user address
 async function addAddress(req, res) {
-    try {
-        const {
-            label,
-            recipientName,
-            phoneNumber,
-            streetAddress,
-            province,
-            city,
-            district,
-            postalCode,
-            notes,
-            isDefault
-        } = req.body;
+  try {
+    const {
+        label,
+        recipientName,
+        phoneNumber,
+        streetAddress,
+        city,
+        province,
+        district,
+        postalCode,
+        notes,
+        isDefault = false,
+        latitude,      // ADD THIS
+        longitude      // ADD THIS
+    } = addressData;
 
-        const districtId = parseInt(district) || null;
-        const provinceId = parseInt(province) || null;
-        const cityId = parseInt(city) || null;
+    console.log("ADDING!");
 
-        if (!label || !recipientName || !phoneNumber || !streetAddress || !province || !city || !postalCode) {
-            return res.status(400).json({ 
-                error: "Label, recipient name, phone number, street address, province, city, and postal code are required" 
-            });
-        }
-
-        console.log("List of accepthing address",province, city, district)
-
-        const address = await user.addUserAddress(req.user.id, {
-            label,
-            recipientName,
-            phoneNumber,
-            streetAddress,
-            provinceId,
-            cityId,
-            districtId,
-            postalCode,
-            notes,
-            isDefault
-        });
-
-
-        res.status(201).json({
-            message: "Address added successfully",
-            address
-        });
-
-    } catch (err) {
-        console.error('Add address error:', err);
-        res.status(500).json({ error: "Failed to add address" });
+    if (!label || !recipientName || !phoneNumber || !streetAddress || !province || !city || !postalCode) {
+      return res.status(400).json({ 
+        error: "Label, recipient name, phone number, street address, province, city, and postal code are required" 
+      });
     }
+
+    const address = await user.addUserAddress(req.user.id, {
+      label,
+      recipientName,
+      phoneNumber,
+      streetAddress,
+      city,         // STRING
+      province,     // STRING
+      district,     // STRING
+      postalCode,
+      notes,
+      isDefault,
+      latitude,
+      longitude
+    });
+
+    res.status(201).json({
+      message: "Address added successfully",
+      address
+    });
+
+
+  } catch (err) {
+    console.error('Add address error:', err);
+    res.status(500).json({ error: "Failed to add address" });
+  }
 }
 
-// Update user address
+// REPLACE updateAddress function (line ~380):
 async function updateAddress(req, res) {
-    try {
-        const { addressId } = req.params;
-        const {
-            label,
-            recipientName,
-            phoneNumber,
-            streetAddress,
-            province,
-            city,
-            district,
-            postalCode,
-            notes,
-            isDefault
-        } = req.body;
+  try {
+    const { addressId } = req.params;
+    const {
+      label,
+      recipientName,
+      phoneNumber,
+      streetAddress,
+      province,  // STRING
+      city,      // STRING
+      district,  // STRING
+      postalCode,
+      notes,
+      isDefault,
+      latitude,
+      longitude
+    } = req.body;
 
-        const districtId = parsetInt(district) || null;
-        const provinceId = parseInt(province) || null;
-        const cityId = parseInt(city) || null;
+    const updatedAddress = await user.updateUserAddress(parseInt(addressId), req.user.id, {
+      label,
+      recipientName,
+      phoneNumber,
+      streetAddress,
+      city,      // STRING
+      province,  // STRING
+      district,  // STRING
+      postalCode,
+      notes,
+      isDefault,
+      latitude,
+      longitude
+    });
 
-        const updatedAddress = await user.updateUserAddress(parseInt(addressId), req.user.id, {
-            label,
-            recipientName,
-            phoneNumber,
-            streetAddress,
-            provinceId,
-            cityId,
-            districtId,
-            postalCode,
-            notes,
-            isDefault
-        });
+    res.json({
+      message: "Address updated successfully",
+      address: updatedAddress,
+    });
 
-        res.json({
-            message: "Address updated successfully",
-            address: updatedAddress
-        });
-
-    } catch (err) {
-        console.error('Update address error:', err);
-        if (err.message.includes('not found')) {
-            res.status(404).json({ error: err.message });
-        } else {
-            res.status(500).json({ error: "Failed to update address" });
-        }
+  } catch (err) {
+    console.error('Update address error:', err);
+    if (err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: "Failed to update address" });
     }
+  }
 }
 
 // Delete user address
@@ -452,42 +452,6 @@ async function getAddresses(req, res) {
     } catch (err) {
         console.error('Get addresses error:', err);
         res.status(500).json({ error: "Failed to fetch addresses" });
-    }
-}
-
-// Get Indonesian provinces
-async function getProvinces(req, res) {
-    try {
-        const provinces = await user.getProvinces();
-        res.json({ provinces });
-    } catch (err) {
-        console.error('Get provinces error:', err);
-        res.status(500).json({ error: "Failed to fetch provinces" });
-    }
-}
-
-// Get cities by province
-async function getCities(req, res) {
-    try {
-        const { provinceId } = req.params;
-        console.log("Fetching cities for provinceId:", provinceId);
-        const cities = await user.getCitiesByProvince(parseInt(provinceId));
-        res.json({ cities });
-    } catch (err) {
-        console.error('Get cities error:', err);
-        res.status(500).json({ error: "Failed to fetch cities" });
-    }
-}
-
-async function getDistricts(req, res) {
-    try{
-        const { cityId } = req.params;
-        console.log("Fetching districts for cityId:", cityId);
-        const districts = await user.getDistrictsByCity(parseInt(cityId));
-        res.json({ districts });
-    } catch (err){
-        console.error('Get districts error:', err);
-        res.status(500).json({ error: "Failed to fetch districts" });
     }
 }
 
@@ -603,9 +567,6 @@ module.exports = {
     updateAddress,
     deleteAddress,
     getAddresses,
-    getProvinces,
-    getCities,
     uploadProfileImage,
     deleteProfileImage,
-    getDistricts
 };

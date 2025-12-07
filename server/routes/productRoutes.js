@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const productsController = require("../controllers/productController");
-const { upload, uploadWithErrorHandling } = require("../middleware/uploadImage");
+const { upload, uploadWithErrorHandling, uploadMultipleWithErrorHandling } = require("../middleware/uploadImage");
 
 //Ambil semua produk
 router.get('/', productsController.getAllProducts);
@@ -13,11 +13,10 @@ router.get('/search', productsController.searchProduct);
 router.get('/:id', productsController.getProductById);
 
 //Buat produk baru (tambahan gambar opsional)
-router.post('/', uploadWithErrorHandling('image'), productsController.createProduct);
-
+router.post('/', uploadMultipleWithErrorHandling('image', 5), productsController.createProduct);
 
 //Update produk (tambahan gambar opsional)
-router.put('/:id', uploadWithErrorHandling('image'), productsController.updateProduct);
+router.put('/:id', uploadMultipleWithErrorHandling('image', 5), productsController.updateProduct);
 
 //Hapus produk
 router.delete('/:id', productsController.deleteProduct);
