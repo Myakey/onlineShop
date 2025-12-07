@@ -1,4 +1,5 @@
 const shippingMethodsModel = require("../models/shippingMethods");
+const shippingService = require("../services/shippingService");
 
 // Get all shipping methods
 const getAllShippingMethods = async (req, res) => {
@@ -41,6 +42,10 @@ const getShippingMethodById = async (req, res) => {
     });
   }
 };
+
+const calculateShippingCost = async (req, res) => {
+  
+}
 
 // Create shipping method (admin only)
 const createShippingMethod = async (req, res) => {
