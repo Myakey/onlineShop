@@ -14,11 +14,11 @@ import {
   User,
   ShoppingCart,
   DollarSign,
-  Filter
+  Filter,
+  Edit
 } from "lucide-react";
-import NavbarAdmin from "../components/layout/NavbarAdmin";
 import orderService from "../services/orderService";
-import Footer from "../components/layout/Footer";
+import NavbarAdmin from "../components/layout/NavbarAdmin";
 
 const AdminOrder = () => {
   const [orders, setOrders] = useState([]);
@@ -30,29 +30,53 @@ const AdminOrder = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+
+  const baseUrl = "http://localhost:8080"; // Replace with your API URL
+
+  const getPaymentStatus = (order) => {
+    return order.payments?.[0]?.payment_status || "unpaid";
+  };
+
+  const hasPaymentProof = (order) => {
+    return order.payments?.[0]?.payment_proofs?.length > 0;
+  };
+
+  const getPaymentProofUrl = (order) => {
+    return order.payments?.[0]?.payment_proofs?.[0]?.file_url || null;
+  };
+
+  const getTotalAmount = (order) => {
+    return parseFloat(order.payments?.[0]?.payment_amount || order.total_amount || 0);
+  };
+
+  const getPaymentId = (order) => {
+    return order.payments?.[0]?.payment_id || null;
+  };
 
   useEffect(() => {
     loadOrders();
   }, []);
 
   const loadOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await orderService.getAllOrders();
-      setOrders(response.data);
-    } catch (error) {
-      console.error("Error loading orders:", error);
-      alert("Failed to load orders");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const response = await orderService.getAllOrders();
+    setOrders(response.data);
+  } catch (error) {
+    console.error("Error loading orders:", error);
+    alert("Failed to load orders");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleConfirmPayment = (order) => {
     setSelectedOrder(order);
     setConfirmAction({
       type: "payment",
       status: "paid",
+      paymentId: getPaymentId(order),
       title: "Konfirmasi Pembayaran",
       message: `Apakah Anda yakin ingin mengonfirmasi pembayaran untuk pesanan ${order.order_number}?`
     });
@@ -64,6 +88,7 @@ const AdminOrder = () => {
     setConfirmAction({
       type: "payment",
       status: "failed",
+      paymentId: getPaymentId(order),
       title: "Tolak Pembayaran",
       message: `Apakah Anda yakin ingin menolak pembayaran untuk pesanan ${order.order_number}?`
     });
@@ -81,16 +106,24 @@ const AdminOrder = () => {
     setShowConfirmModal(true);
   };
 
+  const openStatusModal = (order) => {
+    setSelectedOrder(order);
+    setShowStatusModal(true);
+  };
+
   const executeAction = async () => {
     try {
       setActionLoading(true);
       if (confirmAction.type === "payment") {
-        await orderService.updatePaymentStatus(selectedOrder.order_id, confirmAction.status);
+        await paymentService.updatePaymentStatus(confirmAction.paymentId, confirmAction.status);
+        console.log("Update payment:", confirmAction.paymentId, confirmAction.status);
       } else {
         await orderService.updateOrderStatus(selectedOrder.order_id, confirmAction.status);
+        console.log("Update order status:", selectedOrder.order_id, confirmAction.status);
       }
       await loadOrders();
       setShowConfirmModal(false);
+      setShowStatusModal(false);
       setSelectedOrder(null);
       setConfirmAction(null);
       alert("Pesanan berhasil diperbarui!");
@@ -103,17 +136,18 @@ const AdminOrder = () => {
   };
 
   const viewPaymentProof = (url) => {
-    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
-    setImageUrl(url.startsWith("http") ? url : `${baseUrl}${url}`);
+    if (!url) return;
+    const finalUrl = url.startsWith("http") ? url : `${baseUrl}${url}`;
+    setImageUrl(finalUrl);
     setShowImageModal(true);
   };
 
   const filteredOrders = orders.filter((order) => {
     if (filter === "all") return true;
-    if (filter === "unpaid") return order.payment_status === "unpaid";
-    if (filter === "paid") return order.payment_status === "paid";
+    if (filter === "unpaid") return getPaymentStatus(order) === "unpaid";
+    if (filter === "paid") return getPaymentStatus(order) === "paid";
     if (filter === "pending_proof")
-      return order.payment_status === "unpaid" && order.payment_proof;
+      return getPaymentStatus(order) === "unpaid" && hasPaymentProof(order);
     return true;
   });
 
@@ -161,6 +195,15 @@ const AdminOrder = () => {
     });
   };
 
+  const statusOptions = [
+    { value: "pending", label: "Pending", icon: Clock, color: "yellow" },
+    { value: "confirmed", label: "Confirmed", icon: FileText, color: "blue" },
+    { value: "processing", label: "Processing", icon: Package, color: "purple" },
+    { value: "shipped", label: "Shipped", icon: Truck, color: "indigo" },
+    { value: "delivered", label: "Delivered", icon: CheckCircle, color: "green" },
+    { value: "cancelled", label: "Cancelled", icon: XCircle, color: "red" }
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-cyan-50 flex items-center justify-center">
@@ -175,9 +218,11 @@ const AdminOrder = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-cyan-50">
-      <NavbarAdmin />
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <>
+    <NavbarAdmin />
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-cyan-50 p-6">
+      
+      <div className="max-w-7xl mx-auto">
         
         {/* Header Section */}
         <div className="mb-8">
@@ -209,7 +254,7 @@ const AdminOrder = () => {
               <div>
                 <p className="text-sm text-gray-600 font-medium">Perlu Verifikasi</p>
                 <p className="text-3xl font-bold text-gray-800">
-                  {orders.filter(o => o.payment_status === "unpaid" && o.payment_proof).length}
+                  {orders.filter(o => getPaymentStatus(o) === "unpaid" && hasPaymentProof(o)).length}
                 </p>
               </div>
               <div className="bg-yellow-100 p-3 rounded-lg">
@@ -223,7 +268,7 @@ const AdminOrder = () => {
               <div>
                 <p className="text-sm text-gray-600 font-medium">Sudah Bayar</p>
                 <p className="text-3xl font-bold text-gray-800">
-                  {orders.filter(o => o.payment_status === "paid").length}
+                  {orders.filter(o => getPaymentStatus(o) === "paid").length}
                 </p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg">
@@ -237,8 +282,8 @@ const AdminOrder = () => {
               <div>
                 <p className="text-sm text-gray-600 font-medium">Total Revenue</p>
                 <p className="text-2xl font-bold text-gray-800">
-                  Rp {orders.filter(o => o.payment_status === "paid")
-                    .reduce((sum, o) => sum + parseFloat(o.total_amount), 0)
+                  Rp {orders.filter(o => getPaymentStatus(o) === "paid")
+                    .reduce((sum, o) => sum + getTotalAmount(o), 0)
                     .toLocaleString("id-ID")}
                 </p>
               </div>
@@ -271,7 +316,7 @@ const AdminOrder = () => {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                {tab.label} <span className="font-bold"></span>
+                {tab.label}
               </button>
             ))}
           </div>
@@ -306,7 +351,7 @@ const AdminOrder = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-                        Rp {parseFloat(order.total_amount).toLocaleString("id-ID")}
+                        Rp {getTotalAmount(order).toLocaleString("id-ID")}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
                         {order.items.length} item(s)
@@ -333,30 +378,85 @@ const AdminOrder = () => {
                     </div>
                   </div>
 
+                  {/* Product Items List */}
+                  <div className="mb-4 space-y-3">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors">
+                        <div className="w-12 h-12 flex-shrink-0 bg-white rounded-md border border-gray-200 overflow-hidden">
+                          {item.product_image ? (
+                             <img
+                               src={item.product_image.startsWith("http") ? item.product_image : `${baseUrl}${item.product_image}`}
+                               alt={item.product_name}
+                               className="w-full h-full object-cover"
+                               onError={(e) => {e.target.style.display='none'}}
+                             />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                               <Package size={20} />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{item.product_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {item.quantity} x Rp {parseFloat(item.price).toLocaleString("id-ID")}
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold text-gray-700 whitespace-nowrap">
+                          Rp {(item.quantity * item.price).toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Status Badges */}
-                  <div className="flex gap-3 mb-4 flex-wrap">
+                  <div className="flex gap-3 mb-4 flex-wrap items-center">
                     {getStatusBadge(order.status)}
-                    {getPaymentBadge(order.payment_status)}
-                    {order.payment_proof && order.payment_status === "unpaid" && (
-                      <span className="bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 border border-blue-200">
+                    {getPaymentBadge(getPaymentStatus(order))}
+                    
+                    {hasPaymentProof(order) && getPaymentStatus(order) === "unpaid" && (
+                      <span className="bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 border border-blue-200 cursor-default">
                         <AlertCircle className="w-3.5 h-3.5" />
                         Ada Bukti Pembayaran
                       </span>
+                    )}
+
+                    {hasPaymentProof(order) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          viewPaymentProof(getPaymentProofUrl(order));
+                        }}
+                        className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-blue-200 bg-white text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 shadow-sm"
+                        title="Lihat Bukti Pembayaran"
+                      >
+                        <Eye className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                        Lihat Bukti
+                      </button>
                     )}
                   </div>
 
                   {/* Action Buttons */}
                   <div className="border-t-2 border-gray-100 pt-4 flex flex-wrap gap-3">
-                    {order.payment_proof && (
+                    {/* Update Status Button - Always Available */}
+                    <button
+                      onClick={() => openStatusModal(order)}
+                      className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
+                    >
+                      <Edit className="w-4 h-4" /> Ubah Status
+                    </button>
+
+                    {getPaymentProofUrl(order) && (
                       <button
-                        onClick={() => viewPaymentProof(order.payment_proof)}
+                        onClick={() => viewPaymentProof(getPaymentProofUrl(order))}
                         className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
                       >
                         <Eye className="w-4 h-4" /> Lihat Bukti
                       </button>
                     )}
 
-                    {order.payment_status === "unpaid" && order.payment_proof && (
+                    {getPaymentStatus(order) === "unpaid" && hasPaymentProof(order) && (
                       <>
                         <button
                           onClick={() => handleConfirmPayment(order)}
@@ -372,27 +472,6 @@ const AdminOrder = () => {
                         </button>
                       </>
                     )}
-
-                    {order.payment_status === "paid" && (
-                      <>
-                        {order.status === "processing" && (
-                          <button
-                            onClick={() => handleUpdateStatus(order, "shipped")}
-                            className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
-                          >
-                            <Truck className="w-4 h-4" /> Kirim Pesanan
-                          </button>
-                        )}
-                        {order.status === "shipped" && (
-                          <button
-                            onClick={() => handleUpdateStatus(order, "delivered")}
-                            className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
-                          >
-                            <CheckCircle className="w-4 h-4" /> Tandai Diterima
-                          </button>
-                        )}
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -401,9 +480,67 @@ const AdminOrder = () => {
         </div>
       </div>
 
+      {/* Status Update Modal */}
+      {showStatusModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 border-2 border-purple-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-3 rounded-full">
+                <Edit className="text-white" size={24} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-800">
+                  Ubah Status Pesanan
+                </h3>
+                <p className="text-sm text-gray-600">{selectedOrder.order_number}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {statusOptions.map((option) => {
+                const Icon = option.icon;
+                const isCurrentStatus = selectedOrder.status === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => handleUpdateStatus(selectedOrder, option.value)}
+                    disabled={isCurrentStatus}
+                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-3 ${
+                      isCurrentStatus
+                        ? 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-60'
+                        : `border-${option.color}-200 hover:border-${option.color}-400 hover:bg-${option.color}-50 hover:shadow-md transform hover:scale-102`
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg bg-${option.color}-100`}>
+                      <Icon className={`w-5 h-5 text-${option.color}-600`} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-gray-800">{option.label}</p>
+                      {isCurrentStatus && (
+                        <p className="text-xs text-gray-500">Status saat ini</p>
+                      )}
+                    </div>
+                    {isCurrentStatus && (
+                      <Check className="w-5 h-5 text-green-600" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setShowStatusModal(false)}
+              className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Confirm Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border-2 border-purple-200">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-gradient-to-r from-pink-500 to-purple-500 p-3 rounded-full">
@@ -443,8 +580,7 @@ const AdminOrder = () => {
       {/* Image Modal */}
       {showImageModal && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
-          style={{ zIndex: 9999 }}
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           onClick={() => setShowImageModal(false)}
         >
           <div className="relative max-w-4xl w-full">
@@ -465,8 +601,8 @@ const AdminOrder = () => {
           </div>
         </div>
       )}
-      <Footer />
     </div>
+    </>
   );
 };
 

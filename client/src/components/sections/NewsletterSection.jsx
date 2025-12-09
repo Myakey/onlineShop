@@ -28,11 +28,30 @@ const NewsletterSection = () => {
     };
   }, []);
 
+  const handleWhatsAppClick = (type) => {
+    const phoneNumber = "628999908403"; // Format internasional (62 = Indonesia country code)
+    let message = "";
+
+    if (type === "buyer") {
+      message = "Halo! Saya tertarik untuk membeli produk dari toko Anda. Bisakah Anda memberikan informasi lebih lanjut?";
+    } else if (type === "reseller") {
+      message = "Halo! Saya tertarik untuk menjadi reseller produk Anda. Bisakah kita diskusikan lebih lanjut mengenai kerja sama reseller?";
+    }
+
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // WhatsApp API URL
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+    
+    // Open in new tab
+    window.open(whatsappUrl, "_blank");
+  };
+
   return (
     <section
       ref={sectionRef}
       className="py-24 px-6 bg-gradient-to-br from-pink-300 via-pink-200 to-white relative overflow-hidden"
-      
     >
       {/* Background dekorasi */}
       <div className="absolute inset-0">
@@ -68,14 +87,15 @@ const NewsletterSection = () => {
               : "opacity-0 -translate-y-10"
           }`}
         >
-          Ayo hubungi kami melalui What's App untuk mendiskusikan pertanyaan
+          Ayo hubungi kami melalui WhatsApp untuk mendiskusikan pertanyaan
           serta bisnis juga ✨
         </p>
 
         {/* Buttons - Slide in from sides */}
         <div className="flex flex-col sm:flex-row gap-6 max-w-2xl mx-auto justify-center">
           <button
-            className={`px-8 py-5 bg-pink-500 text-white rounded-2xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-500 hover:from-pink-500 hover:to-pink-600 flex items-center justify-center gap-3 ${
+            onClick={() => handleWhatsAppClick("buyer")}
+            className={`px-8 py-5 bg-pink-500 text-white rounded-2xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-500 hover:bg-pink-600 flex items-center justify-center gap-3 ${
               isVisible
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 -translate-x-20"
@@ -88,6 +108,7 @@ const NewsletterSection = () => {
             Hubungi sebagai Pembeli
           </button>
           <button
+            onClick={() => handleWhatsAppClick("reseller")}
             className={`px-8 py-5 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-2xl font-bold hover:shadow-2xl transform hover:scale-105 transition-all duration-500 hover:from-pink-600 hover:to-pink-700 flex items-center justify-center gap-3 ${
               isVisible
                 ? "opacity-100 translate-x-0"

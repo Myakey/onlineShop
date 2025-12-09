@@ -8,6 +8,7 @@ const { requireAdmin } = require("../middleware/authMiddleware");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs"); 
+const { orderCreateLimiter, orderCancelLimiter } = require("../middleware/limiter");
 
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
@@ -82,12 +83,12 @@ router.get("/secure/:token", authenticateToken, orderController.getOrderByToken)
 router.get("/track/:orderNumber", authenticateToken, orderController.getOrderByOrderNumber);
 
 // Create new order (checkout)
-router.post("/", authenticateToken, orderController.createOrder);
+router.post('/', authenticateToken, orderCreateLimiter, orderController.createOrder);
 
 // Upload payment proof (using secure token)
 
 // Cancel order (user can cancel their own pending orders using token)
-router.put("/secure/:token/cancel", authenticateToken, orderController.cancelOrder);
+router.put('/secure/:token/cancel', authenticateToken, orderCancelLimiter, orderController.cancelOrder);
 
 // ==================== ADMIN ROUTES (using order IDs) ====================
 

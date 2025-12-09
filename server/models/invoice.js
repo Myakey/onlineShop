@@ -14,7 +14,7 @@ const createInvoice = async (invoiceData) => {
     const {
       order_id,
       invoice_number,
-      issued_at = new Date(),
+      issued_at = new Date(), 
       due_at,
       subtotal,
       shipping_cost,

@@ -4,12 +4,13 @@ const router = express.Router();
 const authController = require("../controllers/authController");
 const { authenticateToken } = require("../middleware/authMiddleware");
 const { uploadProfileImage } = require("../middleware/profilePicUpload")
+const { registerLimiter, loginLimiter, otpLimiter } = require("../middleware/limiter");
 
 // Public routes
-router.post('/register', authController.register);
-router.post('/verify-email', authController.verifyEmail);
-router.post('/resend-otp', authController.resendOTP);
-router.post('/login', authController.login);
+router.post('/register', registerLimiter, authController.register);
+router.post('/verify-email', otpLimiter, authController.verifyEmail);
+router.post('/resend-otp', otpLimiter, authController.resendOTP);
+router.post('/login', loginLimiter, authController.login);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', authController.logout);
 

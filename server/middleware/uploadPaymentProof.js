@@ -33,42 +33,41 @@ const uploadToCloudinary = (buffer, folder) => {
 };
 
 // Use single file: field "proof"
-const uploadPaymentProof = () => {
-  return async (req, res, next) => {
-    upload.single("proof")(req, res, async (err) => {
-      if (err) {
-        return res.status(400).json({
-          success: false,
-          message: err.message,
-        });
-      }
+const uploadPaymentProof = async (req, res, next) => {
+  upload.single("paymentProof")(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
 
-      if (!req.file)
-        return res.status(400).json({
-          success: false,
-          message: "Payment proof image is required",
-        });
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment proof image is required",
+      });
+    }
 
-      try {
-        const result = await uploadToCloudinary(
-          req.file.buffer,
-          "uploads/payment_proofs"
-        );
+    try {
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        "uploads/payment_proofs"
+      );
 
-        req.uploadedProof = {
-          url: result.secure_url,
-          public_id: result.public_id,
-        };
+      req.uploadedProof = {
+        url: result.secure_url,
+        public_id: result.public_id,
+      };
 
-        next();
-      } catch (error) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to upload proof to Cloudinary",
-        });
-      }
-    });
-  };
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload proof to Cloudinary",
+      });
+    }
+  });
 };
 
 const cleanupCloudinaryFile = async (public_id) => {

@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const productsController = require("../controllers/productController");
 const { upload, uploadWithErrorHandling, uploadMultipleWithErrorHandling } = require("../middleware/uploadImage");
+const { searchLimiter } = require("../middleware/limiter");
 
 //Ambil semua produk
 router.get('/', productsController.getAllProducts);
 
 //Function untuk search di produk
-router.get('/search', productsController.searchProduct);
+router.get('/search', searchLimiter, productsController.searchProduct);
 
 //Ambil produk berdasarkan id
 router.get('/:id', productsController.getProductById);

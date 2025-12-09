@@ -125,6 +125,36 @@ const removeItemFromCart = async (req, res) => {
   }
 };
 
+const removeMultipleItems = async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming you have auth middleware
+    const { productIds } = req.body;
+
+    console.log(productIds);
+
+    // Validate input
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product IDs array is required and must not be empty'
+      });
+    }
+
+    const result = await cartModels.removeItemsFromCart(userId, productIds);
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Error removing multiple items from cart:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to remove items from cart'
+    });
+  }
+};
+
 // Clear cart
 const clearCart = async (req, res) => {
   try {
@@ -205,4 +235,5 @@ module.exports = {
   clearCart,
   getCartItemCount,
   validateCart,
+  removeMultipleItems
 };

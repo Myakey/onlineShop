@@ -4,6 +4,9 @@ const express = require('express');
 const router = express.Router();
 const cartController = require('../controllers/cartController');
 const { authenticateToken } = require('../middleware/authMiddleware'); // Adjust path as needed
+const { cartLimiter } = require("../middleware/limiter");
+
+router.use(cartLimiter);
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -19,6 +22,8 @@ router.post('/validate', cartController.validateCart);
 
 // Add item to cart
 router.post('/items', cartController.addItemToCart);
+
+router.delete('/items/bulk', authenticateToken, cartController.removeMultipleItems);
 
 router.put('/items/:productId', cartController.updateCartItem);
 

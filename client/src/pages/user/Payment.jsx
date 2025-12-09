@@ -13,6 +13,7 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import orderService from "../../services/orderService";
+import paymentService from "../../services/paymentService";
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -40,21 +41,27 @@ const Payment = () => {
   }, [token]);
 
   const loadOrderDetails = async () => {
-    try {
-      setLoading(true);
-      const data = await orderService.getOrderByToken(token);
-      setOrder(data?.data);
+  try {
+    setLoading(true);
+    const data = await orderService.getOrderByToken(token);
+    
+    // Get payment details from the order
+    const orderData = data?.data;
+    setOrder(orderData);
 
-      if (data.payment_status === "paid") {
-        navigate(`/orders/${token}`);
-      }
-    } catch (err) {
-      console.error("Error loading order:", err);
-      setError("Failed to load order details");
-    } finally {
-      setLoading(false);
+    // Check if payment is already completed
+    if (orderData?.payments?.[0]?.payment_status === "paid") {
+      navigate(`/orders/${token}`);
+      return;
     }
-  };
+
+  } catch (err) {
+    console.error("Error loading order:", err);
+    setError("Failed to load order details");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle file selection
   const handleFileSelect = (e) => {
@@ -81,28 +88,36 @@ const Payment = () => {
 
   // Upload payment proof
   const handleUpload = async () => {
-    if (!selectedFile) {
-      alert("Please select a payment proof image");
-      return;
+  if (!selectedFile) {
+    alert("Please select a payment proof image");
+    return;
+  }
+
+  try {
+    setUploading(true);
+    setError(null);
+
+    // Get payment_id from order
+    const paymentId = order?.payments?.[0]?.payment_id;
+    
+    if (!paymentId) {
+      throw new Error("Payment ID not found");
     }
 
-    try {
-      setUploading(true);
-      setError(null);
+    // Upload using paymentService
+    await paymentService.uploadPaymentProof(paymentId, selectedFile);
 
-      await orderService.uploadPaymentProof(token, selectedFile);
-
-      setSuccess(true);
-      setTimeout(() => {
-        navigate(`/orders/${token}`);
-      }, 2000);
-    } catch (err) {
-      console.error("Error uploading payment proof:", err);
-      setError(err.response?.data?.message || "Failed to upload payment proof");
-    } finally {
-      setUploading(false);
-    }
-  };
+    setSuccess(true);
+    setTimeout(() => {
+      navigate(`/orders/${token}`);
+    }, 2000);
+  } catch (err) {
+    console.error("Error uploading payment proof:", err);
+    setError(err.response?.data?.message || "Failed to upload payment proof");
+  } finally {
+    setUploading(false);
+  }
+};
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -198,17 +213,19 @@ const Payment = () => {
                 <div className="flex justify-between text-gray-700">
                   <span>Total Amount</span>
                   <span className="font-bold text-pink-600 text-xl">
-                    Rp {parseFloat(order?.total_amount || 0).toLocaleString("id-ID")}
+                    Rp {parseFloat(order?.payments?.[0]?.payment_amount || 0).toLocaleString("id-ID")}
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Payment Method</span>
-                  <span className="font-semibold">{order?.payment_method || "Bank Transfer"}</span>
+                  <span className="font-semibold">
+                    {order?.payments?.[0]?.payment_methods?.[0]?.method_name || "Bank Transfer"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-gray-700">
                   <span>Status</span>
                   <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
-                    {order?.payment_status}
+                    {order?.payments?.[0]?.payment_status || "pending"}
                   </span>
                 </div>
               </div>

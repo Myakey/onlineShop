@@ -74,9 +74,20 @@ const createPayment = async (paymentData) => {
 };
 
 const addPaymentProof = async (data) => {
-  return prisma.payment_proofs.create({
-    data
-  })
+  try {
+    const { payment_id, image_url, cloudinary_id } = data;
+    
+    return await prisma.payment_proofs.create({
+      data: {
+        payment_id: parseInt(payment_id),
+        file_url: image_url, // ⚠️ Schema uses file_url, not image_url
+        // Note: cloudinary_id is NOT in your schema, so we can't store it
+        // If you need cloudinary_id, add it to your Prisma schema first
+      }
+    });
+  } catch (error) {
+    throw new Error(`Error adding payment proof: ${error.message}`);
+  }
 }
 
 // Get payment by ID

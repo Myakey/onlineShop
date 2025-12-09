@@ -59,7 +59,24 @@ const getAllOrders = async () => {
           include: {
             product: true
           }
-        }
+        },
+        // ✅ ADD PAYMENTS WITH NESTED RELATIONS
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        // ✅ ADD SHIPPING METHOD
+        shipping_method: true,
+        // ✅ ADD PROMOCODE
+        promocode: true,
+        // ✅ ADD INVOICES
+        invoices: true,
+        // ✅ ADD SHIPMENTS
+        shipments: true
       },
       orderBy: {
         created_at: 'desc'
@@ -91,7 +108,24 @@ const getOrdersByUser = async (userId) => {
           include: {
             product: true
           }
-        }
+        },
+        // ✅ ADD PAYMENTS WITH NESTED RELATIONS (same as getOrderByToken)
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        // ✅ ADD SHIPPING METHOD
+        shipping_method: true,
+        // ✅ ADD PROMOCODE
+        promocode: true,
+        // ✅ ADD INVOICES
+        invoices: true,
+        // ✅ ADD SHIPMENTS
+        shipments: true
       },
       orderBy: {
         created_at: 'desc'
@@ -135,9 +169,30 @@ const getOrderByToken = async (secureToken) => {
         address: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
-        }
+        },
+        // ✅ ADD PAYMENTS WITH NESTED RELATIONS
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        // ✅ ADD SHIPPING METHOD
+        shipping_method: true,
+        // ✅ ADD PROMOCODE
+        promocode: true,
+        // ✅ ADD INVOICES
+        invoices: true,
+        // ✅ ADD SHIPMENTS
+        shipments: true
       }
     });
 
@@ -155,7 +210,7 @@ const getOrderByToken = async (secureToken) => {
   } catch (error) {
     throw new Error(`Error fetching order by token: ${error.message}`);
   }
-};
+}
 
 // Get single order by ID (keep for admin use)
 const getOrderById = async (orderId) => {

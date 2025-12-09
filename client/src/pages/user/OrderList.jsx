@@ -20,6 +20,19 @@ const MyOrders = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
+  // ✅ Helper functions to access nested payment data
+  const getPaymentStatus = (order) => {
+    return order.payments?.[0]?.payment_status || "unpaid";
+  };
+
+  const hasPaymentProof = (order) => {
+    return order.payments?.[0]?.payment_proofs?.length > 0;
+  };
+
+  const getTotalAmount = (order) => {
+    return parseFloat(order.payments?.[0]?.payment_amount || 0);
+  };
+
   useEffect(() => {
     loadOrders();
   }, []);
@@ -170,7 +183,7 @@ const MyOrders = () => {
           <div className="space-y-4">
             {filteredOrders.map(order => {
               const statusConfig = getStatusConfig(order.status);
-              const paymentConfig = getPaymentStatusConfig(order.payment_status);
+              const paymentConfig = getPaymentStatusConfig(getPaymentStatus(order));
               const StatusIcon = statusConfig.icon;
 
               return (
@@ -205,7 +218,7 @@ const MyOrders = () => {
                       </span>
                     </div>
 
-                    {order.payment_status === "unpaid" && !order.payment_proof && (
+                    {getPaymentStatus(order) === "unpaid" && !hasPaymentProof(order) && (
                       <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-200 rounded-xl flex items-center gap-2">
                         <AlertCircle className="w-5 h-5 text-yellow-600" />
                         <span className="text-sm text-yellow-700 font-semibold">
@@ -255,7 +268,7 @@ const MyOrders = () => {
                     <div className="flex justify-between items-center mb-4 p-4 bg-gradient-to-r from-pink-50 to-cyan-50 rounded-xl border-2 border-pink-200">
                       <span className="font-bold text-gray-800">Total Amount</span>
                       <span className="text-2xl font-bold text-pink-600">
-                        Rp {parseFloat(order.total_amount).toLocaleString('id-ID')}
+                        Rp {getTotalAmount(order).toLocaleString('id-ID')}
                       </span>
                     </div>
 
@@ -279,7 +292,7 @@ const MyOrders = () => {
                         </button>
                       )}
 
-                      {order.payment_status === "unpaid" && !order.payment_proof && (
+                      {getPaymentStatus(order) === "unpaid" && !hasPaymentProof(order) && (
                         <button
                           onClick={() => handlePayNow(order.secure_token)}
                           className="flex-1 min-w-fit px-4 py-3 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-cyan-600 transition-all flex items-center justify-center gap-2"
@@ -289,7 +302,7 @@ const MyOrders = () => {
                         </button>
                       )}
 
-                      {(order.status === "pending" || order.status === "confirmed") && order.payment_status === "unpaid" && (
+                      {(order.status === "pending" || order.status === "confirmed") && getPaymentStatus(order) === "unpaid" && (
                         <button
                           onClick={() => handleCancelOrder(order.secure_token)}
                           className="px-4 py-3 bg-red-100 text-red-700 rounded-xl font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2"

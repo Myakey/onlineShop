@@ -20,22 +20,6 @@ import orderService from "../../services/orderService";
 import { Loader2 } from "lucide-react";
 import { useCart } from "../../context/cartContext";
 
-// ZONE-BASED PRICING (Fallback if API doesn't calculate)
-const ZONE_MULTIPLIERS = {
-  // Based on province or city patterns
-  'DKI JAKARTA': 1.0,
-  'JAWA BARAT': 1.0,
-  'JAWA TENGAH': 1.2,
-  'JAWA TIMUR': 1.3,
-  'BALI': 1.4,
-  'SUMATERA': 1.8,
-  'KALIMANTAN': 2.0,
-  'SULAWESI': 2.2,
-  'PAPUA': 3.0,
-  'MALUKU': 2.8,
-  'NUSA TENGGARA': 2.5,
-};
-
 const Order = () => {
   const navigate = useNavigate();
   const { removeProduct } = useCart();
@@ -167,53 +151,7 @@ const Order = () => {
     );
   }, [selectedAddress, paymentChannel, products]);
 
-  /**
-   * HELPER: Determine zone multiplier based on province
-   */
-  const getZoneMultiplier = (provinceName) => {
-    if (!provinceName) return 1.5;
-    
-    const province = provinceName.toUpperCase();
-    
-    // Direct match
-    if (ZONE_MULTIPLIERS[province]) {
-      return ZONE_MULTIPLIERS[province];
-    }
-    
-    // Pattern matching
-    if (province.includes('JAKARTA')) return ZONE_MULTIPLIERS['DKI JAKARTA'];
-    if (province.includes('JAWA')) {
-      if (province.includes('BARAT')) return ZONE_MULTIPLIERS['JAWA BARAT'];
-      if (province.includes('TENGAH')) return ZONE_MULTIPLIERS['JAWA TENGAH'];
-      if (province.includes('TIMUR')) return ZONE_MULTIPLIERS['JAWA TIMUR'];
-    }
-    if (province.includes('BALI')) return ZONE_MULTIPLIERS['BALI'];
-    if (province.includes('SUMATERA') || province.includes('SUMATRA')) return ZONE_MULTIPLIERS['SUMATERA'];
-    if (province.includes('KALIMANTAN')) return ZONE_MULTIPLIERS['KALIMANTAN'];
-    if (province.includes('SULAWESI')) return ZONE_MULTIPLIERS['SULAWESI'];
-    if (province.includes('PAPUA')) return ZONE_MULTIPLIERS['PAPUA'];
-    if (province.includes('MALUKU')) return ZONE_MULTIPLIERS['MALUKU'];
-    if (province.includes('NUSA TENGGARA')) return ZONE_MULTIPLIERS['NUSA TENGGARA'];
-    
-    // Default for unknown regions
-    return 1.5;
-  };
 
-  /**
-   * Calculate total package weight
-   */
-  const calculateTotalWeight = () => {
-    const totalGrams = products.reduce((sum, p) => {
-      return sum + (p.weight || 500) * p.quantity;
-    }, 0);
-    
-    // Convert to kg, minimum 1kg
-    return Math.max(1, Math.ceil(totalGrams / 1000));
-  };
-
-  /**
-   * Calculate shipping cost from database shipping methods
-   */
   const calculateShippingCost = async () => {
     if (!selectedAddress || paymentChannel === "marketplace") {
       return;
@@ -221,76 +159,58 @@ const Order = () => {
 
     setIsLoadingShipping(true);
     try {
-      // Fetch shipping methods from your API
-      const response = await shippingMethodService.getAllShippingMethods();
-      const shippingMethods = response?.data || [];
+      // Prepare items for API call
+      const items = products.map((product) => ({
+        product_id: product.productId,
+        quantity: product.quantity,
+      }));
 
-      if (!Array.isArray(shippingMethods) || shippingMethods.length === 0) {
-        throw new Error("No shipping methods available");
+      // Call the shipping calculation API
+      const response = await shippingMethodService.calculateShipping(
+        selectedAddress.id,
+        items
+      );
+
+      if (!response?.success || !response?.data?.pricing) {
+        throw new Error("No shipping options available for this address");
       }
 
-      // Get destination province for zone calculation
-      const provinceName = selectedAddress?.fullAddress?.province?.province_name || "";
-      const zoneMultiplier = getZoneMultiplier(provinceName);
-      
-      // Calculate total weight
-      const totalWeightKg = calculateTotalWeight();
-      const weightMultiplier = Math.max(1, totalWeightKg); // Per kg pricing
-
-      // Format shipping options with dynamic pricing
-      const formattedOptions = shippingMethods.map((method) => {
-        const baseCost = Number(method.base_cost) || 20000;
-        
-        // Apply zone and weight multipliers
-        const adjustedCost = Math.round(baseCost * zoneMultiplier * weightMultiplier);
-        
-        // Add estimated days variation based on zone
-        const baseEstimatedDays = Number(method.estimated_days) || 3;
-        const additionalDays = zoneMultiplier > 1.5 ? Math.floor(zoneMultiplier) : 0;
-        const estimatedDays = baseEstimatedDays + additionalDays;
-
-        return {
-          id: `method-${method.shipping_method_id}`,
-          shipping_method_id: method.shipping_method_id,
-          name: method.name || `${method.courier} ${method.name}`,
-          courier: method.courier,
-          description: `${estimatedDays} hari kerja • ${totalWeightKg} kg`,
-          service: method.name,
-          duration: `${estimatedDays} hari`,
-          price: adjustedCost,
-          basePrice: baseCost,
-          estimatedDays: estimatedDays,
-          raw: method,
-        };
-      });
+      // Format shipping options from Biteship response
+      const formattedOptions = response.data.pricing.map((rate, index) => ({
+        id: `rate-${index}`,
+        courier_name: rate.courier_name,
+        courier_code: rate.courier_code,
+        courier_service_name: rate.courier_service_name,
+        courier_service_code: rate.courier_service_code,
+        name: `${rate.courier_name} - ${rate.courier_service_name}`,
+        courier: rate.courier_name,
+        service: rate.courier_service_name,
+        description: rate.description || `${rate.duration}`,
+        duration: rate.duration,
+        shipment_duration_range: rate.shipment_duration_range,
+        price: Math.round(rate.price),
+        type: rate.type,
+        company: rate.company,
+        raw: rate,
+      }));
 
       // Sort by price (cheapest first)
       formattedOptions.sort((a, b) => a.price - b.price);
 
       setShippingOptions(formattedOptions);
-      
+
       // Auto-select cheapest option if none selected
-      if (!selectedShipping || !formattedOptions.find(opt => opt.id === selectedShipping.id)) {
+      if (!selectedShipping || !formattedOptions.find((opt) => opt.id === selectedShipping.id)) {
         setSelectedShipping(formattedOptions[0]);
       }
 
     } catch (err) {
-      console.error("Error fetching shipping methods:", err);
+      console.error("Error calculating shipping:", err);
       
-      // Fallback options if API fails
-      const fallbackOptions = [
-        {
-          id: "fallback-regular",
-          name: "Pengiriman Reguler",
-          courier: "Regular",
-          duration: "3-5 hari",
-          price: 25000,
-          description: "Layanan pengiriman standar",
-        },
-      ];
-      
-      setShippingOptions(fallbackOptions);
-      setSelectedShipping(fallbackOptions[0]);
+      // Show error to user
+      setError(err?.message || "Failed to calculate shipping cost. Please check your address or try again.");
+      setShippingOptions([]);
+      setSelectedShipping(null);
     } finally {
       setIsLoadingShipping(false);
     }
@@ -476,8 +396,8 @@ const Order = () => {
         window.alert(message);
         
         // Remove items from cart
-        const cartItemIds = products.map(p => p.id);
-        await removeProduct(cartItemIds);
+        const productIds = products.map(p => p.productId);
+        await removeProduct(productIds);
         
         // Clear session storage
         sessionStorage.removeItem("checkoutData");

@@ -29,6 +29,7 @@ import ProductDetails from "./pages/public/ProductDetails";
 import Reviews from "./pages/AdminReviews";
 import Order from "./pages/user/Order";
 import MyOrders from "./pages/user/OrderList";
+import OrderDetailsPage from "./pages/user/OrderDetails";
 
 import { UserProvider } from "./context/userContext";
 import { CartProvider } from "./context/cartContext";
@@ -64,6 +65,7 @@ function App() {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/order" element={<Order />} />
                 <Route path="/order-list" element={<MyOrders />} />
+                <Route path="/orders/:secureToken" element={<OrderDetailsPage />}/>
                 <Route path="/payment/:token" element={<Payment />} />
                 <Route path="/orders/:token/review" element={<WriteReview />}/>
               </Route>

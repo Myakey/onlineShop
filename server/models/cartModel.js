@@ -181,6 +181,7 @@ const updateCartItemQuantity = async (userId, productId, quantity) => {
 // Remove item from cart
 const removeItemFromCart = async (userId, productId) => {
   try {
+    console.log(productId);
     await prisma.cart_items.delete({
       where: {
         user_id_product_id: {
@@ -193,6 +194,28 @@ const removeItemFromCart = async (userId, productId) => {
     return { message: "Item removed from cart successfully" };
   } catch (error) {
     throw new Error(`Error removing item from cart: ${error.message}`);
+  }
+};
+
+// Remove multiple items from cart
+const removeItemsFromCart = async (userId, productIds) => {
+  try {
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      throw new Error("Product IDs array is required");
+    }
+
+    await prisma.cart_items.deleteMany({
+      where: {
+        user_id: parseInt(userId),
+        product_id: {
+          in: productIds.map(id => parseInt(id))
+        }
+      },
+    });
+
+    return { message: "Items removed from cart successfully" };
+  } catch (error) {
+    throw new Error(`Error removing items from cart: ${error.message}`);
   }
 };
 
@@ -322,9 +345,10 @@ module.exports = {
   getCartByUserId,
   addItemToCart,
   updateCartItemQuantity,
-  removeItemFromCart,
+  // removeItemFromCart,
   clearCart,
   getCartItemCount,
   validateCart,
-  validateSelectedItems
+  validateSelectedItems,
+  removeItemsFromCart
 };

@@ -54,12 +54,26 @@ const deleteShippingMethod = async (id) => {
   }
 };
 
+const calculateShipping = async (address_id, items) => {
+  try {
+    const response = await api.post('/shippingMethods/calculate', {
+      address_id,
+      items
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error calculating shipping:", error);
+    throw error;
+  }
+};
+
 const shippingMethodService = {
   getAllShippingMethods,
   getShippingMethodById,
   createShippingMethod,
   updateShippingMethod,
-  deleteShippingMethod
+  deleteShippingMethod,
+  calculateShipping
 };
 
 export default shippingMethodService;

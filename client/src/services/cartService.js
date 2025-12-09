@@ -64,7 +64,21 @@ const cartService = {
     }
   },
 
-  // 6. Clear all items
+  // 6. Remove multiple items (bulk delete)
+  async removeMultipleItems(productIds) {
+    try {
+      const response = await api.delete("/cart/items/bulk", {
+        data: { productIds }
+      });
+      console.log("Ini responsnya", response);
+      return response.data;
+    } catch (error) {
+      console.error("Error removing multiple items from cart:", error);
+      throw error;
+    }
+  },
+
+  // 7. Clear all items
   async clearCart() {
     try {
       const response = await api.delete("/cart/clear");
@@ -75,7 +89,7 @@ const cartService = {
     }
   },
 
-  // 7. Validate cart before checkout
+  // 8. Validate cart before checkout
   async validateCart(items) {
     try {
       const response = await api.post("/cart/validate", { items });

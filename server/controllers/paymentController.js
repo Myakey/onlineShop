@@ -1,4 +1,6 @@
 const paymentModel = require("../models/payment");
+const orderModel = require("../models/orderModel");
+const invoiceModel = require("../models/invoice");
 const { cleanupCloudinaryFile } = require("../middleware/uploadPaymentProof");
 
 // Get payment by ID
@@ -135,6 +137,14 @@ const uploadPaymentProof = async (req, res) => {
     const userId = req.user.id;
     const isAdmin = req.user.type === "admin";
 
+    // ✅ CHECK if uploadedProof exists
+    if (!req.uploadedProof) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded or upload failed",
+      });
+    }
+
     const payment = await paymentModel.getPaymentById(id);
 
     if (!payment) {
@@ -153,12 +163,12 @@ const uploadPaymentProof = async (req, res) => {
       });
     }
 
-    const { url, public_id } = req.uploadedProof;
+    const { url } = req.uploadedProof;
 
     const proof = await paymentModel.addPaymentProof({
       payment_id: Number(id),
       image_url: url,
-      cloudinary_id: public_id,
+      // Remove cloudinary_id since it's not in your schema
     });
 
     res.json({
@@ -209,7 +219,7 @@ const updatePaymentStatus = async (req, res) => {
 
       // 1️⃣ Update related order → confirmed
       await orderModel.updateOrderStatus(paymentInfo.order_id, "confirmed");
-
+      console.log(paymentInfo);
       // 2️⃣ Create invoice
       const invoice = await invoiceModel.createInvoice({
         order_id: paymentInfo.order_id,
