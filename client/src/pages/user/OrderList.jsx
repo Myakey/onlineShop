@@ -41,6 +41,7 @@ const MyOrders = () => {
     try {
       setLoading(true);
       const response = await orderService.getMyOrders();
+      console.log(response.data);
       setOrders(response.data);
     } catch (error) {
       console.error("Error loading orders:", error);

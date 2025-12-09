@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, Truck, CheckCircle, XCircle, Clock, MapPin, CreditCard, FileText, Tag, AlertCircle, Loader } from 'lucide-react';
 import { getOrderByToken } from '../../services/orderService';
 import { useParams } from 'react-router';
+import Navbar from '../../components/layout/Navbar';
 
 // Mock data for demo purposes - remove this when using real API
 const useMockData = false;
@@ -274,6 +275,8 @@ const OrderDetailsPage = () => {
   const latestInvoice = order.invoices?.[0];
 
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
@@ -670,10 +673,14 @@ const OrderDetailsPage = () => {
                       </p>
                     </div>
                   )}
-                  
+                  {latestPayment.payment_proofs?.[0] ? <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition">
+                    Waiting for confirmation
+                  </button> :
                   <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition">
                     Upload Payment Proof
-                  </button>
+                  </button> 
+                }
+                 
                   
                   <button className="w-full bg-red-100 text-red-700 py-3 rounded-lg hover:bg-red-200 font-semibold transition">
                     Cancel Order
@@ -685,6 +692,7 @@ const OrderDetailsPage = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

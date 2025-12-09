@@ -2,21 +2,6 @@
 const crypto = require("crypto");
 const prisma = require("../config/prisma");
 
-const addFullImageUrls = (products) => {
-  // Cloudinary URLs are already complete, just return as-is
-  if (Array.isArray(products)) {
-    return products.map(product => ({
-      ...product,
-      image_url: product.image_url || null
-    }));
-  } else {
-    return {
-      ...products,
-      image_url: products.image_url || null
-    };
-  }
-};
-
 // Generate secure random token for URL with collision checking
 const generateSecureToken = async () => {
   const maxRetries = 10;
@@ -39,6 +24,12 @@ const generateSecureToken = async () => {
   throw new Error('Failed to generate unique secure token after multiple attempts');
 };
 
+// Helper to format product with primary image
+const formatProductWithImages = (product) => ({
+  ...product,
+  primary_image: product.images?.find(i => i.is_primary)?.image_url || null
+});
+
 // Get all orders (admin)
 const getAllOrders = async () => {
   try {
@@ -57,10 +48,13 @@ const getAllOrders = async () => {
         address: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
         },
-        // ✅ ADD PAYMENTS WITH NESTED RELATIONS
         payments: {
           include: {
             payment_methods: true,
@@ -69,13 +63,9 @@ const getAllOrders = async () => {
             payment_refunds: true
           }
         },
-        // ✅ ADD SHIPPING METHOD
         shipping_method: true,
-        // ✅ ADD PROMOCODE
         promocode: true,
-        // ✅ ADD INVOICES
         invoices: true,
-        // ✅ ADD SHIPMENTS
         shipments: true
       },
       orderBy: {
@@ -87,7 +77,7 @@ const getAllOrders = async () => {
       ...order,
       items: order.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     }));
   } catch (error) {
@@ -106,10 +96,13 @@ const getOrdersByUser = async (userId) => {
         address: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
         },
-        // ✅ ADD PAYMENTS WITH NESTED RELATIONS (same as getOrderByToken)
         payments: {
           include: {
             payment_methods: true,
@@ -118,29 +111,25 @@ const getOrdersByUser = async (userId) => {
             payment_refunds: true
           }
         },
-        // ✅ ADD SHIPPING METHOD
         shipping_method: true,
-        // ✅ ADD PROMOCODE
         promocode: true,
-        // ✅ ADD INVOICES
         invoices: true,
-        // ✅ ADD SHIPMENTS
         shipments: true
       },
       orderBy: {
-        created_at: 'desc'
+        created_at: "desc"
       }
     });
 
     if (!orders || orders.length === 0) {
       return [];
     }
-    
+
     return orders.map(order => ({
       ...order,
       items: order.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     }));
   } catch (error) {
@@ -176,7 +165,6 @@ const getOrderByToken = async (secureToken) => {
             }
           }
         },
-        // ✅ ADD PAYMENTS WITH NESTED RELATIONS
         payments: {
           include: {
             payment_methods: true,
@@ -185,13 +173,9 @@ const getOrderByToken = async (secureToken) => {
             payment_refunds: true
           }
         },
-        // ✅ ADD SHIPPING METHOD
         shipping_method: true,
-        // ✅ ADD PROMOCODE
         promocode: true,
-        // ✅ ADD INVOICES
         invoices: true,
-        // ✅ ADD SHIPMENTS
         shipments: true
       }
     });
@@ -204,13 +188,13 @@ const getOrderByToken = async (secureToken) => {
       ...order,
       items: order.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
     throw new Error(`Error fetching order by token: ${error.message}`);
   }
-}
+};
 
 // Get single order by ID (keep for admin use)
 const getOrderById = async (orderId) => {
@@ -233,9 +217,25 @@ const getOrderById = async (orderId) => {
         address: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
-        }
+        },
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        shipping_method: true,
+        promocode: true,
+        invoices: true,
+        shipments: true
       }
     });
 
@@ -247,7 +247,7 @@ const getOrderById = async (orderId) => {
       ...order,
       items: order.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
@@ -276,9 +276,25 @@ const getOrderByOrderNumber = async (orderNumber) => {
         address: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
-        }
+        },
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        shipping_method: true,
+        promocode: true,
+        invoices: true,
+        shipments: true
       }
     });
 
@@ -290,7 +306,7 @@ const getOrderByOrderNumber = async (orderNumber) => {
       ...order,
       items: order.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
@@ -298,7 +314,6 @@ const getOrderByOrderNumber = async (orderNumber) => {
   }
 };
 
-// Create new order with items
 // Create new order with items
 const createOrder = async (orderData) => {
   try {
@@ -402,14 +417,21 @@ const createOrder = async (orderData) => {
           include: {
             product: {
               include: {
-                images: {
-                  where: { is_primary: true },
-                  take: 1,
-                },
-              },
-            },
+                images: true
+              }
+            }
           }
-        }
+        },
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        invoices: true,
+        shipments: true
       }
     });
 
@@ -417,7 +439,7 @@ const createOrder = async (orderData) => {
       ...completeOrder,
       items: completeOrder.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
@@ -439,9 +461,25 @@ const updatePaymentProof = async (secureToken, paymentProofPath) => {
       include: {
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
-        }
+        },
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        shipping_method: true,
+        promocode: true,
+        invoices: true,
+        shipments: true
       }
     });
 
@@ -449,7 +487,7 @@ const updatePaymentProof = async (secureToken, paymentProofPath) => {
       ...updatedOrder,
       items: updatedOrder.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
@@ -470,9 +508,25 @@ const updateOrderStatus = async (orderId, status) => {
       include: {
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
-        }
+        },
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        shipping_method: true,
+        promocode: true,
+        invoices: true,
+        shipments: true
       }
     });
 
@@ -480,7 +534,7 @@ const updateOrderStatus = async (orderId, status) => {
       ...updatedOrder,
       items: updatedOrder.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
@@ -488,7 +542,6 @@ const updateOrderStatus = async (orderId, status) => {
   }
 };
 
-// Update payment status (admin only - uses order_id)
 // Update payment status (admin only - uses order_id)
 const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null) => {
   try {
@@ -564,9 +617,25 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
         include: {
           items: {
             include: {
-              product: true
+              product: {
+                include: {
+                  images: true
+                }
+              }
             }
-          }
+          },
+          payments: {
+            include: {
+              payment_methods: true,
+              payment_proofs: true,
+              payment_marketplace_details: true,
+              payment_refunds: true
+            }
+          },
+          shipping_method: true,
+          promocode: true,
+          invoices: true,
+          shipments: true
         }
       });
 
@@ -574,7 +643,7 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
         ...updatedOrder,
         items: updatedOrder.items.map(item => ({
           ...item,
-          product: addFullImageUrls(item.product)
+          product: formatProductWithImages(item.product)
         }))
       };
     } else {
@@ -586,9 +655,25 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
         include: {
           items: {
             include: {
-              product: true
+              product: {
+                include: {
+                  images: true
+                }
+              }
             }
-          }
+          },
+          payments: {
+            include: {
+              payment_methods: true,
+              payment_proofs: true,
+              payment_marketplace_details: true,
+              payment_refunds: true
+            }
+          },
+          shipping_method: true,
+          promocode: true,
+          invoices: true,
+          shipments: true
         }
       });
 
@@ -596,7 +681,7 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
         ...updatedOrder,
         items: updatedOrder.items.map(item => ({
           ...item,
-          product: addFullImageUrls(item.product)
+          product: formatProductWithImages(item.product)
         }))
       };
     }
@@ -605,7 +690,6 @@ const updatePaymentStatus = async (orderId, paymentStatus, paymentMethod = null)
   }
 };
 
-// Cancel order (can use secure_token or order_id)
 // Cancel order (can use secure_token or order_id)
 const cancelOrder = async (identifier, useToken = true) => {
   try {
@@ -656,9 +740,25 @@ const cancelOrder = async (identifier, useToken = true) => {
       include: {
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
-        }
+        },
+        payments: {
+          include: {
+            payment_methods: true,
+            payment_proofs: true,
+            payment_marketplace_details: true,
+            payment_refunds: true
+          }
+        },
+        shipping_method: true,
+        promocode: true,
+        invoices: true,
+        shipments: true
       }
     });
 
@@ -666,7 +766,7 @@ const cancelOrder = async (identifier, useToken = true) => {
       ...cancelledOrder,
       items: cancelledOrder.items.map(item => ({
         ...item,
-        product: addFullImageUrls(item.product)
+        product: formatProductWithImages(item.product)
       }))
     };
   } catch (error) {
