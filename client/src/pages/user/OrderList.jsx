@@ -242,11 +242,11 @@ const MyOrders = () => {
                       <div className="grid grid-cols-1 gap-3">
                         {order.items.slice(0, 2).map((item, idx) => (
                           <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
-                            <img 
-                              src={item.product.image_url ? `${item.product.image_url}` : '/api/placeholder/60/60'} 
-                              alt={item.product.name}
-                              className="w-16 h-16 object-cover rounded-lg"
-                            />
+                             <img 
+                                src={item.product.primary_image || '/api/placeholder/60/60'} 
+                                alt={item.product.name}
+                                className="w-16 h-16 object-cover rounded-lg"
+                              />
                             <div className="flex-1">
                               <p className="font-semibold text-gray-800">{item.product.name}</p>
                               <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>

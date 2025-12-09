@@ -46,8 +46,21 @@ const Order = () => {
   const [marketplaceLink, setMarketplaceLink] = useState("");
   const [selectedMarketplace, setSelectedMarketplace] = useState("shopee");
 
+  const [shippingCache, setShippingCache] = useState({});
+
   // Voucher
   const [voucher, setVoucher] = useState("");
+
+  const getCacheKey = useCallback(() => {
+  if (!selectedAddress) return null;
+  
+  const productKey = products
+    .map(p => `${p.productId}:${p.quantity}`)
+    .sort()
+    .join('|');
+  
+  return `${selectedAddress.id}-${productKey}`;
+}, [selectedAddress, products]);
 
   // Load order data
   const loadOrderData = useCallback(async () => {
@@ -153,68 +166,90 @@ const Order = () => {
 
 
   const calculateShippingCost = async () => {
-    if (!selectedAddress || paymentChannel === "marketplace") {
-      return;
+  if (!selectedAddress || paymentChannel === "marketplace") {
+    return;
+  }
+
+  // Check cache first
+  const cacheKey = getCacheKey();
+  if (cacheKey && shippingCache[cacheKey]) {
+    console.log("✅ Using cached shipping options");
+    const cached = shippingCache[cacheKey];
+    setShippingOptions(cached.options);
+    setSelectedShipping(cached.selected);
+    return;
+  }
+
+  setIsLoadingShipping(true);
+  try {
+    // Prepare items for API call
+    const items = products.map((product) => ({
+      product_id: product.productId,
+      quantity: product.quantity,
+    }));
+
+    // Call the shipping calculation API
+    const response = await shippingMethodService.calculateShipping(
+      selectedAddress.id,
+      items
+    );
+
+    if (!response?.success || !response?.data?.pricing) {
+      throw new Error("No shipping options available for this address");
     }
 
-    setIsLoadingShipping(true);
-    try {
-      // Prepare items for API call
-      const items = products.map((product) => ({
-        product_id: product.productId,
-        quantity: product.quantity,
+    // Format shipping options from Biteship response
+    const formattedOptions = response.data.pricing.map((rate, index) => ({
+      id: `rate-${index}`,
+      courier_name: rate.courier_name,
+      courier_code: rate.courier_code,
+      courier_service_name: rate.courier_service_name,
+      courier_service_code: rate.courier_service_code,
+      name: `${rate.courier_name} - ${rate.courier_service_name}`,
+      courier: rate.courier_name,
+      service: rate.courier_service_name,
+      description: rate.description || `${rate.duration}`,
+      duration: rate.duration,
+      shipment_duration_range: rate.shipment_duration_range,
+      price: Math.round(rate.price),
+      type: rate.type,
+      company: rate.company,
+      raw: rate,
+    }));
+
+    // Sort by price (cheapest first)
+    formattedOptions.sort((a, b) => a.price - b.price);
+
+    setShippingOptions(formattedOptions);
+
+    // Auto-select cheapest option
+    const cheapestOption = formattedOptions[0];
+    setSelectedShipping(cheapestOption);
+
+    // 🔥 NEW: Save to cache
+    if (cacheKey) {
+      setShippingCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          options: formattedOptions,
+          selected: cheapestOption,
+          timestamp: Date.now()
+        }
       }));
-
-      // Call the shipping calculation API
-      const response = await shippingMethodService.calculateShipping(
-        selectedAddress.id,
-        items
-      );
-
-      if (!response?.success || !response?.data?.pricing) {
-        throw new Error("No shipping options available for this address");
-      }
-
-      // Format shipping options from Biteship response
-      const formattedOptions = response.data.pricing.map((rate, index) => ({
-        id: `rate-${index}`,
-        courier_name: rate.courier_name,
-        courier_code: rate.courier_code,
-        courier_service_name: rate.courier_service_name,
-        courier_service_code: rate.courier_service_code,
-        name: `${rate.courier_name} - ${rate.courier_service_name}`,
-        courier: rate.courier_name,
-        service: rate.courier_service_name,
-        description: rate.description || `${rate.duration}`,
-        duration: rate.duration,
-        shipment_duration_range: rate.shipment_duration_range,
-        price: Math.round(rate.price),
-        type: rate.type,
-        company: rate.company,
-        raw: rate,
-      }));
-
-      // Sort by price (cheapest first)
-      formattedOptions.sort((a, b) => a.price - b.price);
-
-      setShippingOptions(formattedOptions);
-
-      // Auto-select cheapest option if none selected
-      if (!selectedShipping || !formattedOptions.find((opt) => opt.id === selectedShipping.id)) {
-        setSelectedShipping(formattedOptions[0]);
-      }
-
-    } catch (err) {
-      console.error("Error calculating shipping:", err);
-      
-      // Show error to user
-      setError(err?.message || "Failed to calculate shipping cost. Please check your address or try again.");
-      setShippingOptions([]);
-      setSelectedShipping(null);
-    } finally {
-      setIsLoadingShipping(false);
+      console.log("💾 Cached shipping options for:", cacheKey);
     }
-  };
+
+  } catch (err) {
+    console.error("Error calculating shipping:", err);
+    
+    // Show error to user
+    setError(err?.message || "Failed to calculate shipping cost. Please check your address or try again.");
+    setShippingOptions([]);
+    setSelectedShipping(null);
+  } finally {
+    setIsLoadingShipping(false);
+  }
+};
 
   /**
    * Update product quantity

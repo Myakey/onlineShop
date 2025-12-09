@@ -2,6 +2,8 @@ const paymentModel = require("../models/payment");
 const orderModel = require("../models/orderModel");
 const invoiceModel = require("../models/invoice");
 const { cleanupCloudinaryFile } = require("../middleware/uploadPaymentProof");
+const { sendInvoiceEmail } = require("../services/sendInvoiceEmail")
+const prisma = require("../config/prisma");
 
 // Get payment by ID
 const getPaymentById = async (req, res) => {
@@ -189,6 +191,7 @@ const uploadPaymentProof = async (req, res) => {
 };
 
 // Update payment status (admin only)
+// Update payment status (admin only)
 const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -217,19 +220,82 @@ const updatePaymentStatus = async (req, res) => {
     if (payment_status === "paid") {
       const paymentInfo = await paymentModel.getPaymentById(id);
 
+      const order = await orderModel.getOrderById(paymentInfo.order_id);
+
+      for (const item of order.items) {
+        await prisma.products.update({
+          where: { product_id: item.product_id },
+          data: {
+            stock: {
+              decrement: item.quantity
+            }
+          }
+        });
+      }
+
       // 1️⃣ Update related order → confirmed
       await orderModel.updateOrderStatus(paymentInfo.order_id, "confirmed");
-      console.log(paymentInfo);
-      // 2️⃣ Create invoice
-      const invoice = await invoiceModel.createInvoice({
-        order_id: paymentInfo.order_id,
-        payment_id: id,
-        amount: paymentInfo.amount,
-        issued_at: new Date(),
-      });
+      console.log("✅ Order status updated to confirmed");
 
-      // 3️⃣ Send invoice email (optional)
-      // await sendInvoiceEmail(invoice);
+      // 2️⃣ Create invoice if it doesn't exist
+      try {
+        const existingInvoices = await invoiceModel.getInvoicesByOrder(paymentInfo.order_id);
+        
+        let invoice;
+        if (existingInvoices.length === 0) {
+          // Create new invoice
+          invoice = await invoiceModel.createInvoice(paymentInfo.order_id);
+          console.log("✅ Invoice created:", invoice.invoice_number);
+
+          // Update invoice payment
+          await invoiceModel.updateInvoicePayment(
+            invoice.invoice_id, 
+            paymentInfo.payment_amount
+          );
+        } else {
+          // Use existing invoice
+          invoice = existingInvoices[0];
+          console.log("✅ Using existing invoice:", invoice.invoice_number);
+
+          // Update invoice payment
+          await invoiceModel.updateInvoicePayment(
+            invoice.invoice_id, 
+            paymentInfo.payment_amount
+          );
+        }
+
+        // 3️⃣ Format invoice data for email
+        const invoiceData = await invoiceModel.formatInvoiceForEmail(invoice.invoice_id);
+
+        // Get customer info from order
+        const orderDetails = await orderModel.getOrderById(paymentInfo.order_id);
+        
+        // ✅ Validate order details exist
+        if (!orderDetails || !orderDetails.user) {
+          throw new Error('Order or user details not found');
+        }
+
+        const customerEmail = orderDetails.user.email;
+        const customerName = `${orderDetails.user.first_name || ''} ${orderDetails.user.last_name || ''}`.trim() || 'Customer';
+
+        // 4️⃣ Send invoice email
+        const { sendInvoiceEmail } = require("../services/sendInvoiceEmail");
+        const emailResult = await sendInvoiceEmail(
+          invoiceData,
+          customerEmail,
+          customerName
+        );
+
+        if (emailResult.success) {
+          console.log("✅ Invoice email sent successfully");
+        } else {
+          console.error("❌ Failed to send invoice email:", emailResult.error);
+        }
+
+      } catch (invoiceError) {
+        // Log error but don't fail the payment update
+        console.error("❌ Error creating/sending invoice:", invoiceError.message);
+      }
     }
 
     res.json({

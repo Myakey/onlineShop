@@ -15,6 +15,6 @@ router.post('/:id/upload-proof', authenticateToken, uploadPaymentProofLimiter, u
 // Admin routes
 router.put('/:id/status', authenticateToken, requireAdmin, paymentController.updatePaymentStatus);
 router.post('/refund', authenticateToken, requireAdmin, adminRefundLimiter, paymentController.createRefund);
-router.get('/refunds/:paymentId', authenticateToken, paymentController.getRefundsByPayment);
+// router.get('/refunds/:paymentId', authenticateToken, paymentController.getRefundsByPayment);
 
 module.exports = router;
