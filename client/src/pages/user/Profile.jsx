@@ -10,6 +10,8 @@ import 'leaflet-geosearch/dist/geosearch.css';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Search } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { AlertCircle, ChevronRight } from "lucide-react";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -24,7 +26,8 @@ export default function Profile() {
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
     const { updateUserContext } = useUser();
-
+    const navigate = useNavigate();
+    
     const [profileForm, setProfileForm] = useState({
         firstName: '',
         lastName: '',
@@ -588,6 +591,26 @@ function FlyToLocation({ position }) {
                                     </svg>
                                     <span className="font-medium text-xs sm:text-sm truncate">{user?.email}</span>
                                 </div>
+                                {user && !user.emailVerified && (
+                                <button
+                                
+                                    onClick={() => navigate("/verify-email", { state: { email: user?.email } })}
+                                    className="group w-full flex items-center justify-between bg-red-50 border border-red-200 p-4 rounded-2xl hover:bg-red-100 transition-all duration-300 shadow-sm hover:shadow-md"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-red-500 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                                            <AlertCircle className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-red-600 font-bold text-sm sm:text-base">
+                                            Email Belum Terverifikasi
+                                            </p>
+                                        </div>
+                                    </div>
+                
+                                    <ChevronRight className="w-5 h-5 text-red-400 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            )}
                             </div>
                         </div>
                     </div>
