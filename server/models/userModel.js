@@ -253,6 +253,17 @@ async function addUserAddress(userId, addressData) {
       isDefault = false
     } = addressData;
     
+    // Validate coordinates if provided
+    if (latitude !== null && longitude !== null) {
+      if (!isValidCoordinate(latitude, longitude)) {
+        throw new Error('Invalid coordinates format');
+      }
+      
+      if (!isInIndonesia(latitude, longitude)) {
+        throw new Error('Coordinates must be within Indonesia');
+      }
+    }
+    
     if (isDefault) {
       await prisma.user_addresses.updateMany({
         where: { user_id: userId },
@@ -301,6 +312,17 @@ async function updateUserAddress(addressId, userId, addressData) {
       longitude
     } = addressData;
     
+    // Validate coordinates if provided
+    if (latitude !== null && longitude !== null) {
+      if (!isValidCoordinate(latitude, longitude)) {
+        throw new Error('Invalid coordinates format');
+      }
+      
+      if (!isInIndonesia(latitude, longitude)) {
+        throw new Error('Coordinates must be within Indonesia');
+      }
+    }
+    
     if (isDefault) {
       await prisma.user_addresses.updateMany({
         where: { 
@@ -339,6 +361,31 @@ async function updateUserAddress(addressId, userId, addressData) {
     }
     throw new Error(`Error updating address: ${error.message}`);
   }
+}
+
+// Helper functions
+function isValidCoordinate(latitude, longitude) {
+  return (
+    typeof latitude === 'number' && 
+    typeof longitude === 'number' &&
+    latitude >= -90 && latitude <= 90 &&
+    longitude >= -180 && longitude <= 180
+  );
+}
+
+function isInIndonesia(latitude, longitude) {
+  // Simple bounding box for Indonesia
+  const bounds = {
+    minLat: -11.0,
+    maxLat: 6.0,
+    minLon: 95.0,
+    maxLon: 141.0
+  };
+  
+  return latitude >= bounds.minLat && 
+         latitude <= bounds.maxLat && 
+         longitude >= bounds.minLon && 
+         longitude <= bounds.maxLon;
 }
 
 async function deleteUserAddress(addressId, userId) {

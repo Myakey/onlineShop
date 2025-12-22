@@ -3,8 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
-const { authenticateToken } = require("../middleware/authMiddleware");
-const { requireAdmin } = require("../middleware/authMiddleware");
+const { authenticateToken, requireAdmin, requireVerifiedUser } = require("../middleware/authMiddleware");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs"); 
@@ -71,38 +70,29 @@ const upload = {
 };
 
 
-// ==================== USER ROUTES (using secure tokens) ====================
+// ==================== USER ROUTES ====================
 
-// Get user's own orders
-router.get("/my-orders", authenticateToken, orderController.getOrdersByUser);
+// Get user's own orders - ✅ VERIFY EMAIL
+router.get("/my-orders", requireVerifiedUser, orderController.getOrdersByUser);
 
-// Get single order by SECURE TOKEN (primary method for users)
-router.get("/secure/:token", authenticateToken, orderController.getOrderByToken);
+// Get single order by SECURE TOKEN - ✅ VERIFY EMAIL
+router.get("/secure/:token", requireVerifiedUser, orderController.getOrderByToken);
 
-// Get order by order number (for tracking)
-router.get("/track/:orderNumber", authenticateToken, orderController.getOrderByOrderNumber);
+// Get order by order number - ✅ VERIFY EMAIL
+router.get("/track/:orderNumber", requireVerifiedUser, orderController.getOrderByOrderNumber);
 
-// Create new order (checkout)
-router.post('/', authenticateToken, orderCreateLimiter, orderController.createOrder);
+// Create new order - ✅ VERIFY EMAIL (CRITICAL!)
+router.post('/', requireVerifiedUser, orderCreateLimiter, orderController.createOrder);
 
-// Upload payment proof (using secure token)
+// Cancel order - ✅ VERIFY EMAIL
+router.put('/secure/:token/cancel', requireVerifiedUser, orderCancelLimiter, orderController.cancelOrder);
 
-// Cancel order (user can cancel their own pending orders using token)
-router.put('/secure/:token/cancel', authenticateToken, orderCancelLimiter, orderController.cancelOrder);
+// ==================== ADMIN ROUTES ====================
+// (Admin routes already check database via requireAdmin)
 
-// ==================== ADMIN ROUTES (using order IDs) ====================
-
-// Get all orders (admin only)
-router.get("/", authenticateToken, requireAdmin, orderController.getAllOrders);
-
-// Get order by ID (admin only)
-router.get("/admin/:id", authenticateToken, requireAdmin, orderController.getOrderById);
-
-// Update order status (admin only)
-router.put("/:id/status", authenticateToken, requireAdmin, orderController.updateOrderStatus);
-
-
-// Cancel order by ID (admin only)
-router.put("/admin/:id/cancel", authenticateToken, requireAdmin, orderController.cancelOrderById);
+router.get("/", requireAdmin, orderController.getAllOrders);
+router.get("/admin/:id", requireAdmin, orderController.getOrderById);
+router.put("/:id/status", requireAdmin, orderController.updateOrderStatus);
+router.put("/admin/:id/cancel", requireAdmin, orderController.cancelOrderById);
 
 module.exports = router;

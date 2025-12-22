@@ -2,17 +2,18 @@
 const express = require('express');
 const router = express.Router();
 const reviewController = require('../controllers/reviewController');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticateToken, requireVerifiedUser } = require('../middleware/authMiddleware');
 const { reviewLimiter } = require("../middleware/limiter"); 
 
-// 🟢 Now routes are relative to /api/reviews
+// Public routes (no auth needed)
 router.get('/product/:productId', reviewController.getProductReviews);
 router.get('/product/:productId/stats', reviewController.getProductReviewStats);
 
-router.post('/', authenticateToken, reviewLimiter, reviewController.createReview);
-router.get('/my', authenticateToken, reviewController.getUserReviews);
-router.put('/:reviewId', authenticateToken, reviewLimiter, reviewController.updateReview);
-router.delete('/:reviewId', authenticateToken, reviewLimiter, reviewController.deleteReview);
-router.get('/product/:productId/can-review', authenticateToken, reviewController.canUserReview);
+// Protected routes - ✅ VERIFY EMAIL (prevent fake review spam)
+router.post('/', requireVerifiedUser, reviewLimiter, reviewController.createReview);
+router.get('/my', requireVerifiedUser, reviewController.getUserReviews);
+router.put('/:reviewId', requireVerifiedUser, reviewLimiter, reviewController.updateReview);
+router.delete('/:reviewId', requireVerifiedUser, reviewLimiter, reviewController.deleteReview);
+router.get('/product/:productId/can-review', requireVerifiedUser, reviewController.canUserReview);
 
 module.exports = router;
