@@ -16,7 +16,10 @@ import ProductDetails from "./pages/public/ProductDetails";
 
 // Auth Pages
 import Login from "./pages/Login";
-import Register from "./pages/Register";
+import Profile from "./pages/user/Profile";
+import Wishlist from "./pages/user/Wishlist"; 
+import VerifyEmail from "./pages/VerifyEmail";
+import NewPassword from "./pages/NewPassword";
 
 // User Pages
 import Profile from "./pages/user/Profile";
@@ -59,7 +62,13 @@ function App() {
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/forgot-password" element={<NewPassword />} />
               <Route path="/debug-page" element={<DebugPage />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/products" element={<Product />} />
+              <Route path="/reviews" element={<Reviews />} />
+              
 
               {/* ===== PROTECTED USER ROUTES ===== */}
               <Route element={<ProtectedRoute />}>
