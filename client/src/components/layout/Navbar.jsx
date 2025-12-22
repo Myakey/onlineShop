@@ -13,10 +13,13 @@ import {
   FileText,
   LogIn,
   Heart,
+  AlertCircle,
 } from "lucide-react";
 import authService from "../../services/authService";
 import { useUser } from "../../context/userContext";
 import { useCart } from "../../context/cartContext";
+import LogoNoBG from "../../assets/LogoNoBG.png";
+
 
 const Navbar = () => {
   const { user, setUser, loading, isAuthenticated, isAdmin } = useUser();
@@ -126,12 +129,11 @@ const Navbar = () => {
           <div className="flex items-center space-x-2" onClick={goToHome} style={{cursor: 'pointer'}}>
             <div>
               <img
-                src="/logo.png"
+                src= {LogoNoBG}
                 alt="Logo"
                 className="w-20 h-20"
               />
             </div>
-            <span className="text-pink-700 font-bold text-xl hidden md:block select-none">Monmon's Hobbies</span>
           </div>
         </div>
 
@@ -186,7 +188,6 @@ const Navbar = () => {
                         </div>
                         <div>
                           <h3 className="font-bold text-lg">{user?.firstName || user?.name || "User"}</h3>
-                          <p className="text-sm text-pink-700/80">{user?.email || "user@example.com"}</p>
                         </div>
                       </div>
                     </div>
@@ -195,6 +196,12 @@ const Navbar = () => {
                         <User className="w-5 h-5 text-pink-500" />
                         <span className="text-gray-700 font-medium">Edit Profil</span>
                       </button>
+                      {!user?.emailVerified && (
+                      <div className="w-full px-4 py-3 bg-red-50 border border-red-100 rounded-xl flex items-center space-x-3 cursor-not-allowed">
+                        <AlertCircle className="w-5 h-5 text-red-500" />
+                        <span className="text-red-600 font-medium text-xs">Email Belum Terverifikasi</span>
+                      </div>
+                    )}
 
                       {!isAdmin && (
                         <>
@@ -232,7 +239,7 @@ const Navbar = () => {
       <div className={`absolute top-full left-0 right-0 bg-[#FFF5FA] shadow-xl border-t-4 border-pink-200 transition-all duration-500 ease-in-out transform z-40 ${isMenuOpen ? "opacity-100 translate-y-0 visible" : "opacity-0 -translate-y-8 invisible"}`}>
         <div className="max-w-7xl mx-auto py-10 px-6">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-pink-500 to-pink-400 bg-clip-text text-transparent mb-3">{isAdmin ? "🎯 Admin Control Panel" : "🍽️ Jelajahi Menu Kami"}</h2>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-pink-500 to-pink-400 bg-clip-text text-transparent mb-3">{isAdmin ? "🎯 Admin Control Panel" : "Jelajahi Menu Kami"}</h2>
             <p className="text-gray-600 text-lg">Pilih kategori yang ingin Anda kunjungi</p>
           </div>
 

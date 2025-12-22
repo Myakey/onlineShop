@@ -6,6 +6,8 @@ import About from "./pages/public/About";
 import Login from "./pages/Login";
 import Profile from "./pages/user/Profile";
 import Wishlist from "./pages/user/Wishlist"; 
+import VerifyEmail from "./pages/VerifyEmail";
+import NewPassword from "./pages/NewPassword";
 
 // import AdminPage from "./pages/admin";
 import CartPage from "./pages/user/Cart";
@@ -53,10 +55,13 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/forgot-password" element={<NewPassword />} />
               <Route path="/debug-page" element={<DebugPage />} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/products" element={<Product />} />
               <Route path="/reviews" element={<Reviews />} />
+              
 
               <Route element={<ProtectedRoute />}>
                 {/* Protected Routes */}
