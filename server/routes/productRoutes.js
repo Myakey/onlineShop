@@ -1,28 +1,42 @@
 const express = require("express");
 const router = express.Router();
 const productsController = require("../controllers/productController");
-const { upload, uploadWithErrorHandling, uploadMultipleWithErrorHandling } = require("../middleware/uploadImage");
+const {
+  uploadMultipleWithErrorHandling,
+} = require("../middleware/uploadImage");
 const { searchLimiter } = require("../middleware/limiter");
 
-//Ambil semua produk
-router.get('/', productsController.getAllProducts);
+/* =======================
+   PRODUCT ROUTES
+======================= */
 
-//Function untuk search di produk
-router.get('/search', searchLimiter, productsController.searchProduct);
+// Get all products
+router.get("/", productsController.getAllProducts);
 
-//Ambil produk berdasarkan id
-router.get('/:id', productsController.getProductById);
+// Search products
+router.get("/search", searchLimiter, productsController.searchProduct);
 
-//Buat produk baru (tambahan gambar opsional)
-router.post('/', uploadMultipleWithErrorHandling('image', 5), productsController.createProduct);
+// Get product by ID
+router.get("/:id", productsController.getProductById);
 
-//Update produk (tambahan gambar opsional)
-router.put('/:id', uploadMultipleWithErrorHandling('image', 5), productsController.updateProduct);
+// Create product (admin)
+router.post(
+  "/",
+  uploadMultipleWithErrorHandling("image", 5),
+  productsController.createProduct
+);
 
-//Hapus produk
-router.delete('/:id', productsController.deleteProduct);
+// Update product (admin)
+router.put(
+  "/:id",
+  uploadMultipleWithErrorHandling("image", 5),
+  productsController.updateProduct
+);
 
-//Hapus gambar produk
-router.delete('/:id/image', productsController.deleteProductImage);
+// Delete product
+router.delete("/:id", productsController.deleteProduct);
+
+// Delete product image
+router.delete("/:id/image", productsController.deleteProductImage);
 
 module.exports = router;
