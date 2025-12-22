@@ -177,6 +177,22 @@ async function updateUser(userId, updateData) {
   }
 }
 
+async function updateUserPassword(userId, hashedPassword) {
+    try {
+        await prisma.users.update({
+            where: { user_id: userId },
+            data: { 
+                password_hash: hashedPassword,
+                updated_at: new Date()
+            }
+        });
+        return true;
+    } catch (error) {
+        console.error('Error updating password:', error);
+        throw new Error(`Error updating password: ${error.message}`);
+    }
+}
+
 // OTP related functions
 async function createOTP(email, code, purpose, userId = null) {
   try {
@@ -235,7 +251,6 @@ async function verifyOTP(email, code, purpose) {
   }
 }
 
-// Address related functions
 async function addUserAddress(userId, addressData) {
   try {
     const {
@@ -252,6 +267,17 @@ async function addUserAddress(userId, addressData) {
       longitude,
       isDefault = false
     } = addressData;
+    
+    // Validate coordinates if provided
+    if (latitude !== null && longitude !== null) {
+      if (!isValidCoordinate(latitude, longitude)) {
+        return { success: false, error: 'Invalid coordinates format' };
+      }
+      
+      if (!isInIndonesiaBoundingBox(latitude, longitude)) {
+        return { success: false, error: 'Coordinates must be within Indonesia' };
+      }
+    }
     
     if (isDefault) {
       await prisma.user_addresses.updateMany({
@@ -278,9 +304,10 @@ async function addUserAddress(userId, addressData) {
       }
     });
     
-    return address;
+    return { success: true, data: address };
   } catch (error) {
-    throw new Error(`Error adding address: ${error.message}`);
+    console.error('Error adding address:', error);
+    return { success: false, error: `Error adding address: ${error.message}` };
   }
 }
 
@@ -300,6 +327,17 @@ async function updateUserAddress(addressId, userId, addressData) {
       latitude,
       longitude
     } = addressData;
+    
+    // Validate coordinates if provided
+    if (latitude !== null && longitude !== null) {
+      if (!isValidCoordinate(latitude, longitude)) {
+        return { success: false, error: 'Invalid coordinates format' };
+      }
+      
+      if (!isInIndonesiaBoundingBox(latitude, longitude)) {
+        return { success: false, error: 'Coordinates must be within Indonesia' };
+      }
+    }
     
     if (isDefault) {
       await prisma.user_addresses.updateMany({
@@ -332,13 +370,41 @@ async function updateUserAddress(addressId, userId, addressData) {
       }
     });
     
-    return updatedAddress;
+    return { success: true, data: updatedAddress };
   } catch (error) {
+    console.error('Error updating address:', error);
+    
     if (error.code === 'P2025') {
-      throw new Error('Address not found or access denied');
+      return { success: false, error: 'Address not found or access denied' };
     }
-    throw new Error(`Error updating address: ${error.message}`);
+    
+    return { success: false, error: `Error updating address: ${error.message}` };
   }
+}
+
+// Helper functions
+function isValidCoordinate(latitude, longitude) {
+  return (
+    typeof latitude === 'number' && 
+    typeof longitude === 'number' &&
+    latitude >= -90 && latitude <= 90 &&
+    longitude >= -180 && longitude <= 180
+  );
+}
+
+function isInIndonesiaBoundingBox(latitude, longitude){
+  
+  const bounds = {
+    minLat: -11.0,
+    maxLat: 6.0,
+    minLon: 95.0,
+    maxLon: 141.0
+  };
+  
+  return latitude >= bounds.minLat && 
+         latitude <= bounds.maxLat && 
+         longitude >= bounds.minLon && 
+         longitude <= bounds.maxLon;    
 }
 
 async function deleteUserAddress(addressId, userId) {
@@ -385,4 +451,5 @@ module.exports = {
   updateUserAddress,
   deleteUserAddress,
   getUserAddresses,
+  updateUserPassword,
 };

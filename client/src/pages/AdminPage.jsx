@@ -9,6 +9,9 @@ import RevenueChart from "../components/admin/RevenueChart";
 import productService from "../services/productService";
 import orderService from "../services/orderService";
 import { Package, ShoppingCart, Users, DollarSign, FileDown, TrendingUp, Activity } from "lucide-react";
+// Import jsPDF dan autoTable
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 const AdminPage = () => {
   const [stats, setStats] = useState({
@@ -95,67 +98,149 @@ const AdminPage = () => {
       return;
     }
 
-    const doc = new jsPDF("p", "mm", "a4");
-    doc.setFontSize(16);
-    doc.text("LAPORAN ADMIN", 105, 15, { align: "center" });
+    try {
+      const doc = new jsPDF("p", "mm", "a4");
+      
+      // Header
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("LAPORAN ADMIN", 105, 15, { align: "center" });
+      
+      // Tanggal
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Tanggal: ${new Date().toLocaleDateString("id-ID", { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })}`, 15, 25);
 
-    doc.setFontSize(10);
-    doc.text(`Tanggal: ${new Date().toLocaleDateString("id-ID")}`, 15, 25);
+      // Statistik Ringkas
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Statistik Ringkas", 15, 35);
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Total Produk: ${stats.totalProducts}`, 20, 42);
+      doc.text(`Total Pesanan: ${stats.totalOrders}`, 20, 48);
+      doc.text(`Total Pelanggan: ${stats.totalCustomers}`, 20, 54);
+      doc.text(`Total Pendapatan: ${stats.totalRevenue}`, 20, 60);
 
-    doc.setFontSize(12);
-    doc.text("Statistik Ringkas:", 15, 35);
-    doc.setFontSize(10);
-    doc.text(`• Total Produk: ${stats.totalProducts}`, 20, 42);
-    doc.text(`• Total Pesanan: ${stats.totalOrders}`, 20, 48);
-    doc.text(`• Total Pelanggan: ${stats.totalCustomers}`, 20, 54);
-    doc.text(`• Total Pendapatan: ${stats.totalRevenue}`, 20, 60);
+      // Status Pesanan
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Status Pesanan", 15, 70);
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Pending: ${orderStatusCount.pending}`, 20, 77);
+      doc.text(`Selesai: ${orderStatusCount.completed}`, 70, 77);
+      doc.text(`Dibatalkan: ${orderStatusCount.cancelled}`, 120, 77);
 
-    doc.setFontSize(12);
-    doc.text("Daftar Produk", 15, 75);
+      // Tabel Produk
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Daftar Produk", 15, 90);
 
-    const productTable = Array.isArray(products) && products.length > 0
-      ? products.map((p, index) => [
-          index + 1,
-          p.name || "-",
-          `Rp ${Number(p.price || 0).toLocaleString("id-ID")}`,
-          p.stock ?? "-",
-        ])
-      : [["-", "Tidak ada data produk", "-", "-"]];
+      const productTable = Array.isArray(products) && products.length > 0
+        ? products.map((p, index) => [
+            index + 1,
+            p.name || "-",
+            `Rp ${Number(p.price || 0).toLocaleString("id-ID")}`,
+            p.stock ?? "-",
+          ])
+        : [["-", "Tidak ada data produk", "-", "-"]];
 
-    doc.autoTable({
-      startY: 80,
-      head: [["#", "Nama Produk", "Harga", "Stok"]],
-      body: productTable,
-      theme: "striped",
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [255, 182, 193] },
-    });
+      doc.autoTable({
+        startY: 95,
+        head: [["No", "Nama Produk", "Harga", "Stok"]],
+        body: productTable,
+        theme: "grid",
+        styles: { 
+          fontSize: 9,
+          cellPadding: 3,
+        },
+        headStyles: { 
+          fillColor: [255, 182, 193],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+      });
 
-    let finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(12);
-    doc.text("Daftar Pesanan", 15, finalY);
+      // Tabel Pesanan
+      let finalY = doc.lastAutoTable.finalY + 10;
+      
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Daftar Pesanan", 15, finalY);
 
-    const orderTable = Array.isArray(allOrders) && allOrders.length > 0
-      ? allOrders.map((o, index) => [
-          index + 1,
-          o.order_number || "-",
-          o.user?.first_name ? `${o.user.first_name} ${o.user.last_name || ""}` : "N/A",
-          o.payment_status || "-",
-          o.status || "-",
-          `Rp ${parseFloat(o.total_amount || 0).toLocaleString("id-ID")}`,
-        ])
-      : [["-", "Tidak ada data pesanan", "-", "-", "-", "-"]];
+      const orderTable = Array.isArray(allOrders) && allOrders.length > 0
+        ? allOrders.map((o, index) => [
+            index + 1,
+            o.order_number || "-",
+            o.user?.first_name ? `${o.user.first_name} ${o.user.last_name || ""}` : "N/A",
+            o.payment_status || "-",
+            o.status || "-",
+            `Rp ${parseFloat(o.total_amount || 0).toLocaleString("id-ID")}`,
+          ])
+        : [["-", "Tidak ada data pesanan", "-", "-", "-", "-"]];
 
-    doc.autoTable({
-      startY: finalY + 5,
-      head: [["#", "No. Order", "Customer", "Status Bayar", "Status Pesanan", "Total"]],
-      body: orderTable,
-      theme: "striped",
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [173, 216, 230] },
-    });
+      doc.autoTable({
+        startY: finalY + 5,
+        head: [["No", "No. Order", "Customer", "Status Bayar", "Status", "Total"]],
+        body: orderTable,
+        theme: "grid",
+        styles: { 
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: { 
+          fillColor: [173, 216, 230],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        columnStyles: {
+          0: { cellWidth: 10 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 35 },
+        },
+      });
 
-    doc.save(`Laporan-Admin-${new Date().toLocaleDateString("id-ID")}.pdf`);
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128);
+        doc.text(
+          `Halaman ${i} dari ${pageCount}`,
+          doc.internal.pageSize.getWidth() / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: "center" }
+        );
+      }
+
+      // Save PDF
+      const fileName = `Laporan-Admin-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      // Show success message
+      alert("PDF berhasil diunduh!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Gagal membuat PDF. Silakan coba lagi.");
+    }
   };
 
   return (
