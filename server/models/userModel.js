@@ -177,6 +177,22 @@ async function updateUser(userId, updateData) {
   }
 }
 
+async function updateUserPassword(userId, hashedPassword) {
+    try {
+        await prisma.users.update({
+            where: { user_id: userId },
+            data: { 
+                password_hash: hashedPassword,
+                updated_at: new Date()
+            }
+        });
+        return true;
+    } catch (error) {
+        console.error('Error updating password:', error);
+        throw new Error(`Error updating password: ${error.message}`);
+    }
+}
+
 // OTP related functions
 async function createOTP(email, code, purpose, userId = null) {
   try {
@@ -435,4 +451,5 @@ module.exports = {
   updateUserAddress,
   deleteUserAddress,
   getUserAddresses,
+  updateUserPassword,
 };

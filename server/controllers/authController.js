@@ -209,14 +209,14 @@ async function login(req, res) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Check if email is verified
-        if (!userExists.email_verified) {
-            return res.status(403).json({ 
-                error: "Please verify your email before logging in",
-                requiresVerification: true,
-                email: userExists.email
-            });
-        }
+        // // Check if email is verified
+        // if (!userExists.email_verified) {
+        //     return res.status(403).json({ 
+        //         error: "Please verify your email before logging in",
+        //         requiresVerification: true,
+        //         email: userExists.email
+        //     });
+        // }
 
         const accessToken = generateAccessToken(userExists);
         const refreshToken = generateRefreshToken(userExists);
@@ -322,6 +322,137 @@ async function updateProfile(req, res) {
         res.status(500).json({ error: "Failed to update profile!" });
     }
 }
+
+//==============Forgot Password====================
+
+// Step 1: Request password reset (generates OTP)
+async function forgotPassword(req, res) {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ error: "Email is required" });
+        }
+
+        const userData = await user.findByEmail(email);
+        if (!userData) {
+            // Don't reveal if email exists or not (security best practice)
+            return res.json({ 
+                message: "If an account with that email exists, a password reset code has been sent." 
+            });
+        }
+
+        // Generate and send OTP
+        const otp = generateOTP();
+        await user.createOTP(email, otp, 'password_reset', userData.user_id);
+        
+        const emailResult = await sendOTPEmail(email, otp, 'password_reset');
+        
+        if (!emailResult.success) {
+            console.error('Failed to send password reset OTP:', emailResult.error);
+            return res.status(500).json({ error: "Failed to send password reset code" });
+        }
+
+        res.json({ 
+            message: "If an account with that email exists, a password reset code has been sent.",
+            email: email // Include email so frontend can show it
+        });
+
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        res.status(500).json({ error: "Failed to process password reset request" });
+    }
+}
+
+// Step 2: Verify OTP and reset password
+async function resetPassword(req, res) {
+    try {
+        const { email, otp, newPassword } = req.body;
+
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ 
+                error: "Email, OTP, and new password are required" 
+            });
+        }
+
+        // Validate password strength
+        if (newPassword.length < 8) {
+            return res.status(400).json({ 
+                error: "Password must be at least 8 characters long" 
+            });
+        }
+
+        // Verify OTP
+        const verification = await user.verifyOTP(email, otp, 'password_reset');
+        
+        if (!verification.valid) {
+            return res.status(400).json({ error: verification.message });
+        }
+
+        // Find user
+        const userData = await user.findByEmail(email);
+        if (!userData) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Update password
+        await user.updateUserPassword(userData.user_id, hashedPassword);
+
+        // Invalidate all existing refresh tokens for this user (security)
+        refreshTokens = refreshTokens.filter(token => {
+            try {
+                const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+                return decoded.id !== userData.user_id;
+            } catch {
+                return true;
+            }
+        });
+
+        res.json({ 
+            message: "Password reset successfully. Please login with your new password." 
+        });
+
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ error: "Failed to reset password" });
+    }
+}
+
+// Optional: Verify reset OTP before showing password form
+async function verifyResetOTP(req, res) {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ error: "Email and OTP are required" });
+        }
+
+        // Verify OTP (don't mark as used yet)
+        const verification = await user.verifyOTP(email, otp, 'password_reset');
+        
+        if (!verification.valid) {
+            return res.status(400).json({ 
+                valid: false, 
+                error: verification.message 
+            });
+        }
+
+        res.json({ 
+            valid: true,
+            message: "OTP verified. You can now reset your password." 
+        });
+
+    } catch (err) {
+        console.error('Verify reset OTP error:', err);
+        res.status(500).json({ error: "Failed to verify OTP" });
+    }
+}
+
+//==============Addresses====================
 
 // Add user address
 async function addAddress(req, res) {
@@ -569,4 +700,7 @@ module.exports = {
     getAddresses,
     uploadProfileImage,
     deleteProfileImage,
+    forgotPassword,
+    resetPassword,
+    verifyResetOTP,
 };
