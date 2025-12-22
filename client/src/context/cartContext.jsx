@@ -83,7 +83,7 @@ export const CartProvider = ({ children }) => {
       throw new Error("LOGIN_REQUIRED");
     }
     try {
-      await cartService.removeFromCart(cartItemId);
+      await cartService.removeMultipleItems(cartItemId);
       await fetchCart();
     } catch (error) {
       console.error("Failed to remove item:", error);

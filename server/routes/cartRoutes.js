@@ -23,11 +23,11 @@ router.post('/validate', cartController.validateCart);
 // Add item to cart
 router.post('/items', cartController.addItemToCart);
 
-router.delete('/items/bulk', authenticateToken, cartController.removeMultipleItems);
+router.delete('/items/bulk', cartController.removeMultipleItems);
 
 router.put('/items/:productId', cartController.updateCartItem);
 
-router.delete('/items/:productId', cartController.removeItemFromCart);
+// router.delete('/items/:productId', cartController.removeItemFromCart);
 
 // Clear entire cart
 router.delete('/clear', cartController.clearCart);

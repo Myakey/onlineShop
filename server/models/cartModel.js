@@ -204,6 +204,8 @@ const removeItemsFromCart = async (userId, productIds) => {
       throw new Error("Product IDs array is required");
     }
 
+    console.log(productIds)
+
     await prisma.cart_items.deleteMany({
       where: {
         user_id: parseInt(userId),
