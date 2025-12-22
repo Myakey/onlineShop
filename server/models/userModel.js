@@ -235,7 +235,6 @@ async function verifyOTP(email, code, purpose) {
   }
 }
 
-// Address related functions
 async function addUserAddress(userId, addressData) {
   try {
     const {
@@ -256,11 +255,11 @@ async function addUserAddress(userId, addressData) {
     // Validate coordinates if provided
     if (latitude !== null && longitude !== null) {
       if (!isValidCoordinate(latitude, longitude)) {
-        throw new Error('Invalid coordinates format');
+        return { success: false, error: 'Invalid coordinates format' };
       }
       
-      if (!isInIndonesia(latitude, longitude)) {
-        throw new Error('Coordinates must be within Indonesia');
+      if (!isInIndonesiaBoundingBox(latitude, longitude)) {
+        return { success: false, error: 'Coordinates must be within Indonesia' };
       }
     }
     
@@ -289,9 +288,10 @@ async function addUserAddress(userId, addressData) {
       }
     });
     
-    return address;
+    return { success: true, data: address };
   } catch (error) {
-    throw new Error(`Error adding address: ${error.message}`);
+    console.error('Error adding address:', error);
+    return { success: false, error: `Error adding address: ${error.message}` };
   }
 }
 
@@ -315,11 +315,11 @@ async function updateUserAddress(addressId, userId, addressData) {
     // Validate coordinates if provided
     if (latitude !== null && longitude !== null) {
       if (!isValidCoordinate(latitude, longitude)) {
-        throw new Error('Invalid coordinates format');
+        return { success: false, error: 'Invalid coordinates format' };
       }
       
-      if (!isInIndonesia(latitude, longitude)) {
-        throw new Error('Coordinates must be within Indonesia');
+      if (!isInIndonesiaBoundingBox(latitude, longitude)) {
+        return { success: false, error: 'Coordinates must be within Indonesia' };
       }
     }
     
@@ -354,12 +354,15 @@ async function updateUserAddress(addressId, userId, addressData) {
       }
     });
     
-    return updatedAddress;
+    return { success: true, data: updatedAddress };
   } catch (error) {
+    console.error('Error updating address:', error);
+    
     if (error.code === 'P2025') {
-      throw new Error('Address not found or access denied');
+      return { success: false, error: 'Address not found or access denied' };
     }
-    throw new Error(`Error updating address: ${error.message}`);
+    
+    return { success: false, error: `Error updating address: ${error.message}` };
   }
 }
 
@@ -373,8 +376,8 @@ function isValidCoordinate(latitude, longitude) {
   );
 }
 
-function isInIndonesia(latitude, longitude) {
-  // Simple bounding box for Indonesia
+function isInIndonesiaBoundingBox(latitude, longitude){
+  
   const bounds = {
     minLat: -11.0,
     maxLat: 6.0,
@@ -385,7 +388,7 @@ function isInIndonesia(latitude, longitude) {
   return latitude >= bounds.minLat && 
          latitude <= bounds.maxLat && 
          longitude >= bounds.minLon && 
-         longitude <= bounds.maxLon;
+         longitude <= bounds.maxLon;    
 }
 
 async function deleteUserAddress(addressId, userId) {

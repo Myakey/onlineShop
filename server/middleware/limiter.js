@@ -5,14 +5,14 @@ const rateLimit = require("express-rate-limit");
 // AUTH LIMITERS
 // -----------------------------
 exports.registerLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 3,
+    windowMs: 60 * 1000, // 1 hour
+    max: 100,
     message: "Too many registration attempts. Please try again later."
 });
 
 exports.loginLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 5,
+    max: 100,
     message: "Too many login attempts. Please wait a moment."
 });
 
