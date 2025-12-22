@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// src/pages/user/Cart.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarUser from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
@@ -12,13 +13,20 @@ import {
   Tag,
   ArrowRight,
   Package,
-  Sparkles,
   Loader2,
   AlertCircle,
 } from "lucide-react";
 
 import { useCart } from "../../context/cartContext";
 import cartService from "../../services/cartService";
+
+const arraysEqual = (a, b) => {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+};
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -29,26 +37,31 @@ const Cart = () => {
   const [wishlist, setWishlist] = useState([]);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
-  const [actionLoading, setActionLoading] = useState(null); // Track which item is being updated
+  const [actionLoading, setActionLoading] = useState(null);
 
-  // Get cart items from context
-  const cartItems = cart?.items || [];
+  // ✅ stable reference
+  const cartItems = useMemo(() => cart?.items ?? [], [cart?.items]);
 
-  // Initialize selected items when cart loads
+  // ✅ backend routes use :productId, and payload has product_id
+  const getItemId = (item) => item?.product_id;
+
   useEffect(() => {
-    if (cartItems.length > 0) {
-      // Select all items by default
-      setSelectedItems(cartItems.map((item) => item.cart_item_id));
-    }
+    const nextSelected =
+      cartItems.length > 0 ? cartItems.map((item) => getItemId(item)) : [];
+
+    // ✅ prevent max update depth (avoid setting same state repeatedly)
+    setSelectedItems((prev) =>
+      arraysEqual(prev, nextSelected) ? prev : nextSelected
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartItems]);
 
-  // Update quantity with loading state
-  const handleUpdateQuantity = async (cartItemId, newQuantity) => {
+  const handleUpdateQuantity = async (productId, newQuantity) => {
     if (newQuantity < 1) return;
 
-    setActionLoading(cartItemId);
+    setActionLoading(productId);
     try {
-      await updateItem(cartItemId, newQuantity);
+      await updateItem(productId, newQuantity);
     } catch (error) {
       console.error("Error updating quantity:", error);
       alert("❌ Gagal mengupdate jumlah produk!");
@@ -57,17 +70,15 @@ const Cart = () => {
     }
   };
 
-  // Remove item with confirmation
-  const handleRemoveItem = async (cartItemId) => {
+  const handleRemoveItem = async (productId) => {
     if (!window.confirm("Yakin ingin menghapus produk ini dari keranjang?")) {
       return;
     }
 
-    setActionLoading(cartItemId);
+    setActionLoading(productId);
     try {
-      await removeItem(cartItemId);
-      // Remove from selected items
-      setSelectedItems(selectedItems.filter((id) => id !== cartItemId));
+      await removeItem(productId);
+      setSelectedItems((prev) => prev.filter((id) => id !== productId));
     } catch (error) {
       console.error("Error removing item:", error);
       alert("❌ Gagal menghapus produk!");
@@ -76,36 +87,29 @@ const Cart = () => {
     }
   };
 
-  // Toggle item selection
-  const toggleSelectItem = (cartItemId) => {
-    if (selectedItems.includes(cartItemId)) {
-      setSelectedItems(selectedItems.filter((id) => id !== cartItemId));
-    } else {
-      setSelectedItems([...selectedItems, cartItemId]);
-    }
+  const toggleSelectItem = (productId) => {
+    setSelectedItems((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    );
   };
 
-  // Select all items
   const toggleSelectAll = () => {
-    if (selectedItems.length === cartItems.length) {
-      setSelectedItems([]);
-    } else {
-      setSelectedItems(cartItems.map((item) => item.cart_item_id));
-    }
+    setSelectedItems((prev) =>
+      prev.length === cartItems.length ? [] : cartItems.map((i) => getItemId(i))
+    );
   };
 
-  // Add to wishlist (you can implement wishlist API later)
-  const addToWishlist = async (cartItemId) => {
-    if (!wishlist.includes(cartItemId)) {
-      setWishlist([...wishlist, cartItemId]);
-      // TODO: Call wishlist API here
+  const addToWishlist = async (productId) => {
+    if (!wishlist.includes(productId)) {
+      setWishlist((prev) => [...prev, productId]);
       setTimeout(() => {
-        handleRemoveItem(cartItemId);
+        handleRemoveItem(productId);
       }, 500);
     }
   };
 
-  // Apply voucher
   const applyVoucher = () => {
     const vouchers = {
       BONEKA10: { discount: 10, type: "percentage", name: "Diskon 10%" },
@@ -122,9 +126,8 @@ const Cart = () => {
     }
   };
 
-  // Calculate totals from selected items
   const selectedCartItems = cartItems.filter((item) =>
-    selectedItems.includes(item.cart_item_id)
+    selectedItems.includes(getItemId(item))
   );
 
   const subtotal = selectedCartItems.reduce(
@@ -134,16 +137,14 @@ const Cart = () => {
 
   let discount = 0;
   if (appliedVoucher) {
-    if (appliedVoucher.type === "percentage") {
-      discount = (subtotal * appliedVoucher.discount) / 100;
-    } else {
-      discount = appliedVoucher.discount;
-    }
+    discount =
+      appliedVoucher.type === "percentage"
+        ? (subtotal * appliedVoucher.discount) / 100
+        : appliedVoucher.discount;
   }
 
   const total = subtotal - discount;
 
-  // Checkout - navigate to order page with selected items
   const handleCheckout = async () => {
     if (selectedItems.length === 0) {
       alert("⚠️ Pilih minimal 1 produk untuk checkout!");
@@ -151,8 +152,8 @@ const Cart = () => {
     }
 
     const itemsForValidation = selectedCartItems
-      .filter(item => item && item.product && item.product.product_id)
-      .map(item => ({
+      .filter((item) => item && item.product && item.product.product_id)
+      .map((item) => ({
         product_id: item.product.product_id,
         quantity: item.quantity,
       }));
@@ -161,34 +162,25 @@ const Cart = () => {
       (item) => item.quantity > item.product.stock
     );
     if (stockIssues.length > 0) {
-      const outOfStockNames = stockIssues
-        .map((item) => item.product.name)
-        .join(", ");
+      const outOfStockNames = stockIssues.map((i) => i.product.name).join(", ");
       alert(
         `❌ Stok lokal tidak mencukupi untuk: ${outOfStockNames}. Mohon sesuaikan jumlahnya.`
       );
       return;
     }
 
-    // 2. Perform Backend Stock Validation
-    setActionLoading("checkout"); // Use a generic loading state for the button/process
+    setActionLoading("checkout");
     try {
-      // Call the backend endpoint (assuming it's a POST and accepts items)
       const validation = await cartService.validateCart(itemsForValidation);
 
       if (!validation.valid) {
-        // This branch handles successful API call but stock validation failure
         const message =
           validation.message || "Beberapa item tidak tersedia lagi.";
         alert(`❌ Gagal checkout: ${message}`);
-        // Recommend refreshing the cart to show updated stock
         await fetchCart();
         return;
       }
 
-      // 3. Backend validation successful: Proceed to checkout data storage
-
-      // Recalculate totals (already done above, just restructuring the object)
       const subtotal = selectedCartItems.reduce(
         (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
         0
@@ -196,25 +188,24 @@ const Cart = () => {
 
       let discount = 0;
       if (appliedVoucher) {
-        if (appliedVoucher.type === "percentage") {
-          discount = (subtotal * appliedVoucher.discount) / 100;
-        } else {
-          discount = appliedVoucher.discount;
-        }
+        discount =
+          appliedVoucher.type === "percentage"
+            ? (subtotal * appliedVoucher.discount) / 100
+            : appliedVoucher.discount;
       }
+
       const total = subtotal - discount;
 
       const checkoutData = {
-        selectedItems: selectedCartItems, // Array of rich objects
+        selectedItems: selectedCartItems,
         subtotal,
         discount,
         total,
         appliedVoucher: appliedVoucher
           ? { ...appliedVoucher, code: voucherCode }
-          : null, // Pass the code too
+          : null,
       };
 
-      // Store in sessionStorage and navigate
       sessionStorage.setItem("checkoutData", JSON.stringify(checkoutData));
       navigate("/order");
     } catch (error) {
@@ -231,7 +222,7 @@ const Cart = () => {
       setActionLoading(null);
     }
   };
-  // Clear cart with confirmation
+
   const handleClearCart = async () => {
     if (!window.confirm("Yakin ingin mengosongkan keranjang?")) {
       return;
@@ -248,15 +239,21 @@ const Cart = () => {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-pink-50 via-cyan-50 to-white min-h-screen">
+      <div className="min-h-screen bg-white">
         <NavbarUser currentPage="cart" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader2 className="w-16 h-16 text-pink-500 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 font-semibold">Memuat keranjang...</p>
+        <div className="mx-auto max-w-6xl px-4 py-12">
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-pink-100">
+                <Loader2 className="h-7 w-7 animate-spin text-pink-500" />
+              </div>
+              <p className="font-semibold text-gray-900">Memuat keranjang...</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Mohon tunggu sebentar
+              </p>
+            </div>
           </div>
         </div>
         <Footer />
@@ -265,48 +262,58 @@ const Cart = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-pink-50 via-cyan-50 to-white min-h-screen">
+    <div className="min-h-screen bg-white">
       <NavbarUser currentPage="cart" />
 
-      <main className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-600 to-cyan-500 bg-clip-text text-transparent mb-2 flex items-center gap-3">
-            <ShoppingCart className="w-10 h-10 text-pink-500" />
-            Keranjang Belanja
-          </h1>
-          <p className="text-gray-600">
-            {cartItems.length} item siap di checkout! 🧸
-          </p>
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="flex items-center gap-3 text-3xl font-extrabold tracking-tight text-gray-900 md:text-4xl">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-pink-100">
+                <ShoppingCart className="h-6 w-6 text-pink-500" />
+              </span>
+              Keranjang
+            </h1>
+            <p className="mt-2 text-sm text-gray-600">
+              {cartItems.length} item siap di checkout
+            </p>
+          </div>
+
+          {cartItems.length > 0 && (
+            <button
+              onClick={() => navigate("/products")}
+              className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-pink-600 shadow-sm ring-1 ring-pink-100 transition hover:-translate-y-0.5 hover:bg-pink-50"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Lanjut belanja
+            </button>
+          )}
         </div>
 
         {cartItems.length === 0 ? (
-          // Empty Cart
-          <div className="text-center py-20">
-            <div className="inline-block p-8 bg-gradient-to-br from-pink-100 to-cyan-100 rounded-full mb-6">
-              <ShoppingCart className="w-24 h-24 text-pink-400" />
+          <div className="rounded-3xl border border-pink-100 bg-white p-10 text-center shadow-sm">
+            <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full bg-pink-50 ring-1 ring-pink-100">
+              <ShoppingCart className="h-9 w-9 text-pink-400" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-3">
-              Keranjang Masih Kosong
+            <h2 className="text-2xl font-extrabold text-gray-900">
+              Keranjang masih kosong
             </h2>
-            <p className="text-gray-600 mb-8">
-              Yuk mulai belanja boneka lucu & imut favoritmu!
+            <p className="mx-auto mt-2 max-w-md text-gray-600">
+              Pilih produk favoritmu dan tambahkan ke keranjang.
             </p>
             <button
               onClick={() => navigate("/products")}
-              className="px-8 py-4 bg-pink-500 text-white rounded-2xl font-bold text-lg hover:from-pink-600 hover:to-cyan-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center gap-2"
+              className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-pink-600 px-8 py-4 text-base font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-700 active:translate-y-0"
             >
-              <ShoppingBag className="w-6 h-6" />
-              Mulai Belanja
+              <Package className="h-5 w-5" />
+              Mulai belanja
             </button>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Cart Items */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Select All & Clear Cart */}
-              <div className="bg-white rounded-2xl shadow-md p-4 border-2 border-pink-100 flex items-center justify-between">
-                <label className="flex items-center gap-3 cursor-pointer">
+          <div className="grid gap-6 lg:grid-cols-[1.65fr_0.95fr]">
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-pink-100 bg-white p-4 shadow-sm">
+                <label className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={
@@ -314,353 +321,305 @@ const Cart = () => {
                       cartItems.length > 0
                     }
                     onChange={toggleSelectAll}
-                    className="w-5 h-5 rounded border-2 border-pink-300 text-cyan-500 focus:ring-2 focus:ring-cyan-300 cursor-pointer"
+                    className="h-5 w-5 cursor-pointer accent-pink-600"
                   />
-                  <span className="font-bold text-gray-800">
-                    Pilih Semua ({cartItems.length} Produk)
+                  <span className="text-sm font-semibold text-gray-900">
+                    Pilih semua
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    ({cartItems.length})
                   </span>
                 </label>
-                <div className="flex items-center gap-3">
+
+                <div className="flex items-center gap-2">
                   {selectedItems.length > 0 && (
-                    <span className="text-sm text-cyan-600 font-semibold">
-                      {selectedItems.length} item dipilih
+                    <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700 ring-1 ring-pink-100">
+                      {selectedItems.length} dipilih
                     </span>
                   )}
                   <button
                     onClick={handleClearCart}
-                    className="text-red-500 hover:text-red-600 text-sm font-semibold flex items-center gap-1"
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold text-gray-700 ring-1 ring-pink-100 transition hover:-translate-y-0.5 hover:bg-pink-50"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    Hapus Semua
+                    <Trash2 className="h-4 w-4 text-gray-600" />
+                    Hapus semua
                   </button>
                 </div>
               </div>
 
-              {/* Cart Items List */}
-              {cartItems.map((item) => {
-                const product = item.product;
-                const isLoading = actionLoading === item.cart_item_id;
+              <div className="space-y-3">
+                {cartItems.map((item) => {
+                  const product = item.product;
+                  const itemId = getItemId(item); // ✅ product_id
+                  const isLoading = actionLoading === itemId;
+                  const selected = selectedItems.includes(itemId);
 
-                return (
-                  <div
-                    key={item.cart_item_id}
-                    className={`bg-white rounded-3xl shadow-md p-5 border-2 transition-all duration-300 ${
-                      selectedItems.includes(item.cart_item_id)
-                        ? "border-cyan-400 bg-gradient-to-br from-pink-50/30 to-cyan-50/30"
-                        : "border-pink-100"
-                    } ${isLoading ? "opacity-60" : ""}`}
-                  >
-                    <div className="flex gap-4">
-                      {/* Checkbox */}
-                      <div className="flex items-start pt-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(item.cart_item_id)}
-                          onChange={() => toggleSelectItem(item.cart_item_id)}
-                          disabled={isLoading}
-                          className="w-5 h-5 rounded border-2 border-pink-300 text-cyan-500 focus:ring-2 focus:ring-cyan-300 cursor-pointer disabled:opacity-50"
-                        />
-                      </div>
-
-                      {/* Image */}
-                      <img
-                        src={
-                          product.images.find(img => img.is_primary)?.image_url ||
-                          "https://via.placeholder.com/150"
-                        }
-                        alt={product.name}
-                        onClick={() =>
-                          navigate(`/product/${product.product_id}`)
-                        }
-                        className="w-28 h-28 object-cover rounded-2xl border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform"
-                      />
-
-                      {/* Details */}
-                      <div className="flex-1">
-                        <div className="flex justify-between mb-2">
-                          <div>
-                            <h3
-                              className="font-bold text-gray-800 text-lg mb-1 cursor-pointer hover:text-pink-600"
-                              onClick={() =>
-                                navigate(`/product/${product.product_id}`)
-                              }
-                            >
-                              {product.name}
-                            </h3>
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                              {product.description}
-                            </p>
-                            <span className="inline-block px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs font-semibold">
-                              {product.category?.name || "Boneka"}
-                            </span>
-                          </div>
+                  return (
+                    <div
+                      key={itemId}
+                      className={[
+                        "rounded-2xl border bg-white p-4 shadow-sm transition",
+                        selected ? "border-pink-200" : "border-pink-100",
+                        "hover:-translate-y-0.5 hover:shadow-md",
+                        isLoading ? "opacity-60" : "",
+                      ].join(" ")}
+                    >
+                      <div className="flex gap-4">
+                        <div className="pt-1.5">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleSelectItem(itemId)}
+                            disabled={isLoading}
+                            className="h-5 w-5 cursor-pointer accent-pink-600 disabled:opacity-50"
+                          />
                         </div>
 
-                        {/* Stock Warning */}
-                        {product.stock < item.quantity && (
-                          <div className="flex items-center gap-2 mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <AlertCircle className="w-4 h-4 text-yellow-600" />
-                            <span className="text-xs text-yellow-700 font-semibold">
-                              Stok tersisa {product.stock}! Kurangi jumlah
-                              pesanan.
-                            </span>
-                          </div>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(`/product/${product.product_id}`)
+                          }
+                          className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-pink-50 ring-1 ring-pink-100"
+                          title="Lihat produk"
+                        >
+                          <img
+                            src={
+                              product.images.find((img) => img.is_primary)
+                                ?.image_url || "https://via.placeholder.com/150"
+                            }
+                            alt={product.name}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </button>
 
-                        <div className="flex items-center justify-between mt-4">
-                          {/* Price */}
-                          <div>
-                            <p className="text-2xl font-bold text-pink-600">
-                              Rp{" "}
-                              {parseFloat(product.price).toLocaleString(
-                                "id-ID"
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(`/product/${product.product_id}`)
+                                }
+                                className="line-clamp-1 text-left text-base font-bold text-gray-900 hover:text-pink-700"
+                              >
+                                {product.name}
+                              </button>
+
+                              <p className="mt-1 text-sm text-gray-600">
+                                Rp{" "}
+                                {parseFloat(product.price).toLocaleString(
+                                  "id-ID"
+                                )}
+                              </p>
+
+                              {product.stock < item.quantity && (
+                                <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-2.5 py-1.5">
+                                  <AlertCircle className="h-4 w-4 text-yellow-700" />
+                                  <span className="text-xs font-semibold text-yellow-800">
+                                    Stok tersisa: {product.stock}
+                                  </span>
+                                </div>
                               )}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              Total: Rp{" "}
-                              {(
-                                parseFloat(product.price) * item.quantity
-                              ).toLocaleString("id-ID")}
-                            </p>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">
+                                Rp{" "}
+                                {(
+                                  parseFloat(product.price) * item.quantity
+                                ).toLocaleString("id-ID")}
+                              </p>
+                              <p className="text-xs text-gray-500">Total item</p>
+                            </div>
                           </div>
 
-                          {/* Actions */}
-                          <div className="flex items-center gap-3">
-                            {/* Quantity */}
-                            <div className="flex items-center gap-2 bg-gradient-to-r from-pink-50 to-cyan-50 rounded-xl border-2 border-pink-200 px-3 py-2">
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                            <div className="inline-flex items-center rounded-full border border-pink-100 bg-white p-1 shadow-sm">
                               <button
                                 onClick={() =>
-                                  handleUpdateQuantity(
-                                    item.cart_item_id,
-                                    item.quantity - 1
-                                  )
+                                  handleUpdateQuantity(itemId, item.quantity - 1)
                                 }
                                 disabled={isLoading || item.quantity <= 1}
-                                className="w-8 h-8 flex items-center justify-center text-pink-500 hover:bg-pink-100 rounded-lg transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="grid h-9 w-9 place-items-center rounded-full transition hover:bg-pink-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Kurangi jumlah"
                               >
-                                <Minus className="w-4 h-4" />
+                                <Minus className="h-4 w-4 text-gray-900" />
                               </button>
-                              <span className="font-bold text-gray-800 w-8 text-center">
+
+                              <div className="grid w-10 place-items-center text-sm font-bold text-gray-900">
                                 {isLoading ? (
-                                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                                  <Loader2 className="h-4 w-4 animate-spin text-pink-600" />
                                 ) : (
                                   item.quantity
                                 )}
-                              </span>
+                              </div>
+
                               <button
                                 onClick={() =>
-                                  handleUpdateQuantity(
-                                    item.cart_item_id,
-                                    item.quantity + 1
-                                  )
+                                  handleUpdateQuantity(itemId, item.quantity + 1)
                                 }
-                                disabled={
-                                  isLoading || item.quantity >= product.stock
-                                }
-                                className="w-8 h-8 flex items-center justify-center text-cyan-500 hover:bg-cyan-100 rounded-lg transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={isLoading || item.quantity >= product.stock}
+                                className="grid h-9 w-9 place-items-center rounded-full transition hover:bg-pink-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Tambah jumlah"
                               >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="h-4 w-4 text-gray-900" />
                               </button>
                             </div>
 
-                            {/* Wishlist */}
-                            <button
-                              onClick={() => addToWishlist(item.cart_item_id)}
-                              disabled={isLoading}
-                              className={`p-3 rounded-xl transition-all duration-300 ${
-                                wishlist.includes(item.cart_item_id)
-                                  ? "bg-red-100 text-red-500"
-                                  : "bg-gray-100 text-gray-400 hover:bg-pink-100 hover:text-pink-500"
-                              } disabled:opacity-50`}
-                              title="Pindah ke Wishlist"
-                            >
-                              <Heart
-                                className={`w-5 h-5 ${
-                                  wishlist.includes(item.cart_item_id)
-                                    ? "fill-current"
-                                    : ""
-                                }`}
-                              />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => addToWishlist(itemId)}
+                                disabled={isLoading}
+                                className={[
+                                  "grid h-10 w-10 place-items-center rounded-full border bg-white shadow-sm transition hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50",
+                                  wishlist.includes(itemId)
+                                    ? "border-pink-200 text-pink-600"
+                                    : "border-pink-100 text-gray-600 hover:bg-pink-50",
+                                ].join(" ")}
+                                title="Pindahkan ke Wishlist"
+                              >
+                                <Heart
+                                  className={[
+                                    "h-5 w-5",
+                                    wishlist.includes(itemId) ? "fill-current" : "",
+                                  ].join(" ")}
+                                />
+                              </button>
 
-                            {/* Delete */}
-                            <button
-                              onClick={() =>
-                                handleRemoveItem(item.cart_item_id)
-                              }
-                              disabled={isLoading}
-                              className="p-3 bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 rounded-xl transition-all duration-300 disabled:opacity-50"
-                              title="Hapus dari Keranjang"
-                            >
-                              {isLoading ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-5 h-5" />
-                              )}
-                            </button>
+                              <button
+                                onClick={() => handleRemoveItem(itemId)}
+                                disabled={isLoading}
+                                className="grid h-10 w-10 place-items-center rounded-full border border-pink-100 bg-white text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-50 active:translate-y-0 disabled:opacity-50"
+                                title="Hapus"
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-pink-600" />
+                                ) : (
+                                  <Trash2 className="h-5 w-5" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
 
-              {/* Continue Shopping */}
               <button
                 onClick={() => navigate("/products")}
-                className="w-full py-4 bg-white border-2 border-pink-200 text-pink-600 rounded-2xl font-bold hover:bg-gradient-to-r hover:from-pink-50 hover:to-cyan-50 hover:border-cyan-300 transition-all duration-300 flex items-center justify-center gap-2"
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-pink-100 bg-white px-6 py-3.5 text-sm font-bold text-pink-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-50 active:translate-y-0"
               >
-                <Package className="w-5 h-5" />
-                Lanjut Belanja Boneka Lainnya
+                <ShoppingBag className="h-4 w-4" />
+                Lanjut belanja
               </button>
-            </div>
+            </section>
 
-            {/* Sidebar Summary */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-24 space-y-6">
-                {/* Voucher Section */}
-                <section className="bg-white rounded-3xl shadow-md p-6 border-2 border-pink-100">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Tag className="w-5 h-5 text-pink-500" />
-                    Kode Voucher
-                  </h2>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={voucherCode}
-                        onChange={(e) =>
-                          setVoucherCode(e.target.value.toUpperCase())
-                        }
-                        placeholder="Masukkan kode"
-                        className="flex-1 px-4 py-3 border-2 border-pink-200 rounded-xl focus:outline-none focus:border-cyan-400 transition-colors uppercase"
-                      />
-                      <button
-                        onClick={applyVoucher}
-                        className="px-6 py-3 bg-gradient-to-r from-pink-400 to-cyan-400 text-white rounded-xl font-bold hover:from-pink-500 hover:to-cyan-500 transition-all duration-300 shadow-md"
-                      >
-                        Pakai
-                      </button>
-                    </div>
+            <aside className="space-y-4 lg:sticky lg:top-24">
+              <section className="rounded-2xl border border-pink-100 bg-white p-5 shadow-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
+                  <Tag className="h-4 w-4 text-pink-600" />
+                  Voucher
+                </h2>
 
-                    {appliedVoucher && (
-                      <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 px-4 py-3 rounded-xl">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-green-600" />
-                          <span className="font-bold text-green-700 text-sm">
-                            {appliedVoucher.name} diterapkan!
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setAppliedVoucher(null);
-                            setVoucherCode("");
-                          }}
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="text-xs text-gray-600 space-y-1 bg-gradient-to-r from-pink-50 to-cyan-50 p-3 rounded-xl">
-                      <p className="font-semibold mb-1">💝 Kode tersedia:</p>
-                      <p>• BONEKA10 - Diskon 10%</p>
-                      <p>• PROMO20 - Diskon 20%</p>
-                      <p>• HEMAT50K - Potongan Rp 50.000</p>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Order Summary */}
-                <section className="bg-gradient-to-br from-pink-100 to-cyan-100 rounded-3xl shadow-lg p-6 border-2 border-pink-200">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">
-                    📋 Ringkasan Belanja
-                  </h2>
-
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between text-gray-700">
-                      <span>Subtotal ({selectedItems.length} item)</span>
-                      <span className="font-semibold">
-                        Rp {subtotal.toLocaleString("id-ID")}
-                      </span>
-                    </div>
-
-                    {appliedVoucher && discount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Diskon Voucher</span>
-                        <span className="font-semibold">
-                          - Rp {discount.toLocaleString("id-ID")}
-                        </span>
-                      </div>
-                    )}
-
-                    <hr className="border-gray-300" />
-
-                    <div className="flex justify-between text-xl font-bold text-gray-800">
-                      <span>Total</span>
-                      <span className="text-pink-600">
-                        Rp {total.toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  </div>
-
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) =>
+                      setVoucherCode(e.target.value.toUpperCase())
+                    }
+                    placeholder="Masukkan kode"
+                    className="w-full flex-1 rounded-full border border-pink-100 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-pink-200 focus:ring-4 focus:ring-pink-50"
+                  />
                   <button
-                    onClick={handleCheckout}
-                    disabled={
-                      selectedItems.length === 0 || actionLoading === "checkout"
-                    } // <-- Updated disabled prop
-                    className="w-full py-4 bg-gradient-to-r from-pink-500 to-cyan-500 text-white rounded-2xl font-bold text-lg hover:from-pink-600 hover:to-cyan-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                    onClick={applyVoucher}
+                    className="rounded-full bg-pink-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-700 active:translate-y-0"
                   >
-                    {actionLoading === "checkout" ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />{" "}
-                        Memvalidasi...
-                      </>
-                    ) : (
-                      <>
-                        Checkout Sekarang <ArrowRight className="w-5 h-5" />
-                      </>
-                    )}
+                    Pakai
                   </button>
+                </div>
 
-                  <p className="text-xs text-gray-600 text-center mt-3">
-                    ✨ Gratis ongkir untuk pembelian di atas Rp 200.000
-                  </p>
-                </section>
-
-                {/* Trust Badges */}
-                <section className="bg-white rounded-2xl shadow-md p-4 border-2 border-pink-100">
-                  <div className="grid grid-cols-2 gap-3 text-center">
-                    <div className="p-3 bg-gradient-to-br from-pink-50 to-cyan-50 rounded-xl">
-                      <p className="text-2xl mb-1">🔒</p>
-                      <p className="text-xs font-semibold text-gray-700">
-                        Pembayaran Aman
+                {appliedVoucher && (
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-pink-100 bg-pink-50 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-gray-900">
+                        {appliedVoucher.name}
                       </p>
+                      <p className="text-xs text-gray-600">Voucher aktif</p>
                     </div>
-                    <div className="p-3 bg-gradient-to-br from-cyan-50 to-pink-50 rounded-xl">
-                      <p className="text-2xl mb-1">🚚</p>
-                      <p className="text-xs font-semibold text-gray-700">
-                        Pengiriman Cepat
-                      </p>
-                    </div>
-                    <div className="p-3 bg-gradient-to-br from-pink-50 to-cyan-50 rounded-xl">
-                      <p className="text-2xl mb-1">✅</p>
-                      <p className="text-xs font-semibold text-gray-700">
-                        Produk Original
-                      </p>
-                    </div>
-                    <div className="p-3 bg-gradient-to-br from-cyan-50 to-pink-50 rounded-xl">
-                      <p className="text-2xl mb-1">💝</p>
-                      <p className="text-xs font-semibold text-gray-700">
-                        Garansi 30 Hari
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setAppliedVoucher(null);
+                        setVoucherCode("");
+                      }}
+                      className="grid h-9 w-9 place-items-center rounded-full bg-white ring-1 ring-pink-100 transition hover:bg-pink-50"
+                      title="Hapus voucher"
+                    >
+                      <Trash2 className="h-4 w-4 text-gray-700" />
+                    </button>
                   </div>
-                </section>
-              </div>
-            </div>
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-pink-100 bg-white p-5 shadow-sm">
+                <h2 className="text-base font-extrabold text-gray-900">
+                  Ringkasan
+                </h2>
+
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="flex justify-between text-gray-700">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-gray-900">
+                      Rp {subtotal.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+
+                  {appliedVoucher && discount > 0 && (
+                    <div className="flex justify-between text-gray-700">
+                      <span>Diskon</span>
+                      <span className="font-semibold text-gray-900">
+                        - Rp {discount.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="my-3 h-px w-full bg-pink-100" />
+
+                  <div className="flex items-end justify-between">
+                    <span className="text-sm font-bold text-gray-900">Total</span>
+                    <span className="text-2xl font-black tracking-tight text-pink-700">
+                      Rp {total.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCheckout}
+                  disabled={
+                    selectedItems.length === 0 || actionLoading === "checkout"
+                  }
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-pink-600 px-6 py-4 text-base font-extrabold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-pink-700 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  {actionLoading === "checkout" ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Memvalidasi...
+                    </>
+                  ) : (
+                    <>
+                      Checkout <ArrowRight className="h-5 w-5" />
+                    </>
+                  )}
+                </button>
+
+                <p className="mt-3 text-center text-xs text-gray-500">
+                  Gratis ongkir untuk pembelian di atas Rp 200.000
+                </p>
+              </section>
+            </aside>
           </div>
         )}
       </main>
