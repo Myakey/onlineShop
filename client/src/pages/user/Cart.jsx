@@ -365,7 +365,8 @@ const Cart = () => {
                       {/* Image */}
                       <img
                         src={
-                          product.image_url || "https://via.placeholder.com/150"
+                          product.images.find(img => img.is_primary)?.image_url ||
+                          "https://via.placeholder.com/150"
                         }
                         alt={product.name}
                         onClick={() =>

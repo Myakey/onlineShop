@@ -279,7 +279,6 @@ const updatePaymentStatus = async (req, res) => {
         const customerName = `${orderDetails.user.first_name || ''} ${orderDetails.user.last_name || ''}`.trim() || 'Customer';
 
         // 4️⃣ Send invoice email
-        const { sendInvoiceEmail } = require("../services/sendInvoiceEmail");
         const emailResult = await sendInvoiceEmail(
           invoiceData,
           customerEmail,

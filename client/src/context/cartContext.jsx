@@ -23,6 +23,7 @@ export const CartProvider = ({ children }) => {
     setLoading(true);
     try {
       const data = await cartService.getCart();
+      console.log(data.data)
       setCart(data.data);
       setCartCount(data.data?.totalItems || data.data?.items?.length || 0);
     } catch (error) {
