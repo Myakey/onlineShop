@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Star, ShoppingCart } from "lucide-react";
 import { useCart } from "../../context/cartContext";
 import reviewService from "../../services/reviewService";
-import fallbackImage from "../../assets/DefaultPFP.png";
+import fallbackImage from "../../assets/y9DpT.jpg";
 
 const ProductCard = ({ product, viewMode = "grid" }) => {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const [reviewSummary, setReviewSummary] = useState(null);
   const [addingToCart, setAddingToCart] = useState(false);
-
+  console.log(product);
   // Fetch review summary when component mounts
   useEffect(() => {
     fetchReviewSummary();
@@ -64,7 +64,7 @@ const ProductCard = ({ product, viewMode = "grid" }) => {
       {/* Product Image */}
       <div className="relative overflow-hidden">
         <img
-          src={product.images[0].image_url || fallbackImage}
+          src={product.images?.[0]?.image_url || fallbackImage}
           alt={product.name}
           className={`object-cover transition-transform duration-300 group-hover:scale-105 
           ${viewMode === "list" ? "w-48 h-48" : "w-full h-56"}`}

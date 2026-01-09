@@ -52,6 +52,8 @@ const Product = () => {
           price: parseFloat(p.price),
         }));
 
+        console.log(formattedData);
+
         setProducts(formattedData);
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -69,6 +71,7 @@ const Product = () => {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     let matchesPrice = true;
+    
 
     return matchesSearch && matchesPrice;
   });
@@ -159,13 +162,13 @@ const Product = () => {
                     : "grid-cols-1"
                 }`}
               >
-                {filteredProducts.map((product) => (
-                  <ProductCard
-                    key={product.product_id}
+                {filteredProducts.map((product) =>  (
+                <ProductCard
+                  key={product.product_id}
                     product={product}
-                    viewMode={viewMode}
+                  viewMode={viewMode}
                   />
-                ))}
+                ))}  
               </div>
             </>
           )}
