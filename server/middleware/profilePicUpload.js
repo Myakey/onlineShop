@@ -2,7 +2,6 @@ const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 const { Readable } = require('stream');
 
-// Use memory storage instead of disk
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {

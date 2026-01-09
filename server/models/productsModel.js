@@ -101,70 +101,115 @@ exports.createProduct = async (productData) => {
 };
 
 // Update product with partial image update
+// Update product with complete image management
+// Update product with complete image management
 exports.updateProduct = async (productId, updateData) => {
   try {
-    const { name, description, price, stock, images } = updateData;
+    const { 
+      name, 
+      description, 
+      price, 
+      stock, 
+      weight,
+      length,
+      width,
+      height,
+      images, // Array of image objects: [{ url, cloudinary_id?, product_img_id? }]
+      is_recommended
+    } = updateData;
 
+    // Build update object for product fields
     const prismaUpdateData = {};
-
     if (name !== undefined) prismaUpdateData.name = name;
     if (description !== undefined) prismaUpdateData.description = description;
     if (price !== undefined) prismaUpdateData.price = parseFloat(price);
     if (stock !== undefined) prismaUpdateData.stock = parseInt(stock);
+    if (weight !== undefined) prismaUpdateData.weight = parseInt(weight);
+    if (length !== undefined) prismaUpdateData.length = parseInt(length);
+    if (width !== undefined) prismaUpdateData.width = parseInt(width);
+    if (height !== undefined) prismaUpdateData.height = parseInt(height);
+    if (is_recommended !== undefined) prismaUpdateData.is_recommended = Boolean(is_recommended);
 
-    // Update only product fields first
+    // Update product fields
     const updatedProduct = await prisma.products.update({
       where: { product_id: parseInt(productId) },
       data: prismaUpdateData,
     });
 
     // -----------------------------------
-    // PARTIAL IMAGE UPDATE LOGIC
+    // IMAGE UPDATE LOGIC
     // -----------------------------------
-    if (images) {
-      // 1. Delete specific images
-      if (images.delete && images.delete.length > 0) {
+    if (images !== undefined && Array.isArray(images)) {
+      // Get current images from database
+      const currentImages = await prisma.productImage.findMany({
+        where: { product_id: updatedProduct.product_id },
+      });
+
+      // Separate existing images (have product_img_id) from new images (don't have product_img_id)
+      const existingImageIds = images
+        .filter(img => img.product_img_id)
+        .map(img => parseInt(img.product_img_id));
+      
+      const newImages = images.filter(img => !img.product_img_id);
+
+      // Delete images that are not in the existingImageIds list
+      const imagesToDelete = currentImages
+        .filter(img => !existingImageIds.includes(img.product_img_id))
+        .map(img => img.product_img_id);
+
+      if (imagesToDelete.length > 0) {
         await prisma.productImage.deleteMany({
           where: {
-            image_id: { in: images.delete.map(id => parseInt(id)) },
+            product_img_id: { in: imagesToDelete },
             product_id: updatedProduct.product_id,
           },
         });
       }
 
-      // 2. Add new images
-      if (images.add && images.add.length > 0) {
+      // Add new images
+      if (newImages.length > 0) {
+        // Check if there are existing images
+        const hasExistingImages = existingImageIds.length > 0;
+        
         await prisma.productImage.createMany({
-          data: images.add.map((img) => ({
+          data: newImages.map((img, index) => ({
             product_id: updatedProduct.product_id,
             image_url: img.url,
-            is_primary: false, // added images are not primary by default
+            // If no existing images, first new image becomes primary
+            is_primary: !hasExistingImages && index === 0,
           })),
         });
       }
 
-      // 3. Set a new primary image
-      if (images.setPrimary !== undefined) {
-        const primaryId = parseInt(images.setPrimary);
+      // Ensure at least one image is primary if images exist
+      const allImages = await prisma.productImage.findMany({
+        where: { product_id: updatedProduct.product_id },
+        orderBy: { product_img_id: 'asc' },
+      });
 
-        // Clear previous primary
-        await prisma.productImage.updateMany({
-          where: { product_id: updatedProduct.product_id },
-          data: { is_primary: false },
-        });
-
-        // Set new primary
-        await prisma.productImage.update({
-          where: { image_id: primaryId },
-          data: { is_primary: true },
-        });
+      if (allImages.length > 0) {
+        const hasPrimary = allImages.some(img => img.is_primary);
+        
+        if (!hasPrimary) {
+          // Set first image as primary
+          await prisma.productImage.update({
+            where: { product_img_id: allImages[0].product_img_id },
+            data: { is_primary: true },
+          });
+        }
       }
     }
 
-    // Fetch updated product data + images
+    // Fetch updated product with all images
     const productWithImages = await prisma.products.findUnique({
       where: { product_id: updatedProduct.product_id },
-      include: { images: true },
+      include: { 
+        images: {
+          orderBy: {
+            is_primary: 'desc', // Primary images first
+          },
+        },
+      },
     });
 
     return addFullImageUrls(productWithImages);
@@ -178,7 +223,6 @@ exports.updateProduct = async (productId, updateData) => {
     throw new Error(`Error updating product: ${error.message}`);
   }
 };
-
 //Delete product
 exports.deleteProduct = async (productId) => {
   try {

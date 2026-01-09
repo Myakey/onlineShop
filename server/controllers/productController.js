@@ -101,11 +101,22 @@ const updateProduct = async (req, res) => {
       description,
       price,
       stock,
+      weight,
+      length,
+      width,
+      height,
       is_recommended,
+      existingImages, // JSON string of cloudinary_ids to keep
     } = req.body;
 
     const existingProduct = await productModels.getProductById(id);
     if (!existingProduct) {
+      // Clean up uploaded files if product not found
+      if (req.files?.length) {
+        for (const file of req.files) {
+          await cleanupFile(file.cloudinary_id);
+        }
+      }
       return res.status(404).json({ message: "Product not found" });
     }
 
@@ -123,6 +134,12 @@ const updateProduct = async (req, res) => {
       );
 
       if (invalidFields.length > 0) {
+        // Clean up uploaded files
+        if (req.files?.length) {
+          for (const file of req.files) {
+            await cleanupFile(file.cloudinary_id);
+          }
+        }
         return res.status(403).json({
           message:
             "Product with reviews can only update stock, price, or recommendation status",
@@ -137,19 +154,82 @@ const updateProduct = async (req, res) => {
     if (description !== undefined) updateData.description = description;
     if (price !== undefined) updateData.price = parseFloat(price);
     if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (weight !== undefined) updateData.weight = parseInt(weight);
+    if (length !== undefined) updateData.length = parseInt(length);
+    if (width !== undefined) updateData.width = parseInt(width);
+    if (height !== undefined) updateData.height = parseInt(height);
 
-    // ⭐ INI YANG PENTING
+    // ⭐ Handle is_recommended
     if (is_recommended !== undefined) {
       updateData.is_recommended = Boolean(is_recommended);
     }
 
+    // 🖼️ Handle Images
+    // 🖼️ Handle Images
+let finalImages = [];
+
+console.log("Received existingImages:", existingImages);
+
+// Parse existing images to keep (these are product_img_ids)
+if (existingImages) {
+  try {
+    const existingIds = JSON.parse(existingImages); // Array of product_img_ids
+    console.log("Parsed IDs:", existingIds);
+    console.log("Existing product images:", existingProduct.images.map(img => img.product_img_id));
+    
+    finalImages = existingProduct.images.filter(img => 
+      existingIds.includes(img.product_img_id)  // ✅ Use product_img_id
+    ).map(img => ({
+      product_img_id: img.product_img_id,  // Include the ID
+      url: img.image_url,
+    }));
+
+    console.log("Final images to keep:", finalImages);
+
+    // Clean up removed images
+    const removedImages = existingProduct.images.filter(img => 
+      !existingIds.includes(img.product_img_id)
+    );
+    
+    console.log("Images to remove:", removedImages);
+    
+    for (const img of removedImages) {
+      await cleanupFile(img.image_url);
+    }
+  } catch (err) {
+    console.error("Error parsing existingImages:", err);
+  }
+}
+
+    // Add new uploaded images
+    if (req.files?.length) {
+      const newImages = req.files.map((file) => ({
+        url: file.path,
+        cloudinary_id: file.cloudinary_id,
+      }));
+      console.log(newImages);
+      finalImages = [...finalImages, ...newImages];
+    }
+
+    // Limit to 5 images
+    if (finalImages.length > 5) {
+      finalImages = finalImages.slice(0, 5);
+    }
+
+    updateData.images = finalImages;
+
     const updatedProduct = await productModels.updateProduct(id, updateData);
     res.json(updatedProduct);
   } catch (err) {
+    // Clean up uploaded files on error
+    if (req.files?.length) {
+      for (const file of req.files) {
+        await cleanupFile(file.cloudinary_id);
+      }
+    }
     res.status(500).json({ message: err.message });
   }
 };
-
 /* =======================
    DELETE PRODUCT
 ======================= */
